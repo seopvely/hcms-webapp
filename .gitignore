@@ -1,0 +1,117 @@
+# ===========================
+# Dependencies
+# ===========================
+node_modules/
+venv/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ===========================
+# Environment files
+# ===========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# .env.example은 커밋 대상 (참고용 템플릿)
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+*.cover
+*.coverage
+
+# ===========================
+# Next.js / React
+# ===========================
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+/coverage
+
+# ===========================
+# Claude Code / OMC (AI 도구)
+# ===========================
+.omc/
+.claude/
+.claude.json
+.claude.json.backup.*
+CLAUDE.md
+AGENTS.md
+
+# ===========================
+# Symlinks (pacms 연결 - 서버별 경로 다름)
+# ===========================
+frontend/bank_files
+frontend/business_files
+frontend/inquiry_files
+frontend/media
+frontend/related_documents
+
+# ===========================
+# IDE / Editor
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===========================
+# Logs
+# ===========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# ===========================
+# Security (민감 파일)
+# ===========================
+*.pem
+*.key
+*.cert
+*.crt
+
+# ===========================
+# Build / Production
+# ===========================
+.vercel
+.turbo
+
+# ===========================
+# Misc
+# ===========================
+*.bak
+*.tmp
+*.temp

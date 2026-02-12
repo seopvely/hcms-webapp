@@ -1,0 +1,286 @@
+import math
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
+from sqlalchemy.orm import Session, joinedload
+
+from app.core.deps import get_current_user
+from app.db.session import get_db
+from app.models.manager import Manager
+from app.models.customer import Estimate, EstimateItem, EstimateContract
+from app.utils.pdf_generator import generate_estimate_pdf, generate_contract_pdf
+
+router = APIRouter(prefix="/estimates", tags=["estimates"])
+
+ESTIMATE_STATUS_LABELS = {
+    1: "작성중",
+    2: "제출",
+    3: "승인",
+    4: "반려",
+    5: "계약전환",
+}
+
+
+@router.get("")
+def list_estimates(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    search: str = Query("", description="Search in estimate_title"),
+    status: str = Query("", description="Filter by estimate_status (1-5)"),
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = current_user.company_id
+
+    query = db.query(Estimate).filter(Estimate.company_id == company_id)
+
+    if search:
+        query = query.filter(Estimate.estimate_title.ilike(f"%{search}%"))
+
+    if status:
+        query = query.filter(Estimate.estimate_status == int(status))
+
+    total = query.count()
+    total_pages = math.ceil(total / per_page) if total > 0 else 1
+
+    items_db = (
+        query.options(joinedload(Estimate.project), joinedload(Estimate.items))
+        .order_by(Estimate.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    items = []
+    for e in items_db:
+        items.append(
+            {
+                "id": e.seq,
+                "title": e.estimate_title,
+                "estimate_number": e.estimate_number,
+                "estimate_type": e.estimate_type,
+                "status": str(e.estimate_status) if e.estimate_status else "1",
+                "status_label": ESTIMATE_STATUS_LABELS.get(int(e.estimate_status) if e.estimate_status else 0, ""),
+                "total_amount": e.estimate_amount if e.estimate_amount else sum((item.quantity or 0) * (item.unit_price or 0) for item in e.items),
+                "estimate_date": (
+                    e.estimate_date.isoformat() if e.estimate_date else None
+                ),
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+                "project_title": e.project.title if e.project else None,
+            }
+        )
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+    }
+
+
+@router.get("/{estimate_id}")
+def get_estimate_detail(
+    estimate_id: int,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = current_user.company_id
+
+    item = (
+        db.query(Estimate)
+        .options(
+            joinedload(Estimate.items),
+            joinedload(Estimate.project),
+            joinedload(Estimate.company),
+        )
+        .filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+        .first()
+    )
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Estimate not found")
+
+    # Build items list
+    estimate_items = []
+    for ei in item.items:
+        line_total = (ei.quantity or 0) * (ei.unit_price or 0)
+        estimate_items.append(
+            {
+                "name": ei.item_name,
+                "quantity": ei.quantity or 0,
+                "unit": ei.unit or "",
+                "unit_price": ei.unit_price or 0,
+                "amount": line_total,
+            }
+        )
+
+    # Amount breakdown
+    supply_amount = item.estimate_amount if item.estimate_amount else sum(
+        (ei.quantity or 0) * (ei.unit_price or 0) for ei in item.items
+    )
+
+    # Discount calculation
+    discount = 0
+    if item.discount_type == '1' and item.discount_rate:
+        discount = int(supply_amount * (item.discount_rate / 100))
+    elif item.discount_type == '2' and item.discount_amount:
+        discount = item.discount_amount
+
+    after_discount = supply_amount - discount
+    tax_rate = item.tax_rate or 10.0
+    tax_amount = int(after_discount * (tax_rate / 100))
+    total_amount = after_discount + tax_amount
+
+    return {
+        "id": item.seq,
+        "title": item.estimate_title,
+        "status": str(item.estimate_status),
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "valid_until": None,
+        "company_name": item.company.name if item.company else None,
+        "items": estimate_items,
+        "subtotal": supply_amount,
+        "discount": discount,
+        "discount_description": item.discount_description or "",
+        "tax": tax_amount,
+        "total": total_amount,
+        "notes": item.estimate_content,
+    }
+
+
+@router.get("/{estimate_id}/pdf")
+def download_estimate_pdf(
+    estimate_id: int,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = current_user.company_id
+
+    item = (
+        db.query(Estimate)
+        .options(
+            joinedload(Estimate.items),
+            joinedload(Estimate.project),
+            joinedload(Estimate.company),
+        )
+        .filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+        .first()
+    )
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Estimate not found")
+
+    # Build items list
+    estimate_items = []
+    for ei in item.items:
+        line_total = (ei.quantity or 0) * (ei.unit_price or 0)
+        estimate_items.append(
+            {
+                "name": ei.item_name,
+                "quantity": ei.quantity or 0,
+                "unit": ei.unit or "",
+                "unit_price": ei.unit_price or 0,
+                "amount": line_total,
+            }
+        )
+
+    # Amount breakdown
+    supply_amount = item.estimate_amount if item.estimate_amount else sum(
+        (ei.quantity or 0) * (ei.unit_price or 0) for ei in item.items
+    )
+    discount = 0
+    if item.discount_type == "1" and item.discount_rate:
+        discount = int(supply_amount * (item.discount_rate / 100))
+    elif item.discount_type == "2" and item.discount_amount:
+        discount = item.discount_amount
+
+    after_discount = supply_amount - discount
+    tax_rate = item.tax_rate or 10.0
+    tax_amount = int(after_discount * (tax_rate / 100))
+    total_amount = after_discount + tax_amount
+
+    data = {
+        "id": item.seq,
+        "title": item.estimate_title,
+        "estimate_number": item.estimate_number,
+        "estimate_date": item.estimate_date,
+        "valid_until": None,
+        "company_name": item.company.name if item.company else None,
+        "company_ceo": item.company.ceoname if item.company else None,
+        "company_business_number": item.company.business_number if item.company else None,
+        "company_address": item.company.address if item.company else None,
+        "items": estimate_items,
+        "subtotal": supply_amount,
+        "discount": discount,
+        "discount_description": item.discount_description or "",
+        "tax": tax_amount,
+        "total": total_amount,
+        "notes": item.estimate_content,
+    }
+
+    pdf_bytes = bytes(generate_estimate_pdf(data))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=estimate_{estimate_id}.pdf"},
+    )
+
+
+@router.get("/{estimate_id}/contract-pdf")
+def download_contract_pdf(
+    estimate_id: int,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    company_id = current_user.company_id
+
+    # Verify the estimate belongs to the user's company
+    estimate = (
+        db.query(Estimate)
+        .filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+        .first()
+    )
+    if not estimate:
+        raise HTTPException(status_code=404, detail="Estimate not found")
+
+    contract = (
+        db.query(EstimateContract)
+        .filter(EstimateContract.estimate_id == estimate_id)
+        .first()
+    )
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found for this estimate")
+
+    data = {
+        "contract_number": contract.contract_number,
+        "contract_title": contract.contract_title,
+        "contract_date": contract.contract_date,
+        "party_a_name": contract.party_a_name,
+        "party_a_ceo": contract.party_a_ceo,
+        "party_a_business_number": contract.party_a_business_number,
+        "party_a_address": contract.party_a_address,
+        "party_a_email": contract.party_a_email,
+        "party_b_name": contract.party_b_name,
+        "party_b_ceo": contract.party_b_ceo,
+        "party_b_business_number": contract.party_b_business_number,
+        "party_b_address": contract.party_b_address,
+        "party_b_email": contract.party_b_email,
+        "project_description": contract.project_description,
+        "service_scope": contract.service_scope,
+        "contract_period": contract.contract_period,
+        "contract_start_date": contract.contract_start_date,
+        "contract_end_date": contract.contract_end_date,
+        "contract_amount": contract.contract_amount,
+        "payment_terms": contract.payment_terms,
+        "special_terms": contract.special_terms,
+    }
+
+    pdf_bytes = bytes(generate_contract_pdf(data))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=contract_{estimate_id}.pdf"},
+    )
