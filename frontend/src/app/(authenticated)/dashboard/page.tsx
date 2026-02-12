@@ -58,7 +58,7 @@ export default function DashboardPage() {
   const statCards = [
     {
       label: "유지보수 요청",
-      count: data?.stat_cards.maintenance_count ?? 0,
+      count: data?.stat_cards?.maintenance_count ?? 0,
       icon: Wrench,
       href: "/maintenance",
       gradient: "from-blue-500 to-blue-600",
@@ -66,7 +66,7 @@ export default function DashboardPage() {
     },
     {
       label: "건별작업",
-      count: data?.stat_cards.task_count ?? 0,
+      count: data?.stat_cards?.task_count ?? 0,
       icon: ClipboardList,
       href: "/tasks",
       gradient: "from-emerald-500 to-emerald-600",
@@ -74,7 +74,7 @@ export default function DashboardPage() {
     },
     {
       label: "최신소식",
-      count: data?.stat_cards.news_count ?? 0,
+      count: data?.stat_cards?.news_count ?? 0,
       icon: Newspaper,
       href: "/news",
       gradient: "from-purple-500 to-purple-600",
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     },
     {
       label: "견적/계약",
-      count: data?.stat_cards.estimate_count ?? 0,
+      count: data?.stat_cards?.estimate_count ?? 0,
       icon: FileText,
       href: "/estimates",
       gradient: "from-amber-500 to-amber-600",
@@ -113,7 +113,7 @@ export default function DashboardPage() {
         {/* Welcome */}
         <div>
           <h1 className="text-2xl font-bold">
-            안녕하세요, {data?.user.name || user?.name || "고객"}님
+            안녕하세요, {data?.user?.name || user?.name || "고객"}님
           </h1>
           <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
             <Calendar className="h-3.5 w-3.5" />
