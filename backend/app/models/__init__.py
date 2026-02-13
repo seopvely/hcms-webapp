@@ -1,5 +1,6 @@
 from app.models.company import Company
 from app.models.manager import Manager
+from app.models.push_token import PushToken
 from app.models.customer import (
     CustomAuthUser,
     Project,
@@ -24,6 +25,7 @@ from app.models.customer import (
 __all__ = [
     "Company",
     "Manager",
+    "PushToken",
     "CustomAuthUser",
     "Project",
     "Managelist",

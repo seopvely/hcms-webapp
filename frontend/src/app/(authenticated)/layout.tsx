@@ -8,6 +8,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { PageSpinner } from "@/components/common/page-spinner";
 import { ToastProvider } from "@/components/common/app-toast";
 import { NavigationSpinnerProvider } from "@/components/common/navigation-spinner";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export default function AuthenticatedLayout({
   children,
@@ -17,6 +18,7 @@ export default function AuthenticatedLayout({
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  usePushNotifications();
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 9011
     DEBUG: bool = True
+    FIREBASE_CREDENTIALS_PATH: str = ""
 
     class Config:
         env_file = ".env"

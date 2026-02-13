@@ -61,7 +61,16 @@ function LoginContent() {
     try {
       setError("");
       const response = await api.post("/auth/login", data);
-      const { access_token, refresh_token, user } = response.data;
+      const { access_token, refresh_token, user, is_first_login } = response.data;
+
+      if (is_first_login) {
+        // 최초 로그인: 토큰을 임시 저장하고 비밀번호 변경 페이지로 이동
+        localStorage.setItem("access_token", access_token);
+        localStorage.setItem("refresh_token", refresh_token);
+        router.push("/change-password");
+        return;
+      }
+
       localStorage.setItem("access_token", access_token);
       localStorage.setItem("refresh_token", refresh_token);
       setUser(user);

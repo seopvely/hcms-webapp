@@ -26,3 +26,10 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     user: UserResponse
+    is_first_login: bool = False
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str

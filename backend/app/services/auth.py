@@ -14,6 +14,11 @@ def verify_django_password(plain_password: str, hashed_password: str) -> bool:
     return django_pbkdf2_sha256.verify(plain_password, hashed_password)
 
 
+def hash_django_password(plain_password: str) -> str:
+    """Django의 pbkdf2_sha256 형식으로 비밀번호를 해시합니다."""
+    return django_pbkdf2_sha256.hash(plain_password)
+
+
 def authenticate_manager(db: Session, login_id: str, password: str) -> Manager | None:
     """Manager를 인증합니다. pacms customer login 로직과 동일."""
     manager = db.query(Manager).filter(Manager.login_id == login_id).first()
