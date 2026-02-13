@@ -30,6 +30,13 @@ STATUS_LABELS = {1: "접수", 2: "알림", 3: "처리중", 4: "완료"}
 UPLOAD_DIR = "/home/pacms/media/upload_file"
 MEDIA_ROOT = "/home/pacms/media"
 
+ALLOWED_EXTENSIONS = {
+    "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx",
+    "txt", "csv",
+    "zip", "rar", "7z",
+}
+
 
 def month_diff(d1: date, d2: date) -> int:
     """Calculate the number of complete months between two dates."""
@@ -108,9 +115,14 @@ def calculate_remaining_points(project: Project, db: Session, company_id: int) -
 
 def save_upload_file(file: UploadFile) -> tuple[str, str]:
     """Save uploaded file and return (file_path, original_filename)"""
+    ext = os.path.splitext(file.filename)[1].lower().lstrip(".")
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"허용되지 않는 파일 형식입니다: {file.filename}"
+        )
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    ext = os.path.splitext(file.filename)[1]
-    unique_name = f"{uuid.uuid4().hex}{ext}"
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
     with open(file_path, "wb") as f:
         f.write(file.file.read())

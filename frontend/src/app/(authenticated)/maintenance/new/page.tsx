@@ -44,6 +44,15 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+const ALLOWED_EXTENSIONS = [
+  "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx",
+  "txt", "csv",
+  "zip", "rar", "7z",
+];
+
+const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",");
+
 export default function MaintenanceNewPage() {
   const router = useRouter();
   const { setPageTitle } = useNavigationStore();
@@ -69,6 +78,11 @@ export default function MaintenanceNewPage() {
     const validFiles: File[] = [];
 
     for (const file of newFiles) {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        toast("error", `${file.name}은(는) 허용되지 않는 파일 형식입니다.`);
+        continue;
+      }
       if (file.size > 10 * 1024 * 1024) {
         toast("error", `${file.name}은(는) 10MB를 초과합니다.`);
         continue;
@@ -328,7 +342,7 @@ export default function MaintenanceNewPage() {
                     multiple
                     className="hidden"
                     onChange={(e) => handleFileSelect(e.target.files)}
-                    accept="*/*"
+                    accept={ALLOWED_ACCEPT}
                   />
                   <Button
                     type="button"
