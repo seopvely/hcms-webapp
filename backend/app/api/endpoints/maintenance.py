@@ -184,7 +184,12 @@ def list_maintenance(
     query = db.query(Managelist).filter(Managelist.company_id == company_id)
 
     if search:
-        query = query.filter(Managelist.title.ilike(f"%{search}%"))
+        query = query.filter(
+            or_(
+                Managelist.title.ilike(f"%{search}%"),
+                Managelist.contents.ilike(f"%{search}%"),
+            )
+        )
 
     if status:
         query = query.filter(Managelist.status == int(status))

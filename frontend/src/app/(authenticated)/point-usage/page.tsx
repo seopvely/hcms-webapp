@@ -13,6 +13,7 @@ import {
   History,
   Users,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ export default function PointUsagePage() {
   const [dateTo, setDateTo] = useState("");
   const [pointTypeFilter, setPointTypeFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [excelLoading, setExcelLoading] = useState(false);
 
   useEffect(() => {
     setPageTitle("포인트 사용현황");
@@ -109,6 +111,38 @@ export default function PointUsagePage() {
     setDateTo("");
     setPointTypeFilter("");
     setCurrentPage(1);
+  }
+
+  async function handleExcelDownload() {
+    setExcelLoading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const params = new URLSearchParams();
+      if (selectedProjectId) params.append("project_id", String(selectedProjectId));
+      if (debouncedSearch) params.append("search_text", debouncedSearch);
+      if (dateFrom) params.append("date_from", dateFrom);
+      if (dateTo) params.append("date_to", dateTo);
+      if (pointTypeFilter) params.append("point_type", pointTypeFilter);
+      const response = await fetch(`/api/point-usage/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("엑셀 생성 실패");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "포인트사용내역.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+    } catch (e) {
+      console.error("엑셀 다운로드 오류:", e);
+    } finally {
+      setExcelLoading(false);
+    }
   }
 
   if (isLoading) {
@@ -322,9 +356,21 @@ export default function PointUsagePage() {
 
         {/* Point History */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <History className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">포인트 사용 내역</h2>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">포인트 사용 내역</h2>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs gap-1.5"
+              onClick={handleExcelDownload}
+              disabled={excelLoading}
+            >
+              <Download className="h-3.5 w-3.5" />
+              {excelLoading ? "다운로드 중..." : "엑셀 다운로드"}
+            </Button>
           </div>
 
           {/* Filters */}

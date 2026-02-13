@@ -1,8 +1,12 @@
 import math
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
+from io import BytesIO
+import openpyxl
+from urllib.parse import quote
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
@@ -16,6 +20,181 @@ except ImportError:
     pass
 
 router = APIRouter(prefix="/point-usage", tags=["point-usage"])
+
+
+@router.get("/export")
+def export_point_usage(
+    project_id: int = Query(None),
+    search_text: str = Query(""),
+    date_from: str = Query(""),
+    date_to: str = Query(""),
+    point_type: str = Query(""),  # 1=충전, 2=사용, 3=책정
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Export point usage history to Excel file.
+    """
+    now = datetime.now()
+
+    # Get all active maintenance projects for the company
+    maintenance_projects = (
+        db.query(Project)
+        .filter(
+            Project.company_id == current_user.company_id,
+            Project.point > 0,
+            Project.contract_date <= now,
+            Project.contract_termination_date >= now,
+        )
+        .order_by(Project.created_at.desc())
+        .all()
+    )
+
+    # Select current project
+    current_project = None
+    if maintenance_projects:
+        if project_id:
+            current_project = next(
+                (p for p in maintenance_projects if p.seq == project_id),
+                maintenance_projects[0]
+            )
+        else:
+            current_project = maintenance_projects[0]
+
+    if not current_project:
+        # Return empty Excel if no project
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "포인트사용내역"
+        ws.append(["날짜", "구분", "상태", "담당유형", "내용", "관련 요청", "포인트"])
+
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        filename = f"포인트사용내역_없음_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        encoded_filename = quote(filename)
+
+        return Response(
+            content=buffer.getvalue(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+        )
+
+    # Calculate contract details
+    contract_start = current_project.contract_date
+    contract_end = current_project.contract_termination_date
+
+    # Build point history query with same filtering logic as get_point_usage
+    history_query = (
+        db.query(PointHistory)
+        .outerjoin(Managelist, PointHistory.managelist_id == Managelist.seq)
+        .filter(
+            PointHistory.project_id == current_project.seq,
+            PointHistory.created_at >= contract_start,
+            PointHistory.created_at <= contract_end
+        )
+    )
+
+    # Search filter
+    if search_text:
+        history_query = history_query.filter(
+            or_(
+                PointHistory.content.ilike(f"%{search_text}%"),
+                Managelist.title.ilike(f"%{search_text}%")
+            )
+        )
+
+    # Date filters
+    if date_from:
+        try:
+            date_from_dt = datetime.strptime(date_from, "%Y-%m-%d")
+            history_query = history_query.filter(PointHistory.created_at >= date_from_dt)
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            date_to_dt = datetime.strptime(date_to, "%Y-%m-%d")
+            date_to_end = date_to_dt + timedelta(days=1) - timedelta(seconds=1)
+            history_query = history_query.filter(PointHistory.created_at <= date_to_end)
+        except ValueError:
+            pass
+
+    # Point type filter
+    if point_type:
+        try:
+            point_type_int = int(point_type)
+            history_query = history_query.filter(PointHistory.point_type == point_type_int)
+        except ValueError:
+            pass
+
+    # Fetch all results (no pagination for export)
+    point_histories = history_query.order_by(PointHistory.created_at.desc()).all()
+
+    # Create Excel workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "포인트사용내역"
+
+    # Write header row
+    headers = ["날짜", "구분", "상태", "담당유형", "내용", "관련 요청", "포인트"]
+    ws.append(headers)
+
+    # Mapping dictionaries (DB stores values as strings)
+    point_type_map = {"1": "충전", "2": "사용", "3": "책정"}
+    status_map = {"1": "입력", "2": "실행"}
+    worker_type_map = {"1": "계약", "2": "기획", "3": "디자인", "4": "프론트엔드", "5": "백엔드", "6": "유지보수"}
+
+    # Write data rows
+    for ph in point_histories:
+        managelist_title = ""
+        actual_worker_type = ph.worker_type
+
+        if ph.managelist_id:
+            if ph.managelist:
+                managelist_title = ph.managelist.title or ""
+
+            # Get actual worker type from comment
+            comment = (
+                db.query(ManagelistComment)
+                .filter(
+                    ManagelistComment.managelist_id == ph.managelist_id,
+                    ManagelistComment.point > 0
+                )
+                .order_by(ManagelistComment.created_at.desc())
+                .first()
+            )
+
+            if comment and comment.worker_type:
+                actual_worker_type = comment.worker_type
+
+        row = [
+            ph.created_at.strftime("%Y-%m-%d %H:%M:%S") if ph.created_at else "",
+            point_type_map.get(ph.point_type, ""),
+            status_map.get(ph.status, ""),
+            worker_type_map.get(actual_worker_type, "") if actual_worker_type else "",
+            ph.content or "",
+            managelist_title,
+            abs(ph.point) if ph.point else 0
+        ]
+        ws.append(row)
+
+    # Save to BytesIO buffer
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    # Generate filename with project title and date
+    project_title = current_project.title or "프로젝트"
+    filename = f"포인트사용내역_{project_title}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    encoded_filename = quote(filename)
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+    )
 
 
 @router.get("")

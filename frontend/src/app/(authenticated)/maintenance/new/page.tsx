@@ -243,7 +243,7 @@ export default function MaintenanceNewPage() {
                               const terminationDate = new Date(project.contract_termination_date);
 
                               if (terminationDate < today) {
-                                return `계약 기간이 만료되었습니다. (계약기간: ${project.contract_date} ~ ${project.contract_termination_date})`;
+                                return `계약 기간이 만료되었습니다. (계약기간: ${project.contract_date?.slice(0, 10)} ~ ${project.contract_termination_date?.slice(0, 10)})`;
                               }
                             }
 
