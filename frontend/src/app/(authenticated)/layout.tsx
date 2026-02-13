@@ -36,7 +36,7 @@ export default function AuthenticatedLayout({
           <AppSidebar />
           <div className="lg:pl-64">
             <AppHeader />
-            <main className="p-4 pb-20 lg:pb-4 min-h-[calc(100vh-3.5rem)]">
+            <main className="p-4 pb-24 lg:pb-4">
               {children}
             </main>
           </div>

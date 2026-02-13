@@ -9,7 +9,7 @@ export function AppHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex items-center justify-between h-14 px-4 pt-[env(safe-area-inset-top)]",
+        "sticky top-0 z-30 flex items-center justify-between px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]",
         "bg-background/80 backdrop-blur-md border-b border-border/50"
       )}
     >
