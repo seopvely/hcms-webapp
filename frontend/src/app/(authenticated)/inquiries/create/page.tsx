@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -41,39 +41,91 @@ const INQUIRY_TYPES = [
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-export default function CreateInquiryPage() {
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+const ALLOWED_EXTENSIONS = [
+  "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx",
+  "txt", "csv",
+  "zip", "rar", "7z",
+];
+
+const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",");
+
+function CreateInquiryForm() {
   const router = useRouter();
   const { setPageTitle } = useNavigationStore();
   const { toast } = useToast();
   const createInquiry = useCreateInquiry();
+  const searchParams = useSearchParams();
 
   const [title, setTitle] = useState("");
   const [contents, setContents] = useState("");
   const [inquiryType, setInquiryType] = useState<string>("1");
   const [files, setFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     setPageTitle("문의 등록");
   }, [setPageTitle]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
+  useEffect(() => {
+    const service = searchParams.get("service");
+    const plan = searchParams.get("plan");
+    if (service && plan) {
+      setTitle(`[${service}] ${plan} 문의`);
+      setContents(`안녕하세요.\n\n[${service}] ${plan} 서비스에 대해 문의드립니다.\n\n`);
+      setInquiryType("4"); // 기술 지원
+    }
+  }, [searchParams]);
 
-    // Validate file count
-    if (files.length + selectedFiles.length > MAX_FILES) {
-      toast("error", `최대 ${MAX_FILES}개의 파일만 첨부할 수 있습니다.`);
-      return;
+  const handleFileSelect = (selectedFiles: FileList | null) => {
+    if (!selectedFiles) return;
+
+    const newFiles = Array.from(selectedFiles);
+    const validFiles: File[] = [];
+
+    for (const file of newFiles) {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        toast("error", `${file.name}은(는) 허용되지 않는 파일 형식입니다.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast("error", `${file.name}은(는) 10MB를 초과합니다.`);
+        continue;
+      }
+      validFiles.push(file);
     }
 
-    // Validate file sizes
-    const invalidFiles = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
-    if (invalidFiles.length > 0) {
-      toast("error", "10MB를 초과하는 파일은 첨부할 수 없습니다.");
-      return;
+    if (files.length + validFiles.length > MAX_FILES) {
+      toast("error", `최대 ${MAX_FILES}개까지만 첨부할 수 있습니다.`);
+      setFiles([...files, ...validFiles].slice(0, MAX_FILES));
+    } else {
+      setFiles([...files, ...validFiles]);
     }
+  };
 
-    setFiles(prev => [...prev, ...selectedFiles]);
-    e.target.value = ""; // Reset input
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
   };
 
   const handleRemoveFile = (index: number) => {
@@ -200,43 +252,63 @@ export default function CreateInquiryPage() {
               {/* File Upload */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">첨부파일</label>
+                <p className="text-xs text-muted-foreground">
+                  최대 {MAX_FILES}개, 각 파일 10MB 이하
+                </p>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="file-upload"
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-xl h-11"
-                      onClick={() => document.getElementById("file-upload")?.click()}
-                      disabled={files.length >= MAX_FILES}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      파일 선택
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      최대 {MAX_FILES}개, 각 10MB 이하
+                  {/* Drop Zone */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`
+                      border-2 border-dashed rounded-xl p-8 text-center transition-colors
+                      ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25"}
+                    `}
+                  >
+                    <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-sm font-medium mb-1">
+                      파일을 드래그하거나 클릭하여 선택
                     </p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      PNG, JPG, PDF, DOCX, XLSX 등
+                    </p>
+                    <label>
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleFileSelect(e.target.files)}
+                        accept={ALLOWED_ACCEPT}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          (e.currentTarget.previousElementSibling as HTMLInputElement)?.click();
+                        }}
+                        disabled={files.length >= MAX_FILES}
+                      >
+                        파일 선택
+                      </Button>
+                    </label>
                   </div>
 
-                  {/* Selected Files */}
+                  {/* File List */}
                   {files.length > 0 && (
                     <div className="space-y-2">
                       {files.map((file, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-xl"
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-xl"
                         >
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{file.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {(file.size / 1024).toFixed(1)} KB
+                              {formatFileSize(file.size)}
                             </p>
                           </div>
                           <Button
@@ -244,7 +316,7 @@ export default function CreateInquiryPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveFile(index)}
-                            className="shrink-0 h-8 w-8 p-0 rounded-lg"
+                            className="ml-2 h-8 w-8 p-0 rounded-lg"
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -287,5 +359,13 @@ export default function CreateInquiryPage() {
         </Card>
       </div>
     </PageTransition>
+  );
+}
+
+export default function CreateInquiryPage() {
+  return (
+    <Suspense>
+      <CreateInquiryForm />
+    </Suspense>
   );
 }

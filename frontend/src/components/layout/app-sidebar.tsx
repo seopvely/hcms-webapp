@@ -48,7 +48,7 @@ export function AppSidebar() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between p-5 border-b border-white/10">
+        <div className="flex items-center justify-between px-5 pb-5 pt-[calc(1.25rem+env(safe-area-inset-top))] border-b border-white/10">
           <div>
             <h1 className="text-xl font-bold tracking-tight">HCMS</h1>
             <p className="text-xs text-slate-400">고객 포털</p>

@@ -20,6 +20,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+function serviceInquiryUrl(service: string, plan: string) {
+  return `/inquiries/create?service=${encodeURIComponent(service)}&plan=${encodeURIComponent(plan)}`;
+}
+
 export default function ServicesPage() {
   const setPageTitle = useNavigationStore((state) => state.setPageTitle);
 
@@ -48,128 +52,134 @@ export default function ServicesPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {/* Basic */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Basic</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">50,000</span>
-                    <span className="text-muted-foreground">원/월</span>
+            <Link href={serviceInquiryUrl("웹호스팅", "Basic")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Basic</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">50,000</span>
+                      <span className="text-muted-foreground">원/월</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">1사이트 호스팅</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">SSL/TLS 인증서</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">일일 자동 백업</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Uptime 모니터링</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">10GB SSD</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">1사이트 호스팅</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">SSL/TLS 인증서</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">일일 자동 백업</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Uptime 모니터링</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">10GB SSD</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Business */}
-            <Card className="rounded-2xl hover-lift border-2 border-blue-500 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500">
-                  인기
-                </Badge>
-              </div>
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Business</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">100,000</span>
-                    <span className="text-muted-foreground">원/월</span>
-                  </div>
+            <Link href={serviceInquiryUrl("웹호스팅", "Business")} className="block">
+              <Card className="rounded-2xl hover-lift border-2 border-blue-500 relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500">
+                    인기
+                  </Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">3사이트 호스팅</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">SSL/TLS 인증서</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">일일 자동 백업</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">24시간 모니터링</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">50GB SSD</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">CDN 가속</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Business</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">100,000</span>
+                      <span className="text-muted-foreground">원/월</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">3사이트 호스팅</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">SSL/TLS 인증서</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">일일 자동 백업</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">24시간 모니터링</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">50GB SSD</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">CDN 가속</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Premium */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Premium</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">200,000</span>
-                    <span className="text-muted-foreground">원/월</span>
+            <Link href={serviceInquiryUrl("웹호스팅", "Premium")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Premium</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">200,000</span>
+                      <span className="text-muted-foreground">원/월</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">무제한 사이트</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">SSL/TLS 인증서</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">실시간 백업</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">24시간 모니터링+장애 대응</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">100GB SSD</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">CDN+DDoS 방어</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">무제한 사이트</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">SSL/TLS 인증서</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">실시간 백업</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">24시간 모니터링+장애 대응</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">100GB SSD</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">CDN+DDoS 방어</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </section>
 
@@ -181,103 +191,109 @@ export default function ServicesPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {/* Starter */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Starter</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">100,000</span>
-                    <span className="text-muted-foreground">원/월</span>
+            <Link href={serviceInquiryUrl("유지보수 정액제", "Starter")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Starter</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">100,000</span>
+                      <span className="text-muted-foreground">원/월</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Basic Hosting 포함</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">이메일 계정 2개</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">콘텐츠 수정 월 1회</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">DB·파일 백업 월 1회</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Basic Hosting 포함</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">이메일 계정 2개</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">콘텐츠 수정 월 1회</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">DB·파일 백업 월 1회</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Standard */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Standard</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">200,000</span>
-                    <span className="text-muted-foreground">원/월</span>
+            <Link href={serviceInquiryUrl("유지보수 정액제", "Standard")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Standard</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">200,000</span>
+                      <span className="text-muted-foreground">원/월</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Basic Hosting 포함</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">이메일 계정 5개</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">콘텐츠 수정 월 3회</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">보안 점검·장애 24h 대응</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Basic Hosting 포함</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">이메일 계정 5개</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">콘텐츠 수정 월 3회</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">보안 점검·장애 24h 대응</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Enterprise */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Enterprise</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">300,000</span>
-                    <span className="text-muted-foreground">원~/월</span>
+            <Link href={serviceInquiryUrl("유지보수 정액제", "Enterprise")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Enterprise</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">300,000</span>
+                      <span className="text-muted-foreground">원~/월</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Basic Hosting 포함</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">무제한 수정 (Fair Policy)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">속도·보안 최적화</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">월간 리포트+실시간 지원</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Basic Hosting 포함</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">무제한 수정 (Fair Policy)</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">속도·보안 최적화</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">월간 리포트+실시간 지원</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
           <Card className="rounded-2xl bg-muted/50">
             <CardContent className="pt-6">
@@ -297,95 +313,101 @@ export default function ServicesPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {/* Launch Kit */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Launch Kit</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">1,000,000</span>
-                    <span className="text-muted-foreground">원~</span>
+            <Link href={serviceInquiryUrl("홈페이지 구축", "Launch Kit")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Launch Kit</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">1,000,000</span>
+                      <span className="text-muted-foreground">원~</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">랜딩/프로모션 1페이지</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">반응형 디자인</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">SSL+GA 설정</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">기본 SEO</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">랜딩/프로모션 1페이지</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">반응형 디자인</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">SSL+GA 설정</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">기본 SEO</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Growth Pack */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Growth Pack</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">2,000,000</span>
-                    <span className="text-muted-foreground">원~</span>
+            <Link href={serviceInquiryUrl("홈페이지 구축", "Growth Pack")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Growth Pack</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">2,000,000</span>
+                      <span className="text-muted-foreground">원~</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">5–6페이지 사이트</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">관리자 CMS</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">1개월 유지보수</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">5–6페이지 사이트</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">관리자 CMS</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">1개월 유지보수</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* Enterprise Build */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">Enterprise Build</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">3,000,000</span>
-                    <span className="text-muted-foreground">원~</span>
+            <Link href={serviceInquiryUrl("홈페이지 구축", "Enterprise Build")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">Enterprise Build</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">3,000,000</span>
+                      <span className="text-muted-foreground">원~</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">맞춤 디자인·기능</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">최신 스택</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">3개월 유지보수</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">맞춤 디자인·기능</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">최신 스택</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">3개월 유지보수</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </section>
 
@@ -397,70 +419,74 @@ export default function ServicesPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             {/* DevOps Basic */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">DevOps Basic</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">1,000,000</span>
-                    <span className="text-muted-foreground">원~</span>
+            <Link href={serviceInquiryUrl("서버·DevOps", "DevOps Basic")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">DevOps Basic</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">1,000,000</span>
+                      <span className="text-muted-foreground">원~</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Ubuntu 서버 구축</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Nginx 설정</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Docker 환경</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">자동 백업·SSL</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Ubuntu 서버 구축</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Nginx 설정</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Docker 환경</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">자동 백업·SSL</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* DevOps Pro */}
-            <Card className="rounded-2xl hover-lift">
-              <CardHeader>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold">DevOps Pro</h3>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold">3,000,000</span>
-                    <span className="text-muted-foreground">원~</span>
+            <Link href={serviceInquiryUrl("서버·DevOps", "DevOps Pro")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardHeader>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold">DevOps Pro</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">3,000,000</span>
+                      <span className="text-muted-foreground">원~</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">CI/CD 파이프라인</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">고가용성 DB</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">AWS S3 통합</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">WAF·교육</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">CI/CD 파이프라인</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">고가용성 DB</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">AWS S3 통합</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">WAF·교육</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </section>
 
@@ -471,58 +497,66 @@ export default function ServicesPage() {
             <h2 className="text-2xl font-bold">부가 서비스</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="rounded-2xl hover-lift">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold">유료 SSL (기업 인증)</h3>
-                    <p className="text-sm text-muted-foreground">
-                      EV/OV 인증서
-                    </p>
+            <Link href={serviceInquiryUrl("부가서비스", "유료 SSL")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold">유료 SSL (기업 인증)</h3>
+                      <p className="text-sm text-muted-foreground">
+                        EV/OV 인증서
+                      </p>
+                    </div>
+                    <Badge variant="secondary">100,000원~/년</Badge>
                   </div>
-                  <Badge variant="secondary">100,000원~/년</Badge>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl hover-lift">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold">속도 퍼포먼스 튜닝</h3>
-                    <p className="text-sm text-muted-foreground">
-                      로딩 속도 최적화
-                    </p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href={serviceInquiryUrl("부가서비스", "속도 퍼포먼스 튜닝")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold">속도 퍼포먼스 튜닝</h3>
+                      <p className="text-sm text-muted-foreground">
+                        로딩 속도 최적화
+                      </p>
+                    </div>
+                    <Badge variant="secondary">200,000원~</Badge>
                   </div>
-                  <Badge variant="secondary">200,000원~</Badge>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl hover-lift">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold">메일 이전</h3>
-                    <p className="text-sm text-muted-foreground">
-                      메일 서버 마이그레이션
-                    </p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href={serviceInquiryUrl("부가서비스", "메일 이전")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold">메일 이전</h3>
+                      <p className="text-sm text-muted-foreground">
+                        메일 서버 마이그레이션
+                      </p>
+                    </div>
+                    <Badge variant="secondary">150,000원~</Badge>
                   </div>
-                  <Badge variant="secondary">150,000원~</Badge>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-2xl hover-lift">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="font-semibold">도메인 등록/이전</h3>
-                    <p className="text-sm text-muted-foreground">
-                      도메인 관리 대행
-                    </p>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href={serviceInquiryUrl("부가서비스", "도메인 등록·이전")} className="block">
+              <Card className="rounded-2xl hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="font-semibold">도메인 등록/이전</h3>
+                      <p className="text-sm text-muted-foreground">
+                        도메인 관리 대행
+                      </p>
+                    </div>
+                    <Badge variant="secondary">별도 문의</Badge>
                   </div>
-                  <Badge variant="secondary">별도 문의</Badge>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </section>
 
