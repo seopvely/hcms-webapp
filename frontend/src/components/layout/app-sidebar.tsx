@@ -8,6 +8,8 @@ import {
   ClipboardList,
   FileText,
   Coins,
+  MessageSquare,
+  Briefcase,
   LogOut,
   X,
 } from "lucide-react";
@@ -22,6 +24,8 @@ const navItems = [
   { href: "/tasks", label: "건별작업", icon: ClipboardList },
   { href: "/estimates", label: "견적/계약", icon: FileText },
   { href: "/point-usage", label: "포인트 사용현황", icon: Coins },
+  { href: "/inquiries", label: "고객문의", icon: MessageSquare },
+  { href: "/services", label: "할 수 있는 일", icon: Briefcase },
 ];
 
 export function AppSidebar() {

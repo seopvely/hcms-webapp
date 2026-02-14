@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardList, Search, ChevronLeft, ChevronRight, Calendar, Filter } from "lucide-react";
+import { ClipboardList, Search, ChevronLeft, ChevronRight, Calendar, Filter, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,12 @@ export default function TaskListPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="작업명 검색" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 h-11 rounded-xl" />
           </div>
+          <Link href="/tasks/create">
+            <Button className="h-11 rounded-xl px-4 gap-1">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">새 신청</span>
+            </Button>
+          </Link>
         </div>
 
         <div className="flex gap-2">
@@ -91,7 +97,7 @@ export default function TaskListPage() {
         </div>
 
         {items.length === 0 ? (
-          <EmptyState icon={ClipboardList} title="건별작업이 없습니다." description="조건에 맞는 작업이 없습니다." />
+          <EmptyState icon={ClipboardList} title="건별작업이 없습니다." description="새로운 건별작업을 신청해보세요." actionLabel="새 신청" onAction={() => window.location.href = "/tasks/create"} />
         ) : (
           <div className="space-y-2 animate-stagger">
             {items.map((item) => (

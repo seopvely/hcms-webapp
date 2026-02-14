@@ -11,6 +11,7 @@ from app.api.endpoints.tasks import router as tasks_router
 from app.api.endpoints.estimates import router as estimates_router
 from app.api.endpoints.point_usage import router as point_usage_router
 from app.api.endpoints.push import router as push_router
+from app.api.endpoints.inquiries import router as inquiries_router
 
 app = FastAPI(title="HCMS Customer API", version="1.0.0", root_path="/api")
 
@@ -42,3 +43,4 @@ app.include_router(tasks_router)
 app.include_router(estimates_router)
 app.include_router(point_usage_router)
 app.include_router(push_router)
+app.include_router(inquiries_router)

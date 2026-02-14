@@ -1,6 +1,13 @@
 import math
+import os
+import uuid
+import mimetypes
+from datetime import datetime
+from typing import List, Optional
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
@@ -10,6 +17,14 @@ from app.models.manager import Manager
 from app.models.customer import Inditask, InditaskComment
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+UPLOAD_DIR = "/home/pacms/media/upload_file"
+MEDIA_ROOT = "/home/pacms/media"
+ALLOWED_EXTENSIONS = {
+    "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx",
+    "txt", "csv", "zip", "rar", "7z",
+}
 
 TASK_TYPE_LABELS = {
     1: "계약",
@@ -27,6 +42,19 @@ TASK_STATUS_LABELS = {
     3: "검수",
     4: "완료",
 }
+
+
+def save_upload_file(file: UploadFile) -> tuple[str, str]:
+    """Save uploaded file and return (relative_path, original_filename)"""
+    ext = os.path.splitext(file.filename)[1].lower().lstrip(".")
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"허용되지 않는 파일 형식입니다: {file.filename}")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+    with open(file_path, "wb") as f:
+        f.write(file.file.read())
+    return f"upload_file/{unique_name}", file.filename
 
 
 @router.get("")
@@ -93,6 +121,80 @@ def list_tasks(
         "per_page": per_page,
         "total_pages": total_pages,
     }
+
+
+@router.post("")
+async def create_task(
+    title: str = Form(...),
+    task_type: int = Form(...),
+    content: str = Form(...),
+    files: Optional[List[UploadFile]] = File(None),
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new inditask (건별의뢰)"""
+    company_id = current_user.company_id
+
+    # Create the task
+    new_task = Inditask(
+        title=title,
+        company_id=company_id,
+        task_type=task_type,
+        content=content,
+        writer_id=current_user.seq,
+        task_status=1,  # 대기
+        created_at=datetime.now(),
+    )
+    db.add(new_task)
+    db.flush()
+
+    # Handle file uploads - create separate Inditask entries for each file (matching pacms behavior)
+    if files:
+        for file in files:
+            if file.filename:
+                file_path, _ = save_upload_file(file)
+                file_task = Inditask(
+                    title=title,
+                    company_id=company_id,
+                    task_type=task_type,
+                    content=content,
+                    writer_id=current_user.seq,
+                    task_status=1,
+                    inditask_file=file_path,
+                    created_at=datetime.now(),
+                )
+                db.add(file_task)
+
+    db.commit()
+    db.refresh(new_task)
+
+    return {"id": new_task.seq, "message": "건별의뢰가 등록되었습니다."}
+
+
+@router.get("/file/download/{task_id}")
+def download_task_file(
+    task_id: int,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Download inditask file"""
+    company_id = current_user.company_id
+    task = db.query(Inditask).filter(Inditask.seq == task_id, Inditask.company_id == company_id).first()
+    if not task or not task.inditask_file:
+        raise HTTPException(status_code=404, detail="File not found")
+    full_path = os.path.join(MEDIA_ROOT, task.inditask_file)
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+    filename = os.path.basename(task.inditask_file)
+    content_type, _ = mimetypes.guess_type(filename)
+    if not content_type:
+        content_type = "application/octet-stream"
+    encoded_filename = quote(filename)
+    return FileResponse(
+        path=full_path,
+        media_type=content_type,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+    )
 
 
 @router.get("/{task_id}")

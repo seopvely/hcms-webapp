@@ -269,6 +269,43 @@ export interface PointUsageData {
   point_type_filter: string;
 }
 
+// Inquiries
+export interface InquiryItem {
+  id: number;
+  title: string;
+  status: number;
+  status_label: string;
+  inquiry_type: number;
+  inquiry_type_label: string;
+  created_at: string;
+  answer_count: number;
+}
+
+export interface InquiryAnswer {
+  id: number;
+  author: string;
+  role: string;
+  content: string;
+  parent_answer_id: number | null;
+  created_at: string;
+}
+
+export interface InquiryDetail {
+  id: number;
+  title: string;
+  content: string;
+  status: number;
+  status_label: string;
+  inquiry_type: number;
+  inquiry_type_label: string;
+  priority: string;
+  created_at: string;
+  updated_at: string;
+  writer_name: string;
+  attachments: { id: number; name: string; url: string; uploaded_at: string }[];
+  answers: InquiryAnswer[];
+}
+
 // ============ API Functions ============
 
 async function fetchDashboard(): Promise<DashboardData> {
@@ -367,6 +404,42 @@ async function createMaintenanceComment(maintenanceId: number, formData: FormDat
   return data;
 }
 
+async function createTask(formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post("/tasks", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function fetchInquiryList(params: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: string;
+}): Promise<PaginatedResponse<InquiryItem>> {
+  const { data } = await api.get("/inquiries", { params });
+  return data;
+}
+
+async function fetchInquiryDetail(id: number): Promise<InquiryDetail> {
+  const { data } = await api.get(`/inquiries/${id}`);
+  return data;
+}
+
+async function createInquiry(formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post("/inquiries", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function createInquiryAnswer(inquiryId: number, formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post(`/inquiries/${inquiryId}/answers`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
 // ============ Hooks ============
 
 export function useDashboard() {
@@ -436,6 +509,16 @@ export function useTaskDetail(id: number) {
   });
 }
 
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
 export function useEstimateList(params: {
   page?: number;
   per_page?: number;
@@ -493,6 +576,47 @@ export function useCreateMaintenanceComment(maintenanceId: number) {
     mutationFn: (formData: FormData) => createMaintenanceComment(maintenanceId, formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["maintenance", "detail", maintenanceId] });
+    },
+  });
+}
+
+export function useInquiryList(params: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: string;
+} = {}) {
+  return useQuery({
+    queryKey: ["inquiries", "list", params],
+    queryFn: () => fetchInquiryList(params),
+  });
+}
+
+export function useInquiryDetail(id: number) {
+  return useQuery({
+    queryKey: ["inquiries", "detail", id],
+    queryFn: () => fetchInquiryDetail(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateInquiry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createInquiry,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inquiries"] });
+    },
+  });
+}
+
+export function useCreateInquiryAnswer(inquiryId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) => createInquiryAnswer(inquiryId, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inquiries", "detail", inquiryId] });
+      queryClient.invalidateQueries({ queryKey: ["inquiries", "list"] });
     },
   });
 }

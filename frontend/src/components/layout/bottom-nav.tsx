@@ -3,19 +3,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Newspaper,
   Wrench,
   ClipboardList,
-  FileText,
+  MessageSquare,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/dashboard", label: "홈", icon: LayoutDashboard },
-  { href: "/news", label: "소식", icon: Newspaper },
   { href: "/maintenance", label: "유지보수", icon: Wrench },
   { href: "/tasks", label: "작업", icon: ClipboardList },
-  { href: "/estimates", label: "견적/계약", icon: FileText },
+  { href: "/inquiries", label: "문의", icon: MessageSquare },
+  { href: "/services", label: "서비스", icon: Briefcase },
 ];
 
 export function BottomNav() {
