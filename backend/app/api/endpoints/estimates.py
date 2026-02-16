@@ -1,4 +1,5 @@
 import math
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -8,6 +9,9 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import Estimate, EstimateItem, EstimateContract
+from app.models.company import Company
+from app.models.manager import Manager as HcmsManager
+from app.core.security import create_access_token, create_refresh_token
 from app.utils.pdf_generator import generate_estimate_pdf, generate_contract_pdf
 
 router = APIRouter(prefix="/estimates", tags=["estimates"])
@@ -76,6 +80,154 @@ def list_estimates(
         "page": page,
         "per_page": per_page,
         "total_pages": total_pages,
+    }
+
+
+@router.get("/auth/verify-token")
+def verify_estimate_token(
+    token: str = Query(..., description="Estimate approval token"),
+    estimate_id: int = Query(..., description="Estimate ID"),
+    db: Session = Depends(get_db),
+):
+    """이메일 링크에서 견적서 토큰 검증 후 자동 로그인 정보 반환"""
+    from datetime import datetime, timezone as tz
+
+    # 1. 견적서 조회
+    estimate = (
+        db.query(Estimate)
+        .options(joinedload(Estimate.company))
+        .filter(Estimate.seq == estimate_id)
+        .first()
+    )
+
+    if not estimate:
+        raise HTTPException(status_code=404, detail="견적서를 찾을 수 없습니다.")
+
+    # 2. 토큰 검증
+    # Note: approval_token is stored as CharField in Django's Estimate model
+    approval_token = getattr(estimate, 'approval_token', None)
+    if not approval_token or approval_token != token:
+        raise HTTPException(status_code=401, detail="유효하지 않은 링크입니다.")
+
+    # 3. 24시간 만료 체크
+    token_created = getattr(estimate, 'approval_token_created_at', None)
+    if token_created:
+        now = datetime.now(tz.utc)
+        if token_created.tzinfo is None:
+            # Naive datetime - assume UTC
+            from datetime import timezone as dt_tz
+            token_created = token_created.replace(tzinfo=dt_tz.utc)
+        if (now - token_created) > timedelta(hours=24):
+            raise HTTPException(status_code=401, detail="링크가 만료되었습니다. (24시간 초과)")
+
+    # 4. 회사 정보로 매니저 찾기
+    company = estimate.company
+    if not company:
+        raise HTTPException(status_code=404, detail="업체 정보를 찾을 수 없습니다.")
+
+    # 회사의 첫 번째 매니저를 찾아서 자동 로그인
+    manager = (
+        db.query(HcmsManager)
+        .filter(HcmsManager.company_id == company.seq)
+        .order_by(HcmsManager.seq)
+        .first()
+    )
+
+    if not manager:
+        raise HTTPException(status_code=404, detail="해당 업체의 등록된 관리자가 없습니다.")
+
+    # 5. JWT 토큰 생성
+    token_data = {"sub": str(manager.seq), "login_id": manager.login_id}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "user": {
+            "seq": manager.seq,
+            "login_id": manager.login_id,
+            "name": manager.name,
+            "email": manager.email,
+            "company_name": company.name if company else None,
+            "company_id": manager.company_id,
+        },
+        "estimate_id": estimate_id,
+        "estimate_status": str(estimate.estimate_status) if estimate.estimate_status else "1",
+    }
+
+
+@router.get("/contracts/auth/verify-token")
+def verify_contract_token(
+    token: str = Query(..., description="Contract signature token"),
+    contract_id: int = Query(..., description="Contract ID"),
+    db: Session = Depends(get_db),
+):
+    """계약서 이메일 링크에서 토큰 검증 후 자동 로그인 정보 반환"""
+    from datetime import datetime, timezone as tz
+
+    # 1. 계약서 조회
+    contract = (
+        db.query(EstimateContract)
+        .options(joinedload(EstimateContract.company))
+        .filter(EstimateContract.seq == contract_id)
+        .first()
+    )
+
+    if not contract:
+        raise HTTPException(status_code=404, detail="계약서를 찾을 수 없습니다.")
+
+    # 2. 토큰 검증
+    if not contract.customer_signature_token or contract.customer_signature_token != token:
+        raise HTTPException(status_code=401, detail="유효하지 않은 링크입니다.")
+
+    # 3. 24시간 만료 체크
+    if contract.sent_at:
+        now = datetime.now(tz.utc)
+        sent_at = contract.sent_at
+        if sent_at.tzinfo is None:
+            from datetime import timezone as dt_tz
+            sent_at = sent_at.replace(tzinfo=dt_tz.utc)
+        if (now - sent_at) > timedelta(hours=24):
+            raise HTTPException(status_code=401, detail="링크가 만료되었습니다. (24시간 초과)")
+
+    # 4. 회사 정보로 매니저 찾기
+    company = contract.company
+    if not company:
+        raise HTTPException(status_code=404, detail="업체 정보를 찾을 수 없습니다.")
+
+    manager = (
+        db.query(HcmsManager)
+        .filter(HcmsManager.company_id == company.seq)
+        .order_by(HcmsManager.seq)
+        .first()
+    )
+
+    if not manager:
+        raise HTTPException(status_code=404, detail="해당 업체의 등록된 관리자가 없습니다.")
+
+    # 5. JWT 토큰 생성
+    token_data = {"sub": str(manager.seq), "login_id": manager.login_id}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    # 연결된 견적서 ID 찾기
+    estimate_id = contract.estimate_id
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "user": {
+            "seq": manager.seq,
+            "login_id": manager.login_id,
+            "name": manager.name,
+            "email": manager.email,
+            "company_name": company.name if company else None,
+            "company_id": manager.company_id,
+        },
+        "contract_id": contract_id,
+        "estimate_id": estimate_id,
+        "contract_status": contract.status or "1",
     }
 
 

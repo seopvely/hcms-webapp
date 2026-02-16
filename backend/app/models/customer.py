@@ -209,6 +209,13 @@ class Estimate(Base):
     discount_rate = Column(Float, nullable=True)
     discount_amount = Column(Integer, nullable=True)
     discount_description = Column(String(200), nullable=True)
+    approval_token = Column(String(64), nullable=True)
+    approval_token_created_at = Column(DateTime, nullable=True)
+    customer_email_sent = Column(String(254), nullable=True)
+    validity_period = Column(DateTime, nullable=True)
+    payment_terms = Column(Text, nullable=True)
+    delivery_terms = Column(Text, nullable=True)
+    estimate_manager_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 

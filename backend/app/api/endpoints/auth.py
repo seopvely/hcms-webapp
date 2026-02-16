@@ -1,6 +1,4 @@
 import re
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -114,8 +112,7 @@ def site_key_login(request: SiteKeyLoginRequest, db: Session = Depends(get_db)):
             status_code=401, detail="해당 사이트에 등록되지 않은 관리자입니다."
         )
 
-    # Update last_login and reset login_attempt_count
-    manager.last_login = datetime.now()
+    # Reset login_attempt_count (site_key 로그인은 last_login 업데이트 안 함)
     manager.login_attempt_count = 0
     db.commit()
     db.refresh(manager)
