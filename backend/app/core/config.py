@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     PORT: int = 9011
     DEBUG: bool = True
     FIREBASE_CREDENTIALS_PATH: str = ""
+    WEBHOOK_API_KEY: str = ""
 
     class Config:
         env_file = ".env"
