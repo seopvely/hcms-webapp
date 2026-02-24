@@ -18,6 +18,7 @@ function EstimateAuthContent() {
   useEffect(() => {
     const token = searchParams.get("token");
     const estimateId = searchParams.get("estimate_id");
+    const action = searchParams.get("action");
 
     if (!token || !estimateId) {
       setError("잘못된 접근입니다. 이메일의 링크를 다시 확인해 주세요.");
@@ -39,7 +40,7 @@ function EstimateAuthContent() {
         setUser(user);
 
         // Redirect to estimate detail
-        router.replace(`/estimates/${eid}`);
+        router.replace(`/estimates/${eid}${action ? `?action=${action}` : ''}`);
       })
       .catch((err) => {
         const detail =

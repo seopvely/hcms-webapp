@@ -4,11 +4,14 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime, timezone as tz
 
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
-from app.models.customer import Estimate, EstimateItem, EstimateContract
+from app.models.customer import Estimate, EstimateItem, EstimateContract, EstimateStatusHistory, EstimateRevisionRequest
 from app.models.company import Company
 from app.models.manager import Manager as HcmsManager
 from app.core.security import create_access_token, create_refresh_token
@@ -23,6 +26,16 @@ ESTIMATE_STATUS_LABELS = {
     4: "반려",
     5: "계약전환",
 }
+
+
+class RejectRequest(BaseModel):
+    reason: str = ""
+
+
+class RevisionRequest(BaseModel):
+    requester_name: str = ""
+    title: str
+    content: str
 
 
 @router.get("")
@@ -436,3 +449,142 @@ def download_contract_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=contract_{estimate_id}.pdf"},
     )
+
+
+@router.post("/{estimate_id}/approve")
+def approve_estimate(
+    estimate_id: int,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """고객이 견적서를 승인"""
+    company_id = current_user.company_id
+
+    estimate = (
+        db.query(Estimate)
+        .filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+        .first()
+    )
+
+    if not estimate:
+        raise HTTPException(status_code=404, detail="견적서를 찾을 수 없습니다.")
+
+    status = str(estimate.estimate_status) if estimate.estimate_status else "1"
+
+    if status == "3":
+        raise HTTPException(status_code=400, detail="이미 승인된 견적서입니다.")
+    if status == "4":
+        raise HTTPException(status_code=400, detail="이미 거절된 견적서입니다.")
+    if status == "5":
+        raise HTTPException(status_code=400, detail="이미 계약으로 전환된 견적서입니다.")
+    if status != "2":
+        raise HTTPException(status_code=400, detail="승인할 수 없는 상태의 견적서입니다.")
+
+    previous_status = status
+    estimate.estimate_status = 3
+    estimate.updated_at = datetime.now(tz.utc)
+
+    history = EstimateStatusHistory(
+        estimate_id=estimate_id,
+        previous_status=previous_status,
+        new_status="3",
+        changed_by_id=None,
+        change_reason=f"고객 HCMS 승인 ({current_user.name})",
+        created_at=datetime.now(tz.utc),
+    )
+    db.add(history)
+    db.commit()
+
+    return {"success": True, "message": "견적서가 승인되었습니다.", "status": "3"}
+
+
+@router.post("/{estimate_id}/reject")
+def reject_estimate(
+    estimate_id: int,
+    body: RejectRequest,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """고객이 견적서를 거절"""
+    company_id = current_user.company_id
+
+    estimate = (
+        db.query(Estimate)
+        .filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+        .first()
+    )
+
+    if not estimate:
+        raise HTTPException(status_code=404, detail="견적서를 찾을 수 없습니다.")
+
+    status = str(estimate.estimate_status) if estimate.estimate_status else "1"
+
+    if status == "3":
+        raise HTTPException(status_code=400, detail="이미 승인된 견적서입니다.")
+    if status == "4":
+        raise HTTPException(status_code=400, detail="이미 거절된 견적서입니다.")
+    if status == "5":
+        raise HTTPException(status_code=400, detail="이미 계약으로 전환된 견적서입니다.")
+    if status != "2":
+        raise HTTPException(status_code=400, detail="처리할 수 없는 상태의 견적서입니다.")
+
+    previous_status = status
+    estimate.estimate_status = 4
+    estimate.updated_at = datetime.now(tz.utc)
+
+    reason_text = f"고객 HCMS 거절 ({current_user.name})"
+    if body.reason:
+        reason_text += f": {body.reason}"
+
+    history = EstimateStatusHistory(
+        estimate_id=estimate_id,
+        previous_status=previous_status,
+        new_status="4",
+        changed_by_id=None,
+        change_reason=reason_text,
+        created_at=datetime.now(tz.utc),
+    )
+    db.add(history)
+    db.commit()
+
+    return {"success": True, "message": "견적서가 거절되었습니다.", "status": "4"}
+
+
+@router.post("/{estimate_id}/revision")
+def request_revision(
+    estimate_id: int,
+    body: RevisionRequest,
+    current_user: Manager = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """고객이 견적서 수정요청"""
+    company_id = current_user.company_id
+
+    estimate = (
+        db.query(Estimate)
+        .filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+        .first()
+    )
+
+    if not estimate:
+        raise HTTPException(status_code=404, detail="견적서를 찾을 수 없습니다.")
+
+    status = str(estimate.estimate_status) if estimate.estimate_status else "1"
+
+    if status != "2":
+        raise HTTPException(status_code=400, detail="수정요청을 할 수 없는 상태의 견적서입니다.")
+
+    revision = EstimateRevisionRequest(
+        estimate_id=estimate_id,
+        requester_email=current_user.email or "",
+        requester_name=body.requester_name or current_user.name,
+        title=body.title,
+        content=body.content,
+        is_resolved=False,
+        created_at=datetime.now(tz.utc),
+        updated_at=datetime.now(tz.utc),
+    )
+    db.add(revision)
+    db.commit()
+
+    return {"success": True, "message": "수정요청이 등록되었습니다."}

@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, FileText, Building2, Download } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Building2, Download, CheckCircle2, XCircle, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import api from "@/lib/axios";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -20,12 +23,20 @@ function formatAmount(n: number) {
   return n.toLocaleString("ko-KR");
 }
 
-export default function EstimateDetailPage() {
+function EstimateDetailContent() {
   const { setPageTitle } = useNavigationStore();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const action = searchParams.get("action");
   const id = Number(params.id);
   const { data, isLoading } = useEstimateDetail(id);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
+  const [actionProcessing, setActionProcessing] = useState(false);
+  const [actionResult, setActionResult] = useState<{success: boolean; message: string} | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [revisionTitle, setRevisionTitle] = useState("");
+  const [revisionContent, setRevisionContent] = useState("");
+  const [revisionName, setRevisionName] = useState("");
 
   useEffect(() => { setPageTitle("견적 상세"); }, [setPageTitle]);
 
@@ -55,6 +66,57 @@ export default function EstimateDetailPage() {
       setPdfLoading(null);
     }
   };
+
+  const handleApprove = async () => {
+    if (!confirm("견적서를 승인하시겠습니까?")) return;
+    setActionProcessing(true);
+    try {
+      const { data } = await api.post(`/estimates/${id}/approve`);
+      setActionResult({ success: true, message: data.message });
+    } catch (err: any) {
+      setActionResult({ success: false, message: err.response?.data?.detail || "승인 처리에 실패했습니다." });
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    setActionProcessing(true);
+    try {
+      const { data } = await api.post(`/estimates/${id}/reject`, { reason: rejectReason });
+      setActionResult({ success: true, message: data.message });
+    } catch (err: any) {
+      setActionResult({ success: false, message: err.response?.data?.detail || "거절 처리에 실패했습니다." });
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  const handleRevision = async () => {
+    if (!revisionTitle.trim() || !revisionContent.trim()) {
+      alert("수정 제목과 내용을 모두 입력해 주세요.");
+      return;
+    }
+    setActionProcessing(true);
+    try {
+      const { data } = await api.post(`/estimates/${id}/revision`, {
+        requester_name: revisionName,
+        title: revisionTitle,
+        content: revisionContent,
+      });
+      setActionResult({ success: true, message: data.message });
+    } catch (err: any) {
+      setActionResult({ success: false, message: err.response?.data?.detail || "수정요청에 실패했습니다." });
+    } finally {
+      setActionProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (action === "pdf" && data && !actionResult) {
+      downloadPdf("estimate");
+    }
+  }, [action, data]);
 
   if (isLoading || !data) {
     return <PageTransition><LoadingState message="견적 정보를 불러오는 중..." /></PageTransition>;
@@ -115,6 +177,114 @@ export default function EstimateDetailPage() {
           </div>
         </Card>
 
+        {/* Action from email link */}
+        {action && !actionResult && data.status === "2" && (
+          <Card className="rounded-2xl border-2 border-blue-200 overflow-hidden animate-slide-in-right">
+            <CardContent className="p-5">
+              {action === "approve" && (
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-lg font-semibold">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    견적서 승인
+                  </div>
+                  <p className="text-sm text-muted-foreground">이 견적서를 승인하시겠습니까?</p>
+                  <Button
+                    onClick={handleApprove}
+                    disabled={actionProcessing}
+                    className="bg-green-600 hover:bg-green-700 rounded-xl px-8"
+                  >
+                    {actionProcessing ? "처리중..." : "승인하기"}
+                  </Button>
+                </div>
+              )}
+
+              {action === "reject" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-lg font-semibold">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    견적서 거절
+                  </div>
+                  <Textarea
+                    placeholder="거절 사유를 입력해 주세요 (선택)"
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    className="rounded-xl"
+                    rows={3}
+                  />
+                  <div className="text-center">
+                    <Button
+                      onClick={handleReject}
+                      disabled={actionProcessing}
+                      variant="destructive"
+                      className="rounded-xl px-8"
+                    >
+                      {actionProcessing ? "처리중..." : "거절하기"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {action === "revision" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-2 text-lg font-semibold">
+                    <Pencil className="h-5 w-5 text-amber-600" />
+                    수정 요청
+                  </div>
+                  <Input
+                    placeholder="요청자 이름"
+                    value={revisionName}
+                    onChange={(e) => setRevisionName(e.target.value)}
+                    className="rounded-xl"
+                  />
+                  <Input
+                    placeholder="수정 제목"
+                    value={revisionTitle}
+                    onChange={(e) => setRevisionTitle(e.target.value)}
+                    className="rounded-xl"
+                  />
+                  <Textarea
+                    placeholder="수정 내용을 상세히 입력해 주세요"
+                    value={revisionContent}
+                    onChange={(e) => setRevisionContent(e.target.value)}
+                    className="rounded-xl"
+                    rows={5}
+                  />
+                  <div className="text-center">
+                    <Button
+                      onClick={handleRevision}
+                      disabled={actionProcessing}
+                      className="bg-amber-600 hover:bg-amber-700 rounded-xl px-8"
+                    >
+                      {actionProcessing ? "처리중..." : "수정요청 보내기"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Action result */}
+        {actionResult && (
+          <Card className={`rounded-2xl border-2 overflow-hidden animate-slide-in-right ${actionResult.success ? 'border-green-200' : 'border-red-200'}`}>
+            <CardContent className="p-5 text-center space-y-3">
+              {actionResult.success ? (
+                <CheckCircle2 className="h-10 w-10 text-green-600 mx-auto" />
+              ) : (
+                <XCircle className="h-10 w-10 text-red-600 mx-auto" />
+              )}
+              <p className="font-semibold">{actionResult.message}</p>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => window.location.reload()}
+              >
+                견적서 다시 보기
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="rounded-2xl">
           <CardHeader className="pb-2"><h2 className="text-sm font-semibold flex items-center gap-1.5"><FileText className="h-4 w-4" />견적 항목</h2></CardHeader>
           <CardContent className="px-0">
@@ -158,5 +328,13 @@ export default function EstimateDetailPage() {
         <div className="flex justify-end"><Link href="/estimates"><Button variant="outline" className="rounded-xl"><ArrowLeft className="h-4 w-4 mr-1" />목록으로</Button></Link></div>
       </div>
     </PageTransition>
+  );
+}
+
+export default function EstimateDetailPage() {
+  return (
+    <Suspense fallback={<PageTransition><LoadingState message="견적 정보를 불러오는 중..." /></PageTransition>}>
+      <EstimateDetailContent />
+    </Suspense>
   );
 }

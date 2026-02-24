@@ -242,6 +242,35 @@ class EstimateItem(Base):
     estimate = relationship("Estimate", back_populates="items")
 
 
+class EstimateStatusHistory(Base):
+    __tablename__ = "estimate_status_history"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    estimate_id = Column(Integer, ForeignKey("Estimate.seq"), nullable=True)
+    previous_status = Column(String(1), nullable=True)
+    new_status = Column(String(1), nullable=False)
+    changed_by_id = Column(Integer, nullable=True)
+    change_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+
+
+class EstimateRevisionRequest(Base):
+    __tablename__ = "estimate_revision_request"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    estimate_id = Column(Integer, ForeignKey("Estimate.seq"), nullable=True)
+    requester_email = Column(String(254), nullable=True)
+    requester_name = Column(String(100), nullable=True)
+    title = Column(String(200), nullable=True)
+    content = Column(Text, nullable=True)
+    is_resolved = Column(Boolean, default=False)
+    resolved_by_id = Column(Integer, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+
 class Payment(Base):
     __tablename__ = "payment"
 
