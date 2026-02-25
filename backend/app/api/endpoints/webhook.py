@@ -112,7 +112,7 @@ def receive_pacms_webhook(
         db.query(Manager)
         .filter(
             Manager.company_id == data.company_id,
-            Manager.login_permit_tf == "Y",
+            Manager.login_permit_tf == "1",
         )
         .all()
     )

@@ -20,3 +20,4 @@ export function useUnregisterPushToken() {
       api.delete("/push/unregister", { data: { token } }),
   });
 }
+
