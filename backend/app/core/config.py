@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str = ""
     WEBHOOK_API_KEY: str = ""
 
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = [self.FRONTEND_URL, "capacitor://localhost", "http://localhost", "https://hcms.hankyeul.com"]
+        return origins
+
     class Config:
         env_file = ".env"
 

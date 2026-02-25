@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/auth-store";
 import api from "@/lib/axios";
 
 const loginSchema = z.object({
+  site_key: z.string().min(1, "사이트 키를 입력해주세요"),
   login_id: z.string().min(2, "아이디를 2자 이상 입력해주세요"),
   password: z.string().min(4, "비밀번호를 4자 이상 입력해주세요"),
 });
@@ -118,6 +119,25 @@ function LoginContent() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                사이트 키
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  {...register("site_key")}
+                  placeholder="사이트 키를 입력하세요"
+                  className="pl-10 h-12 rounded-xl"
+                />
+              </div>
+              {errors.site_key && (
+                <p className="text-xs text-red-500">
+                  {errors.site_key.message}
+                </p>
+              )}
+            </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">

@@ -14,9 +14,8 @@ from app.api.endpoints.push import router as push_router
 from app.api.endpoints.inquiries import router as inquiries_router
 from app.api.endpoints.webhook import router as webhook_router
 
-app = FastAPI(title="HCMS Customer API", version="1.0.0", root_path="/api")
+app = FastAPI(title="HCMS Customer API", version="1.0.0")
 
-# Initialize Firebase on startup
 init_firebase()
 
 app.add_middleware(
@@ -27,22 +26,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-router = APIRouter()
+api_router = APIRouter(prefix="/api")
 
 
-@router.get("/health")
+@api_router.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
-app.include_router(router)
-app.include_router(auth_router)
-app.include_router(dashboard_router)
-app.include_router(maintenance_router)
-app.include_router(news_router)
-app.include_router(tasks_router)
-app.include_router(estimates_router)
-app.include_router(point_usage_router)
-app.include_router(push_router)
-app.include_router(inquiries_router)
-app.include_router(webhook_router)
+api_router.include_router(auth_router)
+api_router.include_router(dashboard_router)
+api_router.include_router(maintenance_router)
+api_router.include_router(news_router)
+api_router.include_router(tasks_router)
+api_router.include_router(estimates_router)
+api_router.include_router(point_usage_router)
+api_router.include_router(push_router)
+api_router.include_router(inquiries_router)
+api_router.include_router(webhook_router)
+
+app.include_router(api_router)
+

@@ -25,8 +25,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
+    company = db.query(Company).filter(Company.site_key == request.site_key).first()
+    if not company:
+        raise HTTPException(status_code=401, detail="유효하지 않은 사이트 키입니다.")
+
     try:
-        manager = authenticate_manager(db, request.login_id, request.password)
+        manager = authenticate_manager(db, request.login_id, request.password, company_id=company.seq)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:

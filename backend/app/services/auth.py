@@ -19,9 +19,12 @@ def hash_django_password(plain_password: str) -> str:
     return django_pbkdf2_sha256.hash(plain_password)
 
 
-def authenticate_manager(db: Session, login_id: str, password: str) -> Manager | None:
+def authenticate_manager(db: Session, login_id: str, password: str, company_id: int | None = None) -> Manager | None:
     """Manager를 인증합니다. pacms customer login 로직과 동일."""
-    manager = db.query(Manager).filter(Manager.login_id == login_id).first()
+    query = db.query(Manager).filter(Manager.login_id == login_id)
+    if company_id is not None:
+        query = query.filter(Manager.company_id == company_id)
+    manager = query.first()
     if not manager:
         return None
 
