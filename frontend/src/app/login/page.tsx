@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -193,9 +194,20 @@ function LoginContent() {
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            문의사항이 있으시면 관리자에게 연락해주세요.
-          </p>
+          <div className="mt-6 text-center">
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <Link href="/terms" className="text-muted-foreground hover:text-foreground hover:underline transition-colors">
+                이용약관
+              </Link>
+              <span className="text-muted-foreground">|</span>
+              <Link href="/privacy" className="text-muted-foreground hover:text-foreground hover:underline transition-colors">
+                개인정보처리방침
+              </Link>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              문의사항이 있으시면 관리자에게 연락해주세요.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
