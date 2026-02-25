@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
-import { PushNotifications } from "@capacitor/push-notifications";
+import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { Device } from "@capacitor/device";
 import api from "@/lib/axios";
 
@@ -48,7 +48,7 @@ async function sendTokenToServer(
 }
 
 /**
- * 푸시 권한 요청 → 토큰 발급 → 서버 등록.
+ * 푸시 권한 요청 → FCM 토큰 발급 → 서버 등록.
  * 로그인 성공 직후 호출한다.
  */
 export async function requestAndRegisterPushToken(): Promise<void> {
@@ -59,38 +59,14 @@ export async function requestAndRegisterPushToken(): Promise<void> {
 
   try {
     console.log("[Push] Requesting permissions...");
-    const perm = await PushNotifications.requestPermissions();
+    const perm = await FirebaseMessaging.requestPermissions();
     console.log("[Push] Permission result:", perm.receive);
     if (perm.receive !== "granted") return;
 
-    let resolveToken: (value: string) => void;
-    let rejectToken: (reason?: unknown) => void;
-    const tokenPromise = new Promise<string>((resolve, reject) => {
-      resolveToken = resolve;
-      rejectToken = reject;
-    });
+    console.log("[Push] Getting FCM token...");
+    const { token } = await FirebaseMessaging.getToken();
+    console.log("[Push] FCM token received:", token.substring(0, 20) + "...");
 
-    const timeout = setTimeout(() => {
-      console.error("[Push] Token registration timed out (15s)");
-      rejectToken!(new Error("Push token timeout"));
-    }, 15000);
-
-    console.log("[Push] Adding registration listeners...");
-    await PushNotifications.addListener("registration", ({ value }) => {
-      console.log("[Push] Token received:", value.substring(0, 20) + "...");
-      clearTimeout(timeout);
-      resolveToken!(value);
-    });
-    await PushNotifications.addListener("registrationError", (err) => {
-      console.error("[Push] Registration error from native:", err);
-      clearTimeout(timeout);
-      rejectToken!(err);
-    });
-
-    console.log("[Push] Calling PushNotifications.register()...");
-    await PushNotifications.register();
-
-    const token = await tokenPromise;
     const platform = Capacitor.getPlatform() as "ios" | "android";
     const { identifier } = await Device.getId();
     console.log("[Push] Platform:", platform, "Device ID:", identifier);
@@ -106,7 +82,7 @@ export async function requestAndRegisterPushToken(): Promise<void> {
 
 /**
  * 인증 레이아웃에서 호출.
- * 미등록 토큰 재시도 + 알림 리스너 설정.
+ * 미등록 토큰 재시도 + 알림 리스너 설정 + 토큰 갱신 처리.
  */
 export function usePushNotifications() {
   useEffect(() => {
@@ -124,23 +100,35 @@ export function usePushNotifications() {
       });
     }
 
-    PushNotifications.addListener(
-      "pushNotificationReceived",
+    FirebaseMessaging.addListener(
+      "notificationReceived",
       (notification) => {
         console.log("[Push] Notification received:", notification);
       }
     );
 
-    PushNotifications.addListener(
-      "pushNotificationActionPerformed",
+    FirebaseMessaging.addListener(
+      "notificationActionPerformed",
       (action) => {
         console.log("[Push] Action performed:", action);
       }
     );
 
+    FirebaseMessaging.addListener(
+      "tokenReceived",
+      ({ token }) => {
+        console.log("[Push] Token refreshed:", token.substring(0, 20) + "...");
+        localStorage.setItem(PUSH_TOKEN_KEY, token);
+        localStorage.removeItem(PUSH_TOKEN_REGISTERED_KEY);
+        const platform = Capacitor.getPlatform() as "ios" | "android";
+        Device.getId().then(({ identifier }) => {
+          sendTokenToServer(token, platform, identifier);
+        });
+      }
+    );
+
     return () => {
-      PushNotifications.removeAllListeners();
+      FirebaseMessaging.removeAllListeners();
     };
   }, []);
 }
-

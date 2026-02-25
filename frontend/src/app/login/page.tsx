@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import api from "@/lib/axios";
+import { requestAndRegisterPushToken } from "@/hooks/use-push-notifications";
 
 const loginSchema = z.object({
   login_id: z.string().min(2, "아이디를 2자 이상 입력해주세요"),
@@ -41,6 +42,7 @@ function LoginContent() {
           localStorage.setItem("access_token", access_token);
           localStorage.setItem("refresh_token", refresh_token);
           setUser(user);
+          requestAndRegisterPushToken();
           router.push("/dashboard");
         })
         .catch(() => {
@@ -78,6 +80,7 @@ function LoginContent() {
       localStorage.setItem("access_token", access_token);
       localStorage.setItem("refresh_token", refresh_token);
       setUser(user);
+      requestAndRegisterPushToken();
       router.push("/dashboard");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
