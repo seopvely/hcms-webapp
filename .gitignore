@@ -102,6 +102,7 @@ yarn-error.log*
 *.key
 *.cert
 *.crt
+backend/credentials/
 
 # ===========================
 # Build / Production
