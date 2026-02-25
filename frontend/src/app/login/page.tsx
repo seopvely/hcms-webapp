@@ -27,6 +27,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [autoLoginLoading, setAutoLoginLoading] = useState(false);
+  const defaultSiteKey = process.env.NEXT_PUBLIC_SITE_KEY;
 
   useEffect(() => {
     const key = searchParams.get("key");
@@ -60,8 +61,9 @@ function LoginContent() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setError("");
-      const key = searchParams.get("key");
-      const payload = key ? { ...data, site_key: key } : data;
+      const keyFromQuery = searchParams.get("key");
+      const siteKey = keyFromQuery || defaultSiteKey;
+      const payload = siteKey ? { ...data, site_key: siteKey } : data;
       const response = await api.post("/auth/login", payload);
       const { access_token, refresh_token, user, is_first_login } = response.data;
 
@@ -208,3 +210,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
