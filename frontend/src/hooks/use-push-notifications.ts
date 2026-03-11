@@ -114,7 +114,7 @@ export function usePushNotifications() {
       "notificationActionPerformed",
       (action) => {
         console.log("[Push] Action performed:", action);
-        const route = action.notification?.data?.route as string | undefined;
+        const route = (action.notification?.data as Record<string, string> | undefined)?.route;
         if (route) {
           console.log("[Push] Navigating to:", route);
           router.push(route);
