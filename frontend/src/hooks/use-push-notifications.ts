@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 import { Device } from "@capacitor/device";
@@ -85,6 +86,8 @@ export async function requestAndRegisterPushToken(): Promise<void> {
  * 미등록 토큰 재시도 + 알림 리스너 설정 + 토큰 갱신 처리.
  */
 export function usePushNotifications() {
+  const router = useRouter();
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
@@ -111,6 +114,11 @@ export function usePushNotifications() {
       "notificationActionPerformed",
       (action) => {
         console.log("[Push] Action performed:", action);
+        const route = action.notification?.data?.route as string | undefined;
+        if (route) {
+          console.log("[Push] Navigating to:", route);
+          router.push(route);
+        }
       }
     );
 
