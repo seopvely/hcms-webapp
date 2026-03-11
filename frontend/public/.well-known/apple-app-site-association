@@ -4,9 +4,29 @@
       {
         "appIDs": ["BRGYKFRACU.com.hcms.app"],
         "components": [
-          {
-            "/": "/*"
-          }
+          { "/": "/" },
+          { "/": "/login" },
+          { "/": "/change-password" },
+          { "/": "/contract-auth" },
+          { "/": "/estimate-auth" },
+          { "/": "/terms" },
+          { "/": "/privacy" },
+          { "/": "/dashboard" },
+          { "/": "/maintenance" },
+          { "/": "/maintenance/new" },
+          { "/": "/maintenance/*" },
+          { "/": "/estimates" },
+          { "/": "/estimates/*" },
+          { "/": "/tasks" },
+          { "/": "/tasks/create" },
+          { "/": "/tasks/*" },
+          { "/": "/inquiries" },
+          { "/": "/inquiries/create" },
+          { "/": "/inquiries/*" },
+          { "/": "/news" },
+          { "/": "/news/*" },
+          { "/": "/point-usage" },
+          { "/": "/services" }
         ]
       }
     ]

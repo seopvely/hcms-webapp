@@ -41,6 +41,12 @@ class WebhookData(BaseModel):
     inquiry_id: int | None = None
     status: str | None = None
     created_at: str | None = None
+    # news_register fields
+    news_id: int | None = None
+    category: str | None = None
+    category_display: str | None = None
+    is_published: bool | None = None
+    companies: list[dict] | None = None
 
 
 class WebhookPayload(BaseModel):
@@ -70,6 +76,12 @@ EVENT_PUSH_CONFIG = {
         "body_template": "{title} 건에 새 답변이 등록되었습니다.",
         "route_prefix": "/inquiries/",
         "id_field": "inquiry_id",
+    },
+    "news_register": {
+        "title": "새소식 등록",
+        "body_template": "{title}",
+        "route_prefix": "/news/",
+        "id_field": "news_id",
     },
 }
 
@@ -102,23 +114,44 @@ def receive_pacms_webhook(
         logger.warning(f"Unsupported event type: {event_type}")
         return {"status": "ignored", "reason": f"Unsupported event type: {event_type}"}
 
-    # company_id 필수
-    if not data.company_id:
-        logger.warning(f"No company_id in webhook data for event: {event_type}")
-        return {"status": "ignored", "reason": "No company_id in data"}
+    # news_register는 여러 업체에 전송 (companies 배열)
+    if event_type == "news_register":
+        companies_list = data.companies or []
+        if not companies_list:
+            logger.warning("No companies in news_register webhook data")
+            return {"status": "ignored", "reason": "No companies in data"}
 
-    # 해당 회사의 활성 manager 조회
-    managers = (
-        db.query(Manager)
-        .filter(
-            Manager.company_id == data.company_id,
-            Manager.login_permit_tf == "1",
+        # 모든 대상 업체의 company_id 수집
+        company_ids = [c.get("company_id") for c in companies_list if c.get("company_id")]
+        if not company_ids:
+            return {"status": "ignored", "reason": "No valid company_ids"}
+
+        # 모든 대상 업체의 활성 manager 조회
+        managers = (
+            db.query(Manager)
+            .filter(
+                Manager.company_id.in_(company_ids),
+                Manager.login_permit_tf == "1",
+            )
+            .all()
         )
-        .all()
-    )
+    else:
+        # 기존 이벤트: 단일 company_id
+        if not data.company_id:
+            logger.warning(f"No company_id in webhook data for event: {event_type}")
+            return {"status": "ignored", "reason": "No company_id in data"}
+
+        managers = (
+            db.query(Manager)
+            .filter(
+                Manager.company_id == data.company_id,
+                Manager.login_permit_tf == "1",
+            )
+            .all()
+        )
 
     if not managers:
-        logger.info(f"No active managers found for company_id={data.company_id}")
+        logger.info(f"No active managers found for event: {event_type}")
         return {"status": "ok", "push_sent": 0, "reason": "No active managers"}
 
     # 해당 manager들의 모든 활성 FCM 토큰 수집
@@ -133,7 +166,7 @@ def receive_pacms_webhook(
     )
 
     if not push_tokens:
-        logger.info(f"No active push tokens for company_id={data.company_id}")
+        logger.info(f"No active push tokens for event: {event_type}")
         return {"status": "ok", "push_sent": 0, "reason": "No active push tokens"}
 
     token_strings = [pt.token for pt in push_tokens]
@@ -155,7 +188,7 @@ def receive_pacms_webhook(
 
     logger.info(
         f"Push sent for {event_type}: "
-        f"company_id={data.company_id}, "
+        f"managers={len(managers)}, "
         f"tokens={len(token_strings)}, "
         f"success={success_count}"
     )
