@@ -12,6 +12,7 @@ import {
   Briefcase,
   LogOut,
   X,
+  FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/news", label: "최신소식", icon: Newspaper },
   { href: "/maintenance", label: "유지보수 요청", icon: Wrench },
   { href: "/tasks", label: "건별작업", icon: ClipboardList },
+  { href: "/project-board", label: "프로젝트구축진행", icon: FolderKanban },
   { href: "/estimates", label: "견적/계약", icon: FileText },
   { href: "/point-usage", label: "포인트 사용현황", icon: Coins },
   { href: "/inquiries", label: "고객문의", icon: MessageSquare },

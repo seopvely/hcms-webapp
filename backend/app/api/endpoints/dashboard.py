@@ -239,29 +239,58 @@ def get_dashboard(
         "count": monthly_payment_result.count if monthly_payment_result else 0,
     }
 
-    # Point summary
-    total_points = (
-        db.query(func.coalesce(func.sum(PointHistory.point), 0))
+    # Point summary - 6개월 누적 크레딧 기준
+    now = datetime.now()
+    active_project = (
+        db.query(Project)
         .filter(
-            PointHistory.company_id == company_id,
-            PointHistory.point_type == 1,  # 충전
-            PointHistory.status == 2,  # 실행
+            Project.company_id == company_id,
+            Project.point > 0,
+            Project.contract_date <= now,
+            Project.contract_termination_date >= now,
         )
-        .scalar()
-        or 0
+        .order_by(Project.created_at.desc())
+        .first()
     )
-    used_points = (
-        db.query(func.coalesce(func.sum(PointHistory.point), 0))
-        .filter(
-            PointHistory.company_id == company_id,
-            PointHistory.point_type == 2,  # 사용
-            PointHistory.status == 2,  # 실행
+
+    if active_project:
+        contract_start = active_project.contract_date
+        contract_end = active_project.contract_termination_date
+
+        if isinstance(contract_start, datetime):
+            contract_start_date = contract_start.date()
+        else:
+            contract_start_date = contract_start
+
+        if isinstance(contract_end, datetime):
+            contract_end_date = contract_end.date()
+        else:
+            contract_end_date = contract_end
+
+        contract_months = (contract_end_date.year - contract_start_date.year) * 12 + \
+                          (contract_end_date.month - contract_start_date.month)
+        contract_months = min(contract_months, 6)
+
+        total_points = active_project.point * max(contract_months, 1)
+
+        used_points_result = (
+            db.query(func.sum(func.abs(PointHistory.point)))
+            .filter(
+                PointHistory.project_id == active_project.seq,
+                PointHistory.point_type == 2,  # 사용
+                PointHistory.status == 2,  # 실행
+                PointHistory.created_at >= contract_start,
+                PointHistory.created_at <= contract_end,
+            )
+            .scalar()
         )
-        .scalar()
-        or 0
-    )
-    remaining_points = total_points - abs(used_points)
-    # Fix: Calculate remaining rate instead of usage rate
+        used_points = int(used_points_result or 0)
+        remaining_points = total_points - used_points
+    else:
+        total_points = 0
+        used_points = 0
+        remaining_points = 0
+
     point_percent = (
         round((remaining_points / total_points) * 100, 1) if total_points > 0 else 0
     )

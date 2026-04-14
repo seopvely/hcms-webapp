@@ -20,6 +20,11 @@ from app.models.customer import (
     InquiryAnswer,
     InquiryAttachment,
     Notice,
+    ProjectBoardCategory,
+    ProjectBoard,
+    ProjectBoardComment,
+    ProjectBoardAttachment,
+    ProjectBoardCommentAttachment,
 )
 
 __all__ = [
@@ -44,4 +49,9 @@ __all__ = [
     "InquiryAnswer",
     "InquiryAttachment",
     "Notice",
+    "ProjectBoardCategory",
+    "ProjectBoard",
+    "ProjectBoardComment",
+    "ProjectBoardAttachment",
+    "ProjectBoardCommentAttachment",
 ]

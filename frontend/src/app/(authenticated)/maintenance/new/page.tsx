@@ -261,6 +261,11 @@ export default function MaintenanceNewPage() {
                               }
                             }
 
+                            // Check payment status
+                            if (!(project as any).payment_completed) {
+                              return "결제가 완료되지 않은 프로젝트입니다. 관리자에게 문의해주세요.";
+                            }
+
                             // Check remaining points
                             if (project.remaining_points <= 0) {
                               return "잔여 포인트가 없습니다.";

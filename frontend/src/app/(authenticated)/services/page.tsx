@@ -10,7 +10,6 @@ import {
   Shield,
   Zap,
   Globe,
-  Wrench,
   Code,
   Mail,
   Phone,
@@ -44,15 +43,15 @@ export default function ServicesPage() {
           </p>
         </div>
 
-        {/* 1. 웹호스팅 서비스 */}
+        {/* 1. 통합 플랜 (호스팅 + 유지보수) */}
         <section className="space-y-6">
           <div className="flex items-center gap-3 border-l-4 border-blue-500 pl-4">
             <Server className="h-6 w-6 text-blue-600" />
-            <h2 className="text-2xl font-bold">웹호스팅 서비스</h2>
+            <h2 className="text-2xl font-bold">통합 플랜 (호스팅 + 유지보수)</h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {/* Basic */}
-            <Link href={serviceInquiryUrl("웹호스팅", "Basic")} className="block">
+            <Link href={serviceInquiryUrl("통합 플랜", "Basic")} className="block">
               <Card className="rounded-2xl hover-lift">
                 <CardHeader>
                   <div className="space-y-2">
@@ -66,8 +65,16 @@ export default function ServicesPage() {
                 <CardContent className="space-y-3">
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-600">매월 크레딧 2개 포함</span>
+                    </li>
+                    <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">1사이트 호스팅</span>
+                      <span className="text-sm">웹호스팅 1사이트</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">10GB SSD 스토리지</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
@@ -83,26 +90,26 @@ export default function ServicesPage() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">10GB SSD</span>
+                      <span className="text-sm">이메일 지원</span>
                     </li>
                   </ul>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* Business */}
-            <Link href={serviceInquiryUrl("웹호스팅", "Business")} className="block">
+            {/* Growth */}
+            <Link href={serviceInquiryUrl("통합 플랜", "Growth")} className="block">
               <Card className="rounded-2xl hover-lift border-2 border-blue-500 relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500">
-                    인기
+                    추천
                   </Badge>
                 </div>
                 <CardHeader>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Business</h3>
+                    <h3 className="text-xl font-bold">Growth</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold">100,000</span>
+                      <span className="text-3xl font-bold">110,000</span>
                       <span className="text-muted-foreground">원/월</span>
                     </div>
                   </div>
@@ -110,8 +117,16 @@ export default function ServicesPage() {
                 <CardContent className="space-y-3">
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-600">매월 크레딧 5개 포함</span>
+                    </li>
+                    <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">3사이트 호스팅</span>
+                      <span className="text-sm">웹호스팅 3사이트</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">50GB SSD 스토리지</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
@@ -127,25 +142,25 @@ export default function ServicesPage() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">50GB SSD</span>
+                      <span className="text-sm">CDN 가속 지원</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">CDN 가속</span>
+                      <span className="text-sm">이메일 + 전화 지원</span>
                     </li>
                   </ul>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* Premium */}
-            <Link href={serviceInquiryUrl("웹호스팅", "Premium")} className="block">
+            {/* Business */}
+            <Link href={serviceInquiryUrl("통합 플랜", "Business")} className="block">
               <Card className="rounded-2xl hover-lift">
                 <CardHeader>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Premium</h3>
+                    <h3 className="text-xl font-bold">Business</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold">200,000</span>
+                      <span className="text-3xl font-bold">220,000</span>
                       <span className="text-muted-foreground">원/월</span>
                     </div>
                   </div>
@@ -153,8 +168,16 @@ export default function ServicesPage() {
                 <CardContent className="space-y-3">
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-600">매월 크레딧 15개 포함</span>
+                    </li>
+                    <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">무제한 사이트</span>
+                      <span className="text-sm">웹호스팅 무제한</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">100GB SSD 스토리지</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
@@ -166,135 +189,46 @@ export default function ServicesPage() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">24시간 모니터링+장애 대응</span>
+                      <span className="text-sm">24시간 모니터링 + 장애 대응</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">100GB SSD</span>
+                      <span className="text-sm">CDN + DDoS 방어</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">CDN+DDoS 방어</span>
+                      <span className="text-sm">전담 엔지니어 배정</span>
                     </li>
                   </ul>
                 </CardContent>
               </Card>
             </Link>
           </div>
-        </section>
-
-        {/* 2. 유지보수 정액제 */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-3 border-l-4 border-cyan-500 pl-4">
-            <Wrench className="h-6 w-6 text-cyan-600" />
-            <h2 className="text-2xl font-bold">유지보수 정액제 (월 단위)</h2>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* Starter */}
-            <Link href={serviceInquiryUrl("유지보수 정액제", "Starter")} className="block">
-              <Card className="rounded-2xl hover-lift">
-                <CardHeader>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Starter</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold">100,000</span>
-                      <span className="text-muted-foreground">원/월</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">Basic Hosting 포함</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">이메일 계정 2개</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">콘텐츠 수정 월 1회</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">DB·파일 백업 월 1회</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </Link>
-
-            {/* Standard */}
-            <Link href={serviceInquiryUrl("유지보수 정액제", "Standard")} className="block">
-              <Card className="rounded-2xl hover-lift">
-                <CardHeader>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Standard</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold">200,000</span>
-                      <span className="text-muted-foreground">원/월</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">Basic Hosting 포함</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">이메일 계정 5개</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">콘텐츠 수정 월 3회</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">보안 점검·장애 24h 대응</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </Link>
-
-            {/* Enterprise */}
-            <Link href={serviceInquiryUrl("유지보수 정액제", "Enterprise")} className="block">
-              <Card className="rounded-2xl hover-lift">
-                <CardHeader>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Enterprise</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold">300,000</span>
-                      <span className="text-muted-foreground">원~/월</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">Basic Hosting 포함</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">무제한 수정 (Fair Policy)</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">속도·보안 최적화</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">월간 리포트+실시간 지원</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
+          <Card className="rounded-2xl bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Zap className="h-5 w-5 text-blue-600" />
+                크레딧 포인트제
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                매월 포인트가 부여되고, 6개월 선사용 가능, 계약 기준 6개월마다 초기화 갱신
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">1. 매월 포인트 부여</p>
+                  <p className="text-xs text-muted-foreground">플랜에 포함된 크레딧 포인트가 매월 자동으로 부여됩니다</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">2. 6개월 선사용</p>
+                  <p className="text-xs text-muted-foreground">향후 6개월치 크레딧을 미리 사용할 수 있어 대형 작업도 즉시 가능합니다</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">3. 6개월 초기화 갱신</p>
+                  <p className="text-xs text-muted-foreground">계약 기준 6개월마다 포인트가 초기화되고 새롭게 갱신됩니다</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <Card className="rounded-2xl bg-muted/50">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">
@@ -305,7 +239,7 @@ export default function ServicesPage() {
           </Card>
         </section>
 
-        {/* 3. 홈페이지 구축 패키지 */}
+        {/* 2. 홈페이지 구축 패키지 */}
         <section className="space-y-6">
           <div className="flex items-center gap-3 border-l-4 border-purple-500 pl-4">
             <Globe className="h-6 w-6 text-purple-600" />
@@ -411,7 +345,7 @@ export default function ServicesPage() {
           </div>
         </section>
 
-        {/* 4. 서버 작업 · DevOps */}
+        {/* 3. 서버 작업 · DevOps */}
         <section className="space-y-6">
           <div className="flex items-center gap-3 border-l-4 border-green-500 pl-4">
             <Code className="h-6 w-6 text-green-600" />
@@ -490,7 +424,7 @@ export default function ServicesPage() {
           </div>
         </section>
 
-        {/* 5. 부가 서비스 */}
+        {/* 4. 부가 서비스 */}
         <section className="space-y-6">
           <div className="flex items-center gap-3 border-l-4 border-orange-500 pl-4">
             <Sparkles className="h-6 w-6 text-orange-600" />
@@ -560,7 +494,7 @@ export default function ServicesPage() {
           </div>
         </section>
 
-        {/* 6. 고객군별 권장 플랜 */}
+        {/* 5. 고객군별 권장 플랜 */}
         <section className="space-y-6">
           <div className="flex items-center gap-3 border-l-4 border-pink-500 pl-4">
             <Shield className="h-6 w-6 text-pink-600" />
@@ -573,7 +507,7 @@ export default function ServicesPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm">
-                  <strong>Basic Hosting</strong>
+                  <strong>Basic 통합 플랜</strong>
                   <br />+ <strong>Launch Kit</strong>
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -587,7 +521,7 @@ export default function ServicesPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm">
-                  <strong>Standard 유지보수</strong>
+                  <strong>Growth 통합 플랜</strong>
                   <br />+ <strong>Growth Pack</strong>
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -601,7 +535,7 @@ export default function ServicesPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm">
-                  <strong>Enterprise 유지보수</strong>
+                  <strong>Business 통합 플랜</strong>
                   <br />+ <strong>Enterprise Build</strong>
                   <br />+ <strong>DevOps Pro</strong>
                 </p>

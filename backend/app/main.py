@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +15,9 @@ from app.api.endpoints.point_usage import router as point_usage_router
 from app.api.endpoints.push import router as push_router
 from app.api.endpoints.inquiries import router as inquiries_router
 from app.api.endpoints.webhook import router as webhook_router
+from app.api.endpoints.project_board import router as project_board_router
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="HCMS Customer API", version="1.0.0")
 
@@ -44,6 +49,7 @@ api_router.include_router(point_usage_router)
 api_router.include_router(push_router)
 api_router.include_router(inquiries_router)
 api_router.include_router(webhook_router)
+api_router.include_router(project_board_router)
 
 app.include_router(api_router)
 

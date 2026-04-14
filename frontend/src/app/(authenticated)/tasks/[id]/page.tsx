@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, Paperclip, MessageSquare, HardHat } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Paperclip, MessageSquare, HardHat, Download } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { useNavigationStore } from "@/store/navigation-store";
 import { StatusBadge, LoadingState } from "@/components/common";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useTaskDetail } from "@/lib/api-hooks";
+import api from "@/lib/axios";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 const taskTypeColors: Record<string, string> = {
@@ -31,6 +32,22 @@ export default function TaskDetailPage() {
   const { data, isLoading } = useTaskDetail(id);
 
   useEffect(() => { setPageTitle("건별작업 상세"); }, [setPageTitle]);
+
+  const handleDownload = useCallback(async (url: string, filename: string) => {
+    try {
+      const response = await api.get(url, { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(response.data);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      alert("파일 다운로드에 실패했습니다.");
+    }
+  }, []);
 
   if (isLoading || !data) {
     return <PageTransition><LoadingState message="작업 정보를 불러오는 중..." /></PageTransition>;
@@ -78,7 +95,13 @@ export default function TaskDetailPage() {
         {data.attachments && data.attachments.length > 0 && (
           <Card className="rounded-2xl"><CardHeader className="pb-2"><h2 className="text-sm font-semibold flex items-center gap-1.5"><Paperclip className="h-4 w-4" />첨부파일 ({data.attachments.length})</h2></CardHeader>
             <CardContent><div className="space-y-2">{data.attachments.map((file, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl hover:bg-muted/80 transition-colors"><span className="text-sm truncate">{file.name}</span><span className="text-xs text-muted-foreground ml-2">{file.size}</span></div>
+              <button key={idx} onClick={() => handleDownload(file.url, file.name)} className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-xl hover:bg-muted/80 transition-colors cursor-pointer text-left">
+                <span className="text-sm truncate flex-1">{file.name}</span>
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  <span className="text-xs text-muted-foreground">{file.size}</span>
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </button>
             ))}</div></CardContent>
           </Card>
         )}

@@ -199,6 +199,7 @@ export interface MaintenanceProject {
   id: number;
   title: string;
   permit: boolean;
+  payment_completed: boolean;
   remaining_points: number;
   contract_status: string;
   contract_date: string | null;
@@ -304,6 +305,93 @@ export interface InquiryDetail {
   writer_name: string;
   attachments: { id: number; name: string; url: string; uploaded_at: string }[];
   answers: InquiryAnswer[];
+}
+
+// Project Board (프로젝트구축진행)
+export interface ProjectBoardProject {
+  id: number;
+  title: string;
+  is_active: boolean;
+  contract_date: string | null;
+  contract_termination_date: string | null;
+}
+
+export interface ProjectBoardCategory {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string | null;
+}
+
+export interface ProjectBoardCategoryRef {
+  id?: number;
+  name: string;
+  icon: string | null;
+  color: string | null;
+}
+
+export interface ProjectBoardItem {
+  id: number;
+  title: string;
+  project_name: string | null;
+  project_id: number | null;
+  categories: ProjectBoardCategoryRef[];
+  writer_name: string | null;
+  writer_type: string;
+  status: string;
+  status_label: string;
+  is_notice: boolean;
+  views: number;
+  reply_count: number;
+  comment_count: number;
+  has_attachment: boolean;
+  created_at: string;
+}
+
+export interface ProjectBoardCommentItem {
+  id: number;
+  content: string;
+  writer_name: string | null;
+  writer_type: string;
+  parent_id: number | null;
+  is_mine: boolean;
+  attachments: { id: number; name: string; file_size: number }[];
+  created_at: string;
+}
+
+export interface ProjectBoardReply {
+  id: number;
+  title: string;
+  content: string;
+  writer_name: string | null;
+  writer_type: string;
+  status: string;
+  status_label: string;
+  is_mine: boolean;
+  attachments: { id: number; name: string; file_size: number; uploaded_at: string | null }[];
+  created_at: string;
+}
+
+export interface ProjectBoardDetail {
+  id: number;
+  title: string;
+  content: string;
+  project_id: number | null;
+  project_name: string | null;
+  categories: ProjectBoardCategoryRef[];
+  writer_name: string | null;
+  writer_type: string;
+  status: string;
+  status_label: string;
+  is_notice: boolean;
+  views: number;
+  is_mine: boolean;
+  attachments: { id: number; name: string; file_size: number; uploaded_at: string | null }[];
+  comments: ProjectBoardCommentItem[];
+  replies: ProjectBoardReply[];
+  created_at: string;
+  updated_at: string | null;
 }
 
 // ============ API Functions ============
@@ -437,6 +525,79 @@ async function createInquiryAnswer(inquiryId: number, formData: FormData): Promi
   const { data } = await api.post(`/inquiries/${inquiryId}/answers`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return data;
+}
+
+// Project Board
+async function fetchProjectBoards(params: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  project_id?: number;
+  category_id?: number;
+  status?: string;
+}): Promise<PaginatedResponse<ProjectBoardItem>> {
+  const { data } = await api.get("/project-board", { params });
+  return data;
+}
+
+async function fetchProjectBoardDetail(id: number): Promise<ProjectBoardDetail> {
+  const { data } = await api.get(`/project-board/${id}`);
+  return data;
+}
+
+async function fetchBoardProjects(): Promise<{ projects: ProjectBoardProject[] }> {
+  const { data } = await api.get("/project-board/projects");
+  return data;
+}
+
+async function fetchBoardCategories(projectId: number): Promise<{ categories: ProjectBoardCategory[] }> {
+  const { data } = await api.get(`/project-board/categories/${projectId}`);
+  return data;
+}
+
+async function createProjectBoard(formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post("/project-board", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function updateProjectBoard(id: number, formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.put(`/project-board/${id}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function deleteProjectBoard(id: number): Promise<{ message: string }> {
+  const { data } = await api.delete(`/project-board/${id}`);
+  return data;
+}
+
+async function createBoardReply(boardId: number, formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post(`/project-board/${boardId}/reply`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function createBoardComment(boardId: number, formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post(`/project-board/${boardId}/comments`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function updateBoardComment(commentId: number, formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.put(`/project-board/comments/${commentId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function deleteBoardComment(commentId: number): Promise<{ message: string }> {
+  const { data } = await api.delete(`/project-board/comments/${commentId}`);
   return data;
 }
 
@@ -617,6 +778,117 @@ export function useCreateInquiryAnswer(inquiryId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inquiries", "detail", inquiryId] });
       queryClient.invalidateQueries({ queryKey: ["inquiries", "list"] });
+    },
+  });
+}
+
+// === 프로젝트구축진행 ===
+
+export function useProjectBoards(params: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  project_id?: number;
+  category_id?: number;
+  status?: string;
+} = {}) {
+  return useQuery({
+    queryKey: ["project-board", "list", params],
+    queryFn: () => fetchProjectBoards(params),
+  });
+}
+
+export function useProjectBoardDetail(id: number) {
+  return useQuery({
+    queryKey: ["project-board", "detail", id],
+    queryFn: () => fetchProjectBoardDetail(id),
+    enabled: !!id,
+  });
+}
+
+export function useBoardProjects() {
+  return useQuery({
+    queryKey: ["project-board", "projects"],
+    queryFn: fetchBoardProjects,
+  });
+}
+
+export function useBoardCategories(projectId: number | null) {
+  return useQuery({
+    queryKey: ["project-board", "categories", projectId],
+    queryFn: () => fetchBoardCategories(projectId!),
+    enabled: !!projectId,
+  });
+}
+
+export function useCreateProjectBoard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createProjectBoard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board"] });
+    },
+  });
+}
+
+export function useUpdateProjectBoard(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) => updateProjectBoard(id, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board"] });
+    },
+  });
+}
+
+export function useDeleteProjectBoard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteProjectBoard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board"] });
+    },
+  });
+}
+
+export function useCreateBoardReply(boardId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) => createBoardReply(boardId, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board", "detail", boardId] });
+      queryClient.invalidateQueries({ queryKey: ["project-board", "list"] });
+    },
+  });
+}
+
+export function useCreateBoardComment(boardId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) => createBoardComment(boardId, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board", "detail", boardId] });
+    },
+  });
+}
+
+export function useUpdateBoardComment(boardId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, formData }: { commentId: number; formData: FormData }) =>
+      updateBoardComment(commentId, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board", "detail", boardId] });
+    },
+  });
+}
+
+export function useDeleteBoardComment(boardId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteBoardComment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-board", "detail", boardId] });
     },
   });
 }

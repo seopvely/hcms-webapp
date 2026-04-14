@@ -15,6 +15,8 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import Inditask, InditaskComment
+from app.models.company import Company
+from app.services.email import notify_task_created
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -148,11 +150,15 @@ async def create_task(
     db.add(new_task)
     db.flush()
 
-    # Handle file uploads - create separate Inditask entries for each file (matching pacms behavior)
+    # Handle file uploads - attach first file to base task, create separate records for remaining files
     if files:
-        for file in files:
-            if file.filename:
-                file_path, _ = save_upload_file(file)
+        valid_files = [f for f in files if f.filename]
+        if valid_files:
+            first_file_path, first_original_name = save_upload_file(valid_files[0])
+            new_task.inditask_file = first_file_path
+            new_task.inditask_file_name = first_original_name
+            for file in valid_files[1:]:
+                file_path, original_name = save_upload_file(file)
                 file_task = Inditask(
                     title=title,
                     company_id=company_id,
@@ -161,12 +167,27 @@ async def create_task(
                     writer_id=current_user.seq,
                     task_status=1,
                     inditask_file=file_path,
+                    inditask_file_name=original_name,
                     created_at=datetime.now(),
                 )
                 db.add(file_task)
 
     db.commit()
     db.refresh(new_task)
+
+    # Send email notification to agents
+    try:
+        company = db.query(Company).filter(Company.seq == company_id).first()
+        notify_task_created(
+            db=db,
+            task_id=new_task.seq,
+            company_name=company.name if company else "Unknown",
+            title=title,
+            task_type_label=TASK_TYPE_LABELS.get(task_type, "기타"),
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass  # Don't fail the request if email fails
 
     return {"id": new_task.seq, "message": "건별의뢰가 등록되었습니다."}
 
@@ -185,7 +206,7 @@ def download_task_file(
     full_path = os.path.join(MEDIA_ROOT, task.inditask_file)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="File not found on disk")
-    filename = os.path.basename(task.inditask_file)
+    filename = task.inditask_file_name or os.path.basename(task.inditask_file)
     content_type, _ = mimetypes.guess_type(filename)
     if not content_type:
         content_type = "application/octet-stream"
@@ -231,6 +252,58 @@ def get_task_detail(
             }
         )
 
+    # Build attachments list
+    attachments = []
+    if item.inditask_file:
+        original_name = item.inditask_file_name or os.path.basename(item.inditask_file)
+        file_full_path = os.path.join(MEDIA_ROOT, item.inditask_file)
+        file_size = ""
+        if os.path.exists(file_full_path):
+            size_bytes = os.path.getsize(file_full_path)
+            if size_bytes < 1024:
+                file_size = f"{size_bytes} B"
+            elif size_bytes < 1024 * 1024:
+                file_size = f"{size_bytes / 1024:.1f} KB"
+            else:
+                file_size = f"{size_bytes / (1024 * 1024):.1f} MB"
+        attachments.append({
+            "name": original_name,
+            "size": file_size,
+            "url": f"/tasks/file/download/{item.seq}",
+        })
+
+    # Check for related file records (same title, company, created_at but with files)
+    related_file_tasks = (
+        db.query(Inditask)
+        .filter(
+            Inditask.company_id == company_id,
+            Inditask.title == item.title,
+            Inditask.writer_id == item.writer_id,
+            Inditask.created_at == item.created_at,
+            Inditask.seq != item.seq,
+            Inditask.inditask_file.isnot(None),
+            Inditask.inditask_file != "",
+        )
+        .all()
+    )
+    for ft in related_file_tasks:
+        original_name = ft.inditask_file_name or os.path.basename(ft.inditask_file)
+        file_full_path = os.path.join(MEDIA_ROOT, ft.inditask_file)
+        file_size = ""
+        if os.path.exists(file_full_path):
+            size_bytes = os.path.getsize(file_full_path)
+            if size_bytes < 1024:
+                file_size = f"{size_bytes} B"
+            elif size_bytes < 1024 * 1024:
+                file_size = f"{size_bytes / 1024:.1f} KB"
+            else:
+                file_size = f"{size_bytes / (1024 * 1024):.1f} MB"
+        attachments.append({
+            "name": original_name,
+            "size": file_size,
+            "url": f"/tasks/file/download/{ft.seq}",
+        })
+
     return {
         "id": item.seq,
         "title": item.title,
@@ -250,6 +323,7 @@ def get_task_detail(
         "project_title": item.project.title if item.project else None,
         "inditask_file": item.inditask_file,
         "inditask_comment": item.inditask_comment,
+        "attachments": attachments,
         "created_at": item.created_at.isoformat() if item.created_at else None,
         "comments": comments,
     }

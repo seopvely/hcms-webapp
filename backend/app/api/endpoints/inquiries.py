@@ -14,6 +14,8 @@ from sqlalchemy import func, or_
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
+from app.models.company import Company
+from app.services.email import notify_inquiry_created, notify_inquiry_answer_created
 from app.models.customer import (
     Inquiry,
     InquiryAnswer,
@@ -165,6 +167,20 @@ async def create_inquiry(
 
     db.commit()
     db.refresh(new_inquiry)
+
+    # Send email notification to agents
+    try:
+        company = db.query(Company).filter(Company.seq == company_id).first()
+        notify_inquiry_created(
+            db=db,
+            inquiry_id=new_inquiry.seq,
+            company_name=company.name if company else "Unknown",
+            title=title,
+            inquiry_type_label=INQUIRY_TYPE_LABELS.get(inquiry_type, "기타"),
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass  # Don't fail the request if email fails
 
     return {
         "id": new_inquiry.seq,
@@ -341,6 +357,20 @@ async def create_inquiry_answer(
     db.add(new_answer)
     db.commit()
     db.refresh(new_answer)
+
+    # Send email notification to agents
+    try:
+        company = db.query(Company).filter(Company.seq == company_id).first()
+        notify_inquiry_answer_created(
+            db=db,
+            inquiry_id=inquiry_id,
+            company_name=company.name if company else "Unknown",
+            inquiry_title=inquiry.title or "",
+            inquiry_type_label=INQUIRY_TYPE_LABELS.get(inquiry.inquiry_type, "기타"),
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass  # Don't fail the request if email fails
 
     return {
         "id": new_answer.seq,

@@ -166,6 +166,7 @@ class Inditask(Base):
     estimated_hours = Column(Float, nullable=True)
     actual_hours = Column(Float, nullable=True)
     inditask_file = Column(String(500), nullable=True)
+    inditask_file_name = Column(String(500), nullable=True)
     inditask_comment = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
@@ -376,6 +377,109 @@ class Notice(Base):
     updated_at = Column(DateTime, nullable=True)
 
     company = relationship("Company")
+
+
+# === 프로젝트구축진행 게시판 (pacms 테이블 매핑) ===
+
+
+class ProjectBoardCategory(Base):
+    __tablename__ = "project_board_category"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column("project_id", Integer, ForeignKey("project.seq"), nullable=True)
+    name = Column(String(100), nullable=True)
+    description = Column(String(255), nullable=True)
+    icon = Column(String(50), nullable=True)
+    color = Column(String(20), nullable=True)
+    sort_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    project = relationship("Project", foreign_keys=[project_id])
+
+
+project_board_categories = Table(
+    "project_board_categories",
+    Base.metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("projectboard_id", Integer, ForeignKey("project_board.seq")),
+    Column("projectboardcategory_id", Integer, ForeignKey("project_board_category.seq")),
+)
+
+
+class ProjectBoard(Base):
+    __tablename__ = "project_board"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column("company_id", Integer, ForeignKey("company.seq"), nullable=True)
+    project_id = Column("project_id", Integer, ForeignKey("project.seq"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("project_board.seq"), nullable=True)
+    title = Column(String(200), nullable=True)
+    content = Column(Text, nullable=True)
+    writer_id = Column("writer_id", Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
+    customer_writer_id = Column("customer_writer_id", Integer, ForeignKey("manager.seq"), nullable=True)
+    writer_type = Column(String(1), nullable=True)  # '1'=관리자, '2'=고객
+    status = Column(String(1), nullable=True, default="1")  # '1'=진행중, '2'=완료, '3'=보류
+    views = Column(Integer, default=0)
+    is_notice = Column(Boolean, default=False)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    company = relationship("Company", foreign_keys=[company_id])
+    project = relationship("Project", foreign_keys=[project_id])
+    categories = relationship("ProjectBoardCategory", secondary=project_board_categories)
+    parent = relationship("ProjectBoard", remote_side=[seq], backref="replies")
+    admin_writer = relationship("CustomAuthUser", foreign_keys=[writer_id])
+    customer_writer = relationship("Manager", foreign_keys=[customer_writer_id])
+    comments = relationship("ProjectBoardComment", back_populates="board", order_by="ProjectBoardComment.created_at")
+    board_attachments = relationship("ProjectBoardAttachment", back_populates="board")
+
+
+class ProjectBoardComment(Base):
+    __tablename__ = "project_board_comment"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    board_id = Column("board_id", Integer, ForeignKey("project_board.seq"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("project_board_comment.seq"), nullable=True)
+    content = Column(Text, nullable=True)
+    writer_id = Column("writer_id", Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
+    customer_writer_id = Column("customer_writer_id", Integer, ForeignKey("manager.seq"), nullable=True)
+    writer_type = Column(String(1), nullable=True)  # '1'=관리자, '2'=고객
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    board = relationship("ProjectBoard", back_populates="comments")
+    parent = relationship("ProjectBoardComment", remote_side=[seq], backref="child_comments")
+    admin_writer = relationship("CustomAuthUser", foreign_keys=[writer_id])
+    customer_writer = relationship("Manager", foreign_keys=[customer_writer_id])
+    comment_attachments = relationship("ProjectBoardCommentAttachment", back_populates="comment")
+
+
+class ProjectBoardAttachment(Base):
+    __tablename__ = "project_board_attachment"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    board_id = Column("board_id", Integer, ForeignKey("project_board.seq"), nullable=True)
+    file = Column(String(500), nullable=True)
+    filename = Column(String(255), nullable=True)
+    file_size = Column(Integer, default=0)
+    uploaded_at = Column(DateTime, nullable=True)
+
+    board = relationship("ProjectBoard", back_populates="board_attachments")
+
+
+class ProjectBoardCommentAttachment(Base):
+    __tablename__ = "project_board_comment_attachment"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    comment_id = Column("comment_id", Integer, ForeignKey("project_board_comment.seq"), nullable=True)
+    file = Column(String(500), nullable=True)
+    filename = Column(String(255), nullable=True)
+    file_size = Column(Integer, default=0)
+    uploaded_at = Column(DateTime, nullable=True)
+
+    comment = relationship("ProjectBoardComment", back_populates="comment_attachments")
 
 
 class EstimateContract(Base):

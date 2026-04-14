@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
 from app.core.deps import get_current_user
+from app.services.email import notify_maintenance_created, notify_maintenance_comment_created
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import (
@@ -173,6 +174,7 @@ def get_available_projects(
             "id": project.seq,
             "title": project.title,
             "permit": permit,
+            "payment_completed": bool(payment),
             "remaining_points": remaining_points,
             "contract_status": "active" if contract_valid else "expired",
             "contract_date": project.contract_date.isoformat() if project.contract_date else None,
@@ -318,6 +320,20 @@ async def create_maintenance(
     db.commit()
     db.refresh(new_maintenance)
 
+    # Send email notification to agents
+    try:
+        company_name = project.company.name if project.company else "Unknown"
+        notify_maintenance_created(
+            db=db,
+            maintenance_id=new_maintenance.seq,
+            company_name=company_name,
+            project_title=project.title or "",
+            title=title,
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass  # Don't fail the request if email fails
+
     return {
         "id": new_maintenance.seq,
         "message": "Maintenance request created successfully",
@@ -396,6 +412,19 @@ async def create_maintenance_comment(
 
     db.commit()
     db.refresh(new_comment)
+
+    # Send email notification to agents
+    try:
+        notify_maintenance_comment_created(
+            db=db,
+            maintenance_id=maintenance_id,
+            company_name=maintenance.company.name if maintenance.company else "Unknown",
+            project_title=maintenance.project.title if maintenance.project else "",
+            maintenance_title=maintenance.title or "",
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass  # Don't fail the request if email fails
 
     return {
         "id": new_comment.seq,

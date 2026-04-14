@@ -49,6 +49,15 @@ def send_push(tokens: list[str], title: str, body: str, data: dict | None = None
     try:
         response = messaging.send_each_for_multicast(message)
         logger.info(f"Push sent: {response.success_count} success, {response.failure_count} failure")
+
+        if response.failure_count > 0:
+            for i, send_response in enumerate(response.responses):
+                if send_response.exception:
+                    logger.error(
+                        f"Push failed for token[{i}] ({tokens[i][:20]}...): "
+                        f"{send_response.exception}"
+                    )
+
         return response.success_count
     except Exception as e:
         logger.error(f"Failed to send push notification: {e}")
