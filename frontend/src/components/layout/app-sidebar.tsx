@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useNavigationStore } from "@/store/navigation-store";
+import { useDashboard } from "@/lib/api-hooks";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
@@ -34,6 +35,8 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen } = useNavigationStore();
+  const { data: dashboardData } = useDashboard();
+  const hasProject = (dashboardData?.project_progress?.length ?? 0) > 0;
 
   return (
     <>
@@ -64,7 +67,7 @@ export function AppSidebar() {
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => {
+          {navItems.filter((item) => item.href !== "/project-board" || hasProject).map((item) => {
             const isActive =
               pathname === item.href ||
               pathname.startsWith(item.href + "/");

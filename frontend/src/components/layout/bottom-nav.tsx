@@ -9,6 +9,7 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDashboard } from "@/lib/api-hooks";
 
 const tabs = [
   { href: "/dashboard", label: "홈", icon: LayoutDashboard },
@@ -20,11 +21,13 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { data: dashboardData } = useDashboard();
+  const hasProject = (dashboardData?.project_progress?.length ?? 0) > 0;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-background/95 backdrop-blur-md border-t border-border/50 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-16 px-2">
-        {tabs.map((tab) => {
+        {tabs.filter((tab) => tab.href !== "/project-board" || hasProject).map((tab) => {
           const isActive =
             pathname === tab.href || pathname.startsWith(tab.href + "/");
           return (

@@ -229,3 +229,87 @@ def notify_inquiry_answer_created(
         link_text="답변 확인하기",
     )
     send_email_async(emails, subject, html)
+
+
+def notify_project_board_created(
+    db: Session,
+    board_id: int,
+    company_name: str,
+    project_title: str,
+    title: str,
+    writer_name: str,
+):
+    """Send notification email when a customer creates a new project board post"""
+    emails = get_agent_emails(db)
+    if not emails:
+        return
+
+    subject = f"[HCMS] 새 프로젝트 게시글: {title}"
+    html = _build_html(
+        title="새로운 프로젝트구축진행 게시글이 등록되었습니다",
+        items=[
+            ("업체명", company_name),
+            ("프로젝트", project_title),
+            ("제목", title),
+            ("작성자", writer_name),
+        ],
+        link_url=f"{PACMS_BASE_URL}/managed/project-board/{board_id}/",
+        link_text="게시글 확인하기",
+    )
+    send_email_async(emails, subject, html)
+
+
+def notify_project_board_reply_created(
+    db: Session,
+    parent_board_id: int,
+    company_name: str,
+    project_title: str,
+    title: str,
+    writer_name: str,
+):
+    """Send notification email when a customer creates a reply to a project board post"""
+    emails = get_agent_emails(db)
+    if not emails:
+        return
+
+    subject = f"[HCMS] 프로젝트 게시글 답글: {title}"
+    html = _build_html(
+        title="프로젝트구축진행 게시글에 새로운 답글이 등록되었습니다",
+        items=[
+            ("업체명", company_name),
+            ("프로젝트", project_title),
+            ("답글 제목", title),
+            ("작성자", writer_name),
+        ],
+        link_url=f"{PACMS_BASE_URL}/managed/project-board/{parent_board_id}/",
+        link_text="답글 확인하기",
+    )
+    send_email_async(emails, subject, html)
+
+
+def notify_project_board_comment_created(
+    db: Session,
+    board_id: int,
+    company_name: str,
+    project_title: str,
+    board_title: str,
+    writer_name: str,
+):
+    """Send notification email when a customer adds a comment to a project board post"""
+    emails = get_agent_emails(db)
+    if not emails:
+        return
+
+    subject = f"[HCMS] 프로젝트 게시글 댓글: {board_title}"
+    html = _build_html(
+        title="프로젝트구축진행 게시글에 새로운 댓글이 등록되었습니다",
+        items=[
+            ("업체명", company_name),
+            ("프로젝트", project_title),
+            ("게시글 제목", board_title),
+            ("작성자", writer_name),
+        ],
+        link_url=f"{PACMS_BASE_URL}/managed/project-board/{board_id}/",
+        link_text="댓글 확인하기",
+    )
+    send_email_async(emails, subject, html)

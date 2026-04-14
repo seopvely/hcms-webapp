@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, X, Loader2, Download, Paperclip } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ import { LoadingState } from "@/components/common";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useProjectBoardDetail, useCreateBoardReply } from "@/lib/api-hooks";
 import { useToast } from "@/components/common/app-toast";
+import { formatDate } from "@/lib/utils";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -72,6 +74,25 @@ export default function ReplyProjectBoardPage() {
       setTitle(`RE: ${parentData.title}`);
     }
   }, [parentData, title]);
+
+  const handleDownload = async (attachmentId: number, filename: string) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`/api/project-board/attachments/${attachmentId}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast("error", "파일 다운로드에 실패했습니다.");
+    }
+  };
 
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -166,6 +187,41 @@ export default function ReplyProjectBoardPage() {
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">{parentData.project_name}</Badge>
               )}
             </div>
+            {parentData.content && (
+              <>
+                <Separator className="my-3" />
+                <div
+                  className="prose prose-sm max-w-none text-sm text-muted-foreground leading-relaxed max-h-[300px] overflow-y-auto"
+                  dangerouslySetInnerHTML={{ __html: parentData.content }}
+                />
+              </>
+            )}
+            {parentData.attachments && parentData.attachments.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <Paperclip className="h-3 w-3" />
+                  첨부파일 ({parentData.attachments.length})
+                </p>
+                <div className="space-y-1.5">
+                  {parentData.attachments.map((file) => (
+                    <button
+                      key={file.id}
+                      onClick={() => handleDownload(file.id, file.name)}
+                      className="w-full flex items-center justify-between p-2.5 bg-background rounded-xl hover:bg-muted/80 transition-colors cursor-pointer text-left"
+                    >
+                      <span className="flex items-center gap-2 text-sm truncate">
+                        <Download className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                        {file.file_size ? formatFileSize(file.file_size) : ""}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

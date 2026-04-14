@@ -47,6 +47,10 @@ class WebhookData(BaseModel):
     category_display: str | None = None
     is_published: bool | None = None
     companies: list[dict] | None = None
+    # project_board_post fields
+    board_id: int | None = None
+    parent_id: int | None = None
+    action: str | None = None
 
 
 class WebhookPayload(BaseModel):
@@ -82,6 +86,12 @@ EVENT_PUSH_CONFIG = {
         "body_template": "{title}",
         "route_prefix": "/news/",
         "id_field": "news_id",
+    },
+    "project_board_post": {
+        "title": "프로젝트구축진행",
+        "body_template": "{title}",
+        "route_prefix": "/project-board/",
+        "id_field": "board_id",
     },
 }
 
@@ -174,6 +184,13 @@ def receive_pacms_webhook(
     # 푸시 메시지 구성
     title = config["title"]
     body = config["body_template"].format(title=data.title or "")
+
+    # project_board_post는 action에 따라 메시지 분기
+    if event_type == "project_board_post" and data.action:
+        action_labels = {"post": "새 게시글", "reply": "새 답글", "comment": "새 댓글"}
+        action_label = action_labels.get(data.action, "새 글")
+        title = f"프로젝트구축진행 - {action_label}"
+        body = f"{data.project_name or ''} - {data.title or ''}"
 
     # 프론트엔드 네비게이션용 data 필드
     target_id = getattr(data, config["id_field"], None)

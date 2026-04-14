@@ -14,6 +14,12 @@ from sqlalchemy import func, or_
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
+from app.models.company import Company
+from app.services.email import (
+    notify_project_board_created,
+    notify_project_board_reply_created,
+    notify_project_board_comment_created,
+)
 from app.models.customer import (
     Project,
     ProjectBoardCategory,
@@ -85,9 +91,12 @@ def list_company_projects(
 
     items = []
     for p in projects:
+        term_date = p.contract_termination_date
+        if hasattr(term_date, "date"):
+            term_date = term_date.date()
         is_active = (
-            p.contract_termination_date is not None
-            and p.contract_termination_date >= today
+            term_date is not None
+            and term_date >= today
         )
         items.append({
             "id": p.seq,
@@ -480,6 +489,20 @@ async def create_project_board(
     db.commit()
     db.refresh(new_board)
 
+    # 에이전트 이메일 알림
+    try:
+        company = db.query(Company).filter(Company.seq == company_id).first()
+        notify_project_board_created(
+            db=db,
+            board_id=new_board.seq,
+            company_name=company.name if company else "Unknown",
+            project_title=project.title or "",
+            title=title,
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass
+
     return {"id": new_board.seq, "message": "게시글이 등록되었습니다."}
 
 
@@ -667,6 +690,21 @@ async def create_project_board_reply(
     db.commit()
     db.refresh(new_reply)
 
+    # 에이전트 이메일 알림
+    try:
+        company = db.query(Company).filter(Company.seq == company_id).first()
+        project = db.query(Project).filter(Project.seq == parent_board.project_id).first()
+        notify_project_board_reply_created(
+            db=db,
+            parent_board_id=seq,
+            company_name=company.name if company else "Unknown",
+            project_title=project.title if project else "",
+            title=title,
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass
+
     return {"id": new_reply.seq, "message": "답글이 등록되었습니다."}
 
 
@@ -733,6 +771,21 @@ async def create_board_comment(
 
     db.commit()
     db.refresh(new_comment)
+
+    # 에이전트 이메일 알림
+    try:
+        company = db.query(Company).filter(Company.seq == board.company_id).first()
+        project = db.query(Project).filter(Project.seq == board.project_id).first()
+        notify_project_board_comment_created(
+            db=db,
+            board_id=seq,
+            company_name=company.name if company else "Unknown",
+            project_title=project.title if project else "",
+            board_title=board.title or "",
+            writer_name=current_user.name or "고객",
+        )
+    except Exception:
+        pass
 
     return {"id": new_comment.seq, "message": "댓글이 등록되었습니다."}
 
