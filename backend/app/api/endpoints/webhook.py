@@ -187,10 +187,10 @@ def receive_pacms_webhook(
 
     # project_board_post는 action에 따라 메시지 분기
     if event_type == "project_board_post" and data.action:
-        action_labels = {"post": "새 게시글", "reply": "새 답글", "comment": "새 댓글"}
-        action_label = action_labels.get(data.action, "새 글")
-        title = f"프로젝트구축진행 - {action_label}"
-        body = f"{data.project_name or ''} - {data.title or ''}"
+        action_labels = {"post": "질문", "reply": "답글", "comment": "댓글"}
+        action_label = action_labels.get(data.action, "글")
+        title = f"한결랩에서 {action_label}이 등록되었습니다"
+        body = f"[{data.project_name or ''}] {data.title or ''}"
 
     # 프론트엔드 네비게이션용 data 필드
     target_id = getattr(data, config["id_field"], None)
