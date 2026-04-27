@@ -601,6 +601,39 @@ async function deleteBoardComment(commentId: number): Promise<{ message: string 
   return data;
 }
 
+// ============ Hub API (Site Status) ============
+
+export interface SiteStatus {
+  site_id: number;
+  site_name: string;
+  url: string;
+  status: "ok" | "down" | "unknown";
+  response_ms: number | null;
+  last_checked: string | null;
+  error_count_today: number;
+  metrics: Record<string, number> | null;
+}
+
+async function fetchSiteStatusList(): Promise<SiteStatus[]> {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") || "" : "";
+  const hubUrl = process.env.NEXT_PUBLIC_HUB_API_URL;
+  if (!hubUrl) return [];
+  const res = await fetch(`${hubUrl}/api/sites/status`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export function useSiteStatus() {
+  return useQuery({
+    queryKey: ["site-status"],
+    queryFn: fetchSiteStatusList,
+    staleTime: 60000,
+    refetchInterval: 60000,
+  });
+}
+
 // ============ Hooks ============
 
 export function useDashboard() {

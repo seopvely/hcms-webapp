@@ -15,6 +15,11 @@ import {
   FolderOpen,
   Users,
   Bell,
+  Server,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -23,13 +28,14 @@ import { StatusBadge, LoadingState } from "@/components/common";
 import { AnimatedCounter } from "@/components/common/animated-counter";
 import { CardSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { useDashboard } from "@/lib/api-hooks";
+import { useDashboard, useSiteStatus } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { setPageTitle } = useNavigationStore();
   const { user } = useAuthStore();
   const { data, isLoading, error } = useDashboard();
+  const { data: siteStatusData, isLoading: siteStatusLoading } = useSiteStatus();
 
   useEffect(() => {
     setPageTitle("대시보드");
@@ -275,6 +281,71 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Site Status */}
+        {!siteStatusLoading && (() => {
+          const sites = siteStatusData ?? [];
+          const okCount = sites.filter((s) => s.status === "ok").length;
+          const downCount = sites.filter((s) => s.status === "down").length;
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Server className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-lg font-semibold">사이트 현황</h2>
+                </div>
+                {sites.length > 0 && (
+                  <Link href="/site-status" className="text-xs text-primary font-medium flex items-center gap-1">
+                    자세히 <ExternalLink className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+              {sites.length === 0 ? (
+                <Card className="rounded-2xl">
+                  <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <Server className="h-8 w-8 mb-2 opacity-25" />
+                    <p className="text-sm">연결된 사이트가 없습니다.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="rounded-2xl overflow-hidden">
+                  <div className="flex border-b">
+                    <div className="flex-1 flex flex-col items-center justify-center py-3 border-r">
+                      <p className="text-xl font-bold text-emerald-500">{okCount}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">정상</p>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center py-3 border-r">
+                      <p className="text-xl font-bold text-red-500">{downCount}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">다운</p>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center py-3">
+                      <p className="text-xl font-bold">{sites.length}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">전체</p>
+                    </div>
+                  </div>
+                  <CardContent className="p-0">
+                    {sites.map((site, idx) => (
+                      <div
+                        key={site.site_id}
+                        className={`flex items-center gap-3 px-4 py-3 ${idx < sites.length - 1 ? "border-b" : ""}`}
+                      >
+                        {site.status === "ok"
+                          ? <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                          : site.status === "down"
+                          ? <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                          : <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />}
+                        <p className="text-sm flex-1 truncate">{site.site_name}</p>
+                        {site.response_ms !== null && (
+                          <span className="text-[11px] text-muted-foreground shrink-0">{site.response_ms}ms</span>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Quick Actions */}
         <div>

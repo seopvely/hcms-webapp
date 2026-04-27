@@ -19,6 +19,7 @@ import { EmptyState, StatusBadge, LoadingState } from "@/components/common";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useMaintenanceList } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
+import { PointGuideSection } from "@/components/maintenance/point-guide-section";
 
 export default function MaintenanceListPage() {
   const { setPageTitle } = useNavigationStore();
@@ -59,6 +60,9 @@ export default function MaintenanceListPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
+        {/* Point Guide */}
+        <PointGuideSection />
+
         {/* Search + New Request */}
         <div className="flex gap-2">
           <div className="relative flex-1">

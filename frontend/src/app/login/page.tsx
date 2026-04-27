@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Building2, User, Lock, Eye, EyeOff, Loader2, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +29,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [autoLoginLoading, setAutoLoginLoading] = useState(false);
+  const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
   const defaultSiteKey = process.env.NEXT_PUBLIC_SITE_KEY;
 
   useEffect(() => {
@@ -52,6 +53,17 @@ function LoginContent() {
         });
     }
   }, [searchParams, router, setUser]);
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent;
+    if (/iPhone|iPad|iPod/i.test(userAgent)) {
+      setPlatform("ios");
+    } else if (/Android/i.test(userAgent)) {
+      setPlatform("android");
+    } else {
+      setPlatform("desktop");
+    }
+  }, []);
 
   const {
     register,
@@ -193,6 +205,67 @@ function LoginContent() {
               )}
             </Button>
           </form>
+
+          {/* Mobile App Download Section */}
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-white px-2 text-muted-foreground">앱 다운로드</span>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-center gap-2">
+              {platform === "ios" && (
+                <a
+                  href="https://apps.apple.com/kr/app/hankyeul-cms/id6759609176"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm text-muted-foreground hover:text-foreground hover:border-indigo-300 hover:bg-indigo-50/50 transition-all"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  <span>App Store에서 다운로드</span>
+                </a>
+              )}
+
+              {platform === "android" && (
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.hcms2.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm text-muted-foreground hover:text-foreground hover:border-indigo-300 hover:bg-indigo-50/50 transition-all"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  <span>Google Play에서 다운로드</span>
+                </a>
+              )}
+
+              {platform === "desktop" && (
+                <>
+                  <a
+                    href="https://apps.apple.com/kr/app/hankyeul-cms/id6759609176"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-xs text-muted-foreground hover:text-foreground hover:border-indigo-300 hover:bg-indigo-50/50 transition-all"
+                  >
+                    <Smartphone className="h-3.5 w-3.5" />
+                    <span>App Store</span>
+                  </a>
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.hcms2.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-xs text-muted-foreground hover:text-foreground hover:border-indigo-300 hover:bg-indigo-50/50 transition-all"
+                  >
+                    <Smartphone className="h-3.5 w-3.5" />
+                    <span>Google Play</span>
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
 
           <div className="mt-6 text-center">
             <div className="flex items-center justify-center gap-2 text-xs">

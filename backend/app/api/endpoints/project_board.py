@@ -433,7 +433,10 @@ async def create_project_board(
 
     # 계약기간 검증
     today = date.today()
-    if project.contract_termination_date and project.contract_termination_date < today:
+    term_date = project.contract_termination_date
+    if hasattr(term_date, "date"):
+        term_date = term_date.date()
+    if term_date and term_date < today:
         raise HTTPException(status_code=400, detail="계약기간이 만료된 프로젝트입니다.")
 
     # 카테고리 검증

@@ -52,8 +52,14 @@ export function NavigationSpinnerProvider({ children }: { children: React.ReactN
       const href = anchor.getAttribute("href");
       if (!href) return;
 
-      // Skip external links, hash links, blob links, and same-page navigation
-      if (href.startsWith("http") || href.startsWith("#") || href.startsWith("blob:") || href === pathname) {
+      // Skip external links, hash links, blob links, new-tab links, and same-page navigation
+      if (
+        href.startsWith("http") ||
+        href.startsWith("#") ||
+        href.startsWith("blob:") ||
+        anchor.getAttribute("target") === "_blank" ||
+        href === pathname
+      ) {
         return;
       }
 

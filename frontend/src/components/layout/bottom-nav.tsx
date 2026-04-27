@@ -7,12 +7,14 @@ import {
   ClipboardList,
   MessageSquare,
   FolderKanban,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboard } from "@/lib/api-hooks";
 
 const tabs = [
   { href: "/dashboard", label: "홈", icon: LayoutDashboard },
+  { href: "/site-status", label: "사이트", icon: Server },
   { href: "/maintenance", label: "유지보수", icon: Wrench },
   { href: "/tasks", label: "작업", icon: ClipboardList },
   { href: "/project-board", label: "구축진행", icon: FolderKanban },

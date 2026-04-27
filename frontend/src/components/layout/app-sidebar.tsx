@@ -13,6 +13,7 @@ import {
   LogOut,
   X,
   FolderKanban,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -21,6 +22,7 @@ import { useDashboard } from "@/lib/api-hooks";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/site-status", label: "사이트 현황", icon: Server },
   { href: "/news", label: "최신소식", icon: Newspaper },
   { href: "/maintenance", label: "유지보수 요청", icon: Wrench },
   { href: "/tasks", label: "건별작업", icon: ClipboardList },
