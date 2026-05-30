@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import { PageSpinner } from "./page-spinner";
 
 interface NavigationSpinnerContextType {
@@ -52,9 +53,17 @@ export function NavigationSpinnerProvider({ children }: { children: React.ReactN
       const href = anchor.getAttribute("href");
       if (!href) return;
 
-      // Skip external links, hash links, blob links, new-tab links, and same-page navigation
+      // In native Capacitor app, open external links in the system browser
+      if (href.startsWith("http") || href.startsWith("https")) {
+        if (Capacitor.isNativePlatform()) {
+          e.preventDefault();
+          window.open(href, "_system");
+        }
+        return;
+      }
+
+      // Skip hash links, blob links, new-tab links, and same-page navigation
       if (
-        href.startsWith("http") ||
         href.startsWith("#") ||
         href.startsWith("blob:") ||
         anchor.getAttribute("target") === "_blank" ||
