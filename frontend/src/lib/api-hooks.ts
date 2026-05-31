@@ -55,6 +55,16 @@ export interface DashboardData {
     remaining_points: number;
     point_percent: number;
   };
+  dev_subscription: {
+    has_dev_subscription: boolean;
+    plan_label: string;
+    dev_points_total: number;
+    dev_points_used: number;
+    dev_points_remaining: number;
+    maint_points_total: number;
+    maint_points_used: number;
+    maint_points_remaining: number;
+  };
   project_progress: {
     id: number;
     title: string;
@@ -77,6 +87,18 @@ export interface MaintenanceItem {
   request_date: string;
   project_title: string | null;
   comments_count: number;
+  points_used: number;
+}
+
+export interface PointHistoryItem {
+  id: number;
+  created_at: string;
+  content: string;
+  point_type: number;
+  point: number;
+  status: number;
+  worker_type: string;
+  point_category: string; // "1"=유지보수, "2"=개발
 }
 
 export interface MaintenanceComment {
@@ -100,10 +122,11 @@ export interface MaintenanceDetail {
   request_date: string;
   worker_type: string | null;
   worker_name: string | null;
-  used_points: number;
+  points_used: number;
   project_title: string | null;
   attachments: { id: number; name: string; size: string; url: string }[];
   comments: MaintenanceComment[];
+  point_histories: PointHistoryItem[];
 }
 
 // News
@@ -228,6 +251,7 @@ export interface PointUsageHistoryItem {
   created_at: string;
   content: string;
   point_type: number;
+  point_category: string;
   point: number;
   status: number;
   worker_type: number | null;
@@ -248,6 +272,7 @@ export interface PointUsageChartData {
 
 export interface PointUsageData {
   maintenance_customer: boolean;
+  dev_customer: boolean;
   current_project: PointUsageProject | null;
   projects_with_balance: PointUsageProjectBalance[];
   period_start: string;
@@ -268,6 +293,16 @@ export interface PointUsageData {
   date_from: string;
   date_to: string;
   point_type_filter: string;
+  maintenance_summary?: {
+    total: number;
+    used: number;
+    remaining: number;
+  };
+  dev_summary?: {
+    total: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 // Inquiries
@@ -466,6 +501,7 @@ async function fetchPointUsage(params: {
   date_from?: string;
   date_to?: string;
   point_type?: string;
+  point_category?: string;
   page?: number;
   per_page?: number;
 }): Promise<PointUsageData> {
@@ -599,6 +635,42 @@ async function updateBoardComment(commentId: number, formData: FormData): Promis
 async function deleteBoardComment(commentId: number): Promise<{ message: string }> {
   const { data } = await api.delete(`/project-board/comments/${commentId}`);
   return data;
+}
+
+// Dev Requests
+export interface DevRequestItem {
+  id: number;
+  title: string;
+  status: string;
+  dev_plan_type: string | null;
+  request_date: string;
+  comments_count: number;
+  points_used: number;
+}
+
+export interface DevRequestComment {
+  id: number;
+  author: string;
+  role: "manager" | "customer";
+  content: string;
+  created_at: string;
+  attachment: string | null;
+  attachments: { id: number; name: string; url: string }[];
+  parent_id: number | null;
+  replies?: DevRequestComment[];
+}
+
+export interface DevRequestDetail {
+  id: number;
+  title: string;
+  content: string;
+  status: string;
+  dev_plan_type: string | null;
+  request_date: string;
+  points_used: number;
+  attachments: { id: number; name: string; size: string; url: string }[];
+  comments: DevRequestComment[];
+  point_histories: PointHistoryItem[];
 }
 
 // ============ Hub API (Site Status) ============
@@ -738,6 +810,7 @@ export function usePointUsage(params: {
   date_from?: string;
   date_to?: string;
   point_type?: string;
+  point_category?: string;
   page?: number;
   per_page?: number;
 } = {}) {
@@ -922,6 +995,77 @@ export function useDeleteBoardComment(boardId: number) {
     mutationFn: deleteBoardComment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-board", "detail", boardId] });
+    },
+  });
+}
+
+// === Dev Requests ===
+
+async function fetchDevRequestList(params: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: string;
+}): Promise<PaginatedResponse<DevRequestItem>> {
+  const { data } = await api.get("/dev-requests", { params });
+  return data;
+}
+
+async function fetchDevRequestDetail(id: number): Promise<DevRequestDetail> {
+  const { data } = await api.get(`/dev-requests/${id}`);
+  return data;
+}
+
+async function createDevRequest(formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post("/dev-requests", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+async function createDevRequestComment(devRequestId: number, formData: FormData): Promise<{ id: number; message: string }> {
+  const { data } = await api.post(`/dev-requests/${devRequestId}/comments`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export function useDevRequestList(params: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  status?: string;
+} = {}) {
+  return useQuery({
+    queryKey: ["dev-requests", "list", params],
+    queryFn: () => fetchDevRequestList(params),
+  });
+}
+
+export function useDevRequestDetail(id: number) {
+  return useQuery({
+    queryKey: ["dev-requests", "detail", id],
+    queryFn: () => fetchDevRequestDetail(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateDevRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createDevRequest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dev-requests"] });
+    },
+  });
+}
+
+export function useCreateDevRequestComment(devRequestId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) => createDevRequestComment(devRequestId, formData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dev-requests", "detail", devRequestId] });
     },
   });
 }

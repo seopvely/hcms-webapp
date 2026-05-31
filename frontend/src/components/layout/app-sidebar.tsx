@@ -14,13 +14,14 @@ import {
   X,
   FolderKanban,
   Server,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useDashboard } from "@/lib/api-hooks";
 
-const navItems = [
+const baseNavItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/site-status", label: "사이트 현황", icon: Server },
   { href: "/news", label: "최신소식", icon: Newspaper },
@@ -39,6 +40,21 @@ export function AppSidebar() {
   const { sidebarOpen, setSidebarOpen } = useNavigationStore();
   const { data: dashboardData } = useDashboard();
   const hasProject = (dashboardData?.project_progress?.length ?? 0) > 0;
+  const hasDevSubscription = dashboardData?.dev_subscription?.has_dev_subscription ?? false;
+
+  const navItems = [
+    { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+    { href: "/site-status", label: "사이트 현황", icon: Server },
+    { href: "/news", label: "최신소식", icon: Newspaper },
+    { href: "/maintenance", label: "유지보수 요청", icon: Wrench },
+    ...(hasDevSubscription ? [{ href: "/dev-requests", label: "개발 요청", icon: Code2 }] : []),
+    { href: "/tasks", label: "건별작업", icon: ClipboardList },
+    { href: "/project-board", label: "프로젝트구축진행", icon: FolderKanban },
+    { href: "/estimates", label: "견적/계약", icon: FileText },
+    { href: "/point-usage", label: "포인트 사용현황", icon: Coins },
+    { href: "/inquiries", label: "고객문의", icon: MessageSquare },
+    { href: "/services", label: "할 수 있는 일", icon: Briefcase },
+  ];
 
   return (
     <>

@@ -69,6 +69,7 @@ export default function PointUsagePage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [pointTypeFilter, setPointTypeFilter] = useState("");
+  const [pointCategoryFilter, setPointCategoryFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [excelLoading, setExcelLoading] = useState(false);
 
@@ -91,6 +92,7 @@ export default function PointUsagePage() {
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
     point_type: pointTypeFilter || undefined,
+    point_category: pointCategoryFilter || undefined,
     page: currentPage,
     per_page: 20,
   });
@@ -111,6 +113,7 @@ export default function PointUsagePage() {
     setDateFrom("");
     setDateTo("");
     setPointTypeFilter("");
+    setPointCategoryFilter("");
     setCurrentPage(1);
   }
 
@@ -155,7 +158,7 @@ export default function PointUsagePage() {
     );
   }
 
-  if (!data?.maintenance_customer || !data?.current_project) {
+  if (!data?.maintenance_customer && !data?.dev_customer) {
     return (
       <PageTransition>
         <div className="space-y-4">
@@ -181,19 +184,20 @@ export default function PointUsagePage() {
   const remainPercent = data.total_points > 0
     ? Math.round((data.remaining_points / data.total_points) * 100)
     : 0;
+  const hasMaintenanceData = data.maintenance_customer && project !== null;
 
   return (
     <PageTransition>
       <div className="space-y-5">
         {/* Project Selector */}
-        {data.projects_with_balance.length > 1 && (
+        {hasMaintenanceData && data.projects_with_balance.length > 1 && (
           <Card className="rounded-2xl">
             <CardContent className="p-4">
               <label className="text-xs text-muted-foreground mb-1.5 block">
                 유지보수 프로젝트 선택
               </label>
               <Select
-                value={String(project.id)}
+                value={String(project!.id)}
                 onValueChange={handleProjectChange}
               >
                 <SelectTrigger className="rounded-xl">
@@ -212,58 +216,122 @@ export default function PointUsagePage() {
         )}
 
         {/* Contract Info */}
-        <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
-          <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
-            <h2 className="text-sm font-semibold opacity-90 mb-1">
-              {project.title}
-            </h2>
-            <p className="text-xs text-white/70 mb-4">
-              계약기간: {data.period_start} ~ {data.period_end}
-            </p>
+        {hasMaintenanceData && (
+          <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
+            <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
+              <h2 className="text-sm font-semibold opacity-90 mb-1">
+                {project!.title}
+              </h2>
+              <p className="text-xs text-white/70 mb-4">
+                계약기간: {data.period_start} ~ {data.period_end}
+              </p>
 
-            {/* Summary Stats */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/10 rounded-xl p-3 text-center">
-                <Coins className="h-4 w-4 mx-auto mb-1 opacity-80" />
-                <p className="text-xs text-white/70">총 포인트</p>
-                <p className="text-lg font-bold">
-                  <AnimatedCounter value={data.total_points} />
-                </p>
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/10 rounded-xl p-3 text-center">
+                  <Coins className="h-4 w-4 mx-auto mb-1 opacity-80" />
+                  <p className="text-xs text-white/70">총 포인트</p>
+                  <p className="text-lg font-bold">
+                    <AnimatedCounter value={data.total_points} />
+                  </p>
+                </div>
+                <div className="bg-white/10 rounded-xl p-3 text-center">
+                  <TrendingUp className="h-4 w-4 mx-auto mb-1 opacity-80" />
+                  <p className="text-xs text-white/70">사용</p>
+                  <p className="text-lg font-bold">
+                    <AnimatedCounter value={data.used_points} />
+                  </p>
+                </div>
+                <div className="bg-white/10 rounded-xl p-3 text-center">
+                  <PiggyBank className="h-4 w-4 mx-auto mb-1 opacity-80" />
+                  <p className="text-xs text-white/70">잔여</p>
+                  <p className="text-lg font-bold">
+                    <AnimatedCounter value={data.remaining_points} />
+                  </p>
+                </div>
               </div>
-              <div className="bg-white/10 rounded-xl p-3 text-center">
-                <TrendingUp className="h-4 w-4 mx-auto mb-1 opacity-80" />
-                <p className="text-xs text-white/70">사용</p>
-                <p className="text-lg font-bold">
-                  <AnimatedCounter value={data.used_points} />
-                </p>
-              </div>
-              <div className="bg-white/10 rounded-xl p-3 text-center">
-                <PiggyBank className="h-4 w-4 mx-auto mb-1 opacity-80" />
-                <p className="text-xs text-white/70">잔여</p>
-                <p className="text-lg font-bold">
-                  <AnimatedCounter value={data.remaining_points} />
-                </p>
+
+              {/* Progress bar */}
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-white/60 mb-1">
+                  <span>사용 {usagePercent}%</span>
+                  <span>잔여 {remainPercent}%</span>
+                </div>
+                <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${usagePercent}%` }}
+                  />
+                </div>
               </div>
             </div>
+          </Card>
+        )}
 
-            {/* Progress bar */}
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-white/60 mb-1">
-                <span>사용 {usagePercent}%</span>
-                <span>잔여 {remainPercent}%</span>
-              </div>
-              <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${usagePercent}%` }}
-                />
-              </div>
+        {/* Dev Points Summary */}
+        {(data.dev_summary?.total ?? 0) > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Coins className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-lg font-semibold">개발 포인트 (이번달 기준)</h2>
             </div>
+            <Card className="rounded-2xl overflow-hidden border-0 shadow-md">
+              <div className="bg-gradient-to-r from-[#4facfe] to-[#00f2fe] p-5 text-white">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white/10 rounded-xl p-3 text-center">
+                    <Coins className="h-4 w-4 mx-auto mb-1 opacity-80" />
+                    <p className="text-xs text-white/70">총 포인트</p>
+                    <p className="text-lg font-bold">
+                      <AnimatedCounter value={data.dev_summary!.total} />
+                    </p>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-3 text-center">
+                    <TrendingUp className="h-4 w-4 mx-auto mb-1 opacity-80" />
+                    <p className="text-xs text-white/70">사용</p>
+                    <p className="text-lg font-bold">
+                      <AnimatedCounter value={data.dev_summary!.used} />
+                    </p>
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-3 text-center">
+                    <PiggyBank className="h-4 w-4 mx-auto mb-1 opacity-80" />
+                    <p className="text-xs text-white/70">잔여</p>
+                    <p className="text-lg font-bold">
+                      <AnimatedCounter value={data.dev_summary!.remaining} />
+                    </p>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                {data.dev_summary!.total > 0 && (
+                  <div className="mt-4">
+                    {(() => {
+                      const devUsagePercent = Math.round(
+                        (data.dev_summary!.used / data.dev_summary!.total) * 100
+                      );
+                      const devRemainPercent = 100 - devUsagePercent;
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs text-white/60 mb-1">
+                            <span>사용 {devUsagePercent}%</span>
+                            <span>잔여 {devRemainPercent}%</span>
+                          </div>
+                          <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-out"
+                              style={{ width: `${devUsagePercent}%` }}
+                            />
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
-        </Card>
+        )}
 
         {/* Monthly Chart */}
-        {data.chart_data.length > 0 && data.chart_data.some((d) => d.usage > 0) && (
+        {hasMaintenanceData && data.chart_data.length > 0 && data.chart_data.some((d) => d.usage > 0) && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
@@ -301,7 +369,7 @@ export default function PointUsagePage() {
         )}
 
         {/* Worker Stats */}
-        {data.worker_stats.length > 0 && (
+        {hasMaintenanceData && data.worker_stats.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -411,6 +479,21 @@ export default function PointUsagePage() {
                     <SelectItem value="3">책정</SelectItem>
                   </SelectContent>
                 </Select>
+                {data.dev_customer && (
+                  <Select
+                    value={pointCategoryFilter}
+                    onValueChange={(val) => { setPointCategoryFilter(val === "all" ? "" : val); setCurrentPage(1); }}
+                  >
+                    <SelectTrigger className="rounded-xl h-10 text-sm sm:text-xs">
+                      <SelectValue placeholder="포인트 구분" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">전체</SelectItem>
+                      <SelectItem value="1">유지보수</SelectItem>
+                      <SelectItem value="2">개발</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -438,6 +521,7 @@ export default function PointUsagePage() {
                 const wt = item.worker_type ? WORKER_TYPE_MAP[item.worker_type] : null;
                 const isCharge = Number(item.point_type) === 1;
                 const isAlloc = Number(item.point_type) === 3;
+                const isDev = item.point_category === "2";
 
                 return (
                   <Card
@@ -455,6 +539,11 @@ export default function PointUsagePage() {
                           <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${st.color}`}>
                             {st.label}
                           </Badge>
+                          {data.dev_customer && (
+                            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${isDev ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-600"}`}>
+                              {isDev ? "개발" : "유지보수"}
+                            </Badge>
+                          )}
                           {wt && (
                             <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${wt.color}`}>
                               {wt.label}

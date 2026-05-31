@@ -24,10 +24,17 @@ const estimateStatusMap: Record<string, BadgeVariant> = {
   "5": { label: "계약전환", className: "bg-purple-100 text-purple-700" },
 };
 
+const devRequestStatusMap: Record<string, BadgeVariant> = {
+  "1": { label: "접수", className: "bg-blue-100 text-blue-700" },
+  "3": { label: "처리중", className: "bg-amber-100 text-amber-700" },
+  "4": { label: "완료", className: "bg-emerald-100 text-emerald-700" },
+};
+
 const statusMaps = {
   maintenance: maintenanceStatusMap,
   task: taskStatusMap,
   estimate: estimateStatusMap,
+  "dev-request": devRequestStatusMap,
 };
 
 interface StatusBadgeProps {
@@ -43,10 +50,11 @@ export function StatusBadge({ status, type, className }: StatusBadgeProps) {
     className: "bg-gray-100 text-gray-600",
   };
 
-  // Show pulse dot for in-progress statuses (maintenance: 알림/처리중, task: 진행중)
+  // Show pulse dot for in-progress statuses (maintenance: 알림/처리중, task: 진행중, dev-request: 처리중)
   const showPulse =
     (type === "maintenance" && (status === "2" || status === "3")) ||
-    (type === "task" && status === "2");
+    (type === "task" && status === "2") ||
+    (type === "dev-request" && status === "3");
 
   return (
     <span

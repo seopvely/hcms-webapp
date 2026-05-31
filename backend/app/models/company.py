@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 
@@ -30,3 +31,5 @@ class Company(Base):
     bank_file_name = Column(String(255), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+
+    dev_subscriptions = relationship("DevSubscription", back_populates="company")

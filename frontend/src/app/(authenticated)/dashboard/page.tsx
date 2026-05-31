@@ -20,6 +20,7 @@ import {
   XCircle,
   AlertCircle,
   ExternalLink,
+  Code2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -188,6 +189,101 @@ export default function DashboardPage() {
                   {data.point_summary.point_percent}% 잔여
                 </p>
               </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Dev Subscription Credits */}
+        {data?.dev_subscription?.has_dev_subscription && (
+          <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
+            <div className="bg-gradient-to-r from-[#11998e] to-[#38ef7d] p-5 text-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Code2 className="h-5 w-5 opacity-80" />
+                  <h2 className="text-sm font-semibold opacity-90">개발 구독 크레딧</h2>
+                </div>
+                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">
+                  {data.dev_subscription.plan_label}
+                </span>
+              </div>
+
+              {/* 운영 크레딧 */}
+              {data.dev_subscription.maint_points_total > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-white/70 mb-1">운영 크레딧 (이번 달)</p>
+                  <div className="grid grid-cols-3 gap-4 mb-2">
+                    <div>
+                      <p className="text-[10px] text-white/60">월 지급</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.dev_subscription.maint_points_total} suffix=" P" />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/60">사용</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.dev_subscription.maint_points_used} suffix=" P" />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/60">잔여</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.dev_subscription.maint_points_remaining} suffix=" P" />
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: `${data.dev_subscription.maint_points_total > 0
+                          ? Math.max(0, Math.round((data.dev_subscription.maint_points_remaining / data.dev_subscription.maint_points_total) * 100))
+                          : 0}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 개발 크레딧 */}
+              {data.dev_subscription.dev_points_total > 0 && (
+                <div className={data.dev_subscription.maint_points_total > 0 ? "pt-3 border-t border-white/20" : ""}>
+                  <p className="text-xs text-white/70 mb-1">개발 크레딧 (이번 달)</p>
+                  <div className="grid grid-cols-3 gap-4 mb-2">
+                    <div>
+                      <p className="text-[10px] text-white/60">월 지급</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.dev_subscription.dev_points_total} suffix=" P" />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/60">사용</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.dev_subscription.dev_points_used} suffix=" P" />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/60">잔여</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.dev_subscription.dev_points_remaining} suffix=" P" />
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: `${data.dev_subscription.dev_points_total > 0
+                          ? Math.max(0, Math.round((data.dev_subscription.dev_points_remaining / data.dev_subscription.dev_points_total) * 100))
+                          : 0}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Link href="/dev-requests" className="mt-3 flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors pt-3">
+                개발 요청 보기 <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
           </Card>
         )}

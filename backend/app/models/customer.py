@@ -9,6 +9,7 @@ from sqlalchemy import (
     Text,
     Table,
     Float,
+    func,
 )
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -74,12 +75,14 @@ class Managelist(Base):
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     points_used = Column(Integer, nullable=True, default=0)
+    dev_subscription_id = Column(Integer, ForeignKey("pacms_devsubscription.seq"), nullable=True)
 
     company = relationship("Company")
     project = relationship("Project", backref="managelists")
     writer = relationship("Manager")
     comments = relationship("ManagelistComment", back_populates="managelist", order_by="ManagelistComment.created_at")
     attachments = relationship("MaintenanceAttachment", back_populates="managelist")
+    dev_subscription = relationship("DevSubscription", foreign_keys=[dev_subscription_id])
 
 
 class ManagelistComment(Base):
@@ -135,7 +138,7 @@ class News(Base):
     seq = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(200), nullable=True)
     content = Column(Text, nullable=True)
-    category = Column(String(50), nullable=True)  # general/maintenance/notice/update
+    category = Column(String(50), nullable=True)
     writer_id = Column(Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
     is_published = Column(Boolean, default=False)
     views = Column(Integer, default=0)
@@ -159,9 +162,9 @@ class Inditask(Base):
     worker_id = Column(Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
     requestDate = Column(DateTime, nullable=True)
     work_date = Column(DateTime, nullable=True)
-    task_type = Column(Integer, nullable=True)  # 1-7
+    task_type = Column(Integer, nullable=True)
     deadline = Column(DateTime, nullable=True)
-    task_status = Column(Integer, nullable=True, default=1)  # 1-4
+    task_status = Column(Integer, nullable=True, default=1)
     budget = Column(Integer, nullable=True, default=0)
     estimated_hours = Column(Float, nullable=True)
     actual_hours = Column(Float, nullable=True)
@@ -204,9 +207,9 @@ class Estimate(Base):
     estimate_type = Column(String(50), nullable=True)
     estimate_date = Column(Date, nullable=True)
     estimate_amount = Column(Integer, nullable=True, default=0)
-    estimate_status = Column(Integer, nullable=True, default=1)  # 1-5
+    estimate_status = Column(Integer, nullable=True, default=1)
     tax_rate = Column(Float, nullable=True)
-    discount_type = Column(String(1), nullable=True)  # 1=비율, 2=금액
+    discount_type = Column(String(1), nullable=True)
     discount_rate = Column(Float, nullable=True)
     discount_amount = Column(Integer, nullable=True)
     discount_description = Column(String(200), nullable=True)
@@ -281,9 +284,9 @@ class Payment(Base):
     project_id = Column(Integer, ForeignKey("project.seq"), nullable=True)
     payment_date = Column(Date, nullable=True)
     payment_amount = Column(Integer, nullable=True, default=0)
-    payment_type = Column(Integer, nullable=True)  # 1-6
-    payment_method = Column(Integer, nullable=True)  # 1-3
-    payment_status = Column(Integer, nullable=True, default=1)  # 1-3
+    payment_type = Column(Integer, nullable=True)
+    payment_method = Column(Integer, nullable=True)
+    payment_status = Column(Integer, nullable=True, default=1)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -302,6 +305,7 @@ class PointHistory(Base):
     content = Column(String(500), nullable=True)
     point = Column(Integer, nullable=True, default=0)
     point_type = Column(Integer, nullable=True)  # 1=충전,2=사용,3=책정
+    point_category = Column(String(1), nullable=True, default="1")  # '1'=유지보수,'2'=개발
     status = Column(Integer, nullable=True, default=1)  # 1=입력,2=실행
     worker_type = Column(Integer, nullable=True)
     service_type = Column(String(50), nullable=True)
@@ -322,8 +326,8 @@ class Inquiry(Base):
     writer_id = Column(Integer, ForeignKey("manager.seq"), nullable=True)
     title = Column(String(200), nullable=True)
     contents = Column(Text, nullable=True)
-    inquiry_type = Column(Integer, nullable=True)  # 1-7
-    status = Column(Integer, nullable=True, default=1)  # 1-3
+    inquiry_type = Column(Integer, nullable=True)
+    status = Column(Integer, nullable=True, default=1)
     priority = Column(String(50), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
@@ -340,7 +344,7 @@ class InquiryAnswer(Base):
     seq = Column(Integer, primary_key=True, autoincrement=True)
     inquiry_id = Column(Integer, ForeignKey("inquiry.seq"), nullable=True)
     content = Column(Text, nullable=True)
-    writer_type = Column(Integer, nullable=True)  # 1=관리자,2=고객
+    writer_type = Column(Integer, nullable=True)
     admin_writer_id = Column(Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
     customer_writer_id = Column(Integer, ForeignKey("manager.seq"), nullable=True)
     parent_answer_id = Column(Integer, ForeignKey("inquiry_answer.seq"), nullable=True)
@@ -370,7 +374,7 @@ class Notice(Base):
 
     seq = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(200), nullable=True)
-    notice_type = Column(Integer, nullable=True)  # 1-3
+    notice_type = Column(Integer, nullable=True)
     company_id = Column(Integer, ForeignKey("company.seq"), nullable=True)
     content = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True)
@@ -379,8 +383,7 @@ class Notice(Base):
     company = relationship("Company")
 
 
-# === 프로젝트구축진행 게시판 (pacms 테이블 매핑) ===
-
+# === 프로젝트구축진행 게시판 ===
 
 class ProjectBoardCategory(Base):
     __tablename__ = "project_board_category"
@@ -419,8 +422,8 @@ class ProjectBoard(Base):
     content = Column(Text, nullable=True)
     writer_id = Column("writer_id", Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
     customer_writer_id = Column("customer_writer_id", Integer, ForeignKey("manager.seq"), nullable=True)
-    writer_type = Column(String(1), nullable=True)  # '1'=관리자, '2'=고객
-    status = Column(String(1), nullable=True, default="1")  # '1'=진행중, '2'=완료, '3'=보류
+    writer_type = Column(String(1), nullable=True)
+    status = Column(String(1), nullable=True, default="1")
     views = Column(Integer, default=0)
     is_notice = Column(Boolean, default=False)
     created_at = Column(DateTime, nullable=True)
@@ -445,7 +448,7 @@ class ProjectBoardComment(Base):
     content = Column(Text, nullable=True)
     writer_id = Column("writer_id", Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
     customer_writer_id = Column("customer_writer_id", Integer, ForeignKey("manager.seq"), nullable=True)
-    writer_type = Column(String(1), nullable=True)  # '1'=관리자, '2'=고객
+    writer_type = Column(String(1), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -525,3 +528,23 @@ class EstimateContract(Base):
 
     estimate = relationship("Estimate", backref="contracts")
     company = relationship("Company")
+
+
+class DevSubscription(Base):
+    __tablename__ = "pacms_devsubscription"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, ForeignKey("company.seq"), nullable=False)
+    plan_type = Column(String(10), nullable=False)  # starter/growth/scale
+    status = Column(String(10), default="active")   # active/inactive/beta
+    start_date = Column(Date, nullable=False)
+    next_charge_date = Column(Date, nullable=False)
+    is_beta = Column(Boolean, default=False)
+    maintenance_points_per_month = Column(Integer, default=0)
+    dev_points_per_month = Column(Integer, default=0)
+    monthly_price = Column(Integer, default=0)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    company = relationship("Company", back_populates="dev_subscriptions")

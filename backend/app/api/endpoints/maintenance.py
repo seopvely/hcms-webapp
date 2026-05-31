@@ -642,6 +642,27 @@ def get_maintenance_detail(
             }
         )
 
+    point_histories_db = (
+        db.query(PointHistory)
+        .filter(PointHistory.managelist_id == item.seq)
+        .order_by(PointHistory.created_at.desc())
+        .all()
+    )
+    worker_type_map = {1: "계약", 2: "기획", 3: "디자인", 4: "프론트엔드", 5: "백엔드", 6: "유지보수"}
+    point_histories = [
+        {
+            "id": ph.seq,
+            "created_at": ph.created_at.strftime("%Y-%m-%d %H:%M:%S") if ph.created_at else "",
+            "content": ph.content or "",
+            "point_type": ph.point_type,
+            "point": abs(ph.point) if ph.point else 0,
+            "status": ph.status,
+            "worker_type": worker_type_map.get(ph.worker_type, "") if ph.worker_type else "",
+            "point_category": ph.point_category or "1",
+        }
+        for ph in point_histories_db
+    ]
+
     return {
         "id": item.seq,
         "title": item.title,
@@ -661,4 +682,5 @@ def get_maintenance_detail(
         "points_used": item.points_used or 0,
         "attachments": attachments,
         "comments": comments,
+        "point_histories": point_histories,
     }

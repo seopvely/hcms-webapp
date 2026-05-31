@@ -16,6 +16,7 @@ from app.api.endpoints.push import router as push_router
 from app.api.endpoints.inquiries import router as inquiries_router
 from app.api.endpoints.webhook import router as webhook_router
 from app.api.endpoints.project_board import router as project_board_router
+from app.api.endpoints.dev_requests import router as dev_requests_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -50,6 +51,6 @@ api_router.include_router(push_router)
 api_router.include_router(inquiries_router)
 api_router.include_router(webhook_router)
 api_router.include_router(project_board_router)
+api_router.include_router(dev_requests_router)
 
 app.include_router(api_router)
-
