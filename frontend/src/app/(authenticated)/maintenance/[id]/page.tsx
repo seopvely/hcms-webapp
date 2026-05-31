@@ -273,11 +273,11 @@ export default function MaintenanceDetailPage() {
           </div>
 
           {/* Points Badge */}
-          {data.used_points > 0 && (
+          {data.points_used > 0 && (
             <div className="px-4 py-2 bg-blue-50 border-b flex items-center justify-between">
               <span className="text-xs text-muted-foreground">사용 포인트</span>
               <Badge variant="secondary" className="rounded-lg font-bold">
-                {data.used_points} P
+                {data.points_used} P
               </Badge>
             </div>
           )}
