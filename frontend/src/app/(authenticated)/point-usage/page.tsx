@@ -34,6 +34,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { usePointUsage } from "@/lib/api-hooks";
 import { formatDateTime } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
+import { downloadBlob } from "@/lib/download";
 
 const WORKER_TYPE_MAP: Record<number, { label: string; color: string }> = {
   1: { label: "계약", color: "bg-blue-100 text-blue-700" },
@@ -128,17 +129,9 @@ export default function PointUsagePage() {
       });
       if (!response.ok) throw new Error("엑셀 생성 실패");
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "포인트사용내역.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
+      await downloadBlob(blob, "포인트사용내역.xlsx");
     } catch (e) {
+      alert(`엑셀 다운로드 오류: ${e instanceof Error ? e.message : String(e)}`);
       console.error("엑셀 다운로드 오류:", e);
     } finally {
       setExcelLoading(false);

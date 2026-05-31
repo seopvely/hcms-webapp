@@ -41,6 +41,7 @@ import {
   useDeleteBoardComment,
 } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 function getStatusBadgeClass(status: string) {
   switch (status) {
@@ -114,14 +115,9 @@ export default function ProjectBoardDetailPage() {
       });
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(blobUrl);
-    } catch {
-      toast("error", "파일 다운로드에 실패했습니다.");
+      await downloadBlob(blob, filename);
+    } catch (error) {
+      toast("error", `파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

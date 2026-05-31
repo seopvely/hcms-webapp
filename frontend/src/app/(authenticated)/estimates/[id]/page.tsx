@@ -18,6 +18,7 @@ import { AnimatedCounter } from "@/components/common/animated-counter";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useEstimateDetail } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 function formatAmount(n: number) {
   return n.toLocaleString("ko-KR");
@@ -52,14 +53,8 @@ function EstimateDetailContent() {
       });
       if (!response.ok) throw new Error("PDF 생성 실패");
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = type === "estimate"
-        ? `견적서_${id}.pdf`
-        : `계약서_${id}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      const filename = type === "estimate" ? `견적서_${id}.pdf` : `계약서_${id}.pdf`;
+      await downloadBlob(blob, filename);
     } catch {
       alert("PDF 다운로드에 실패했습니다.");
     } finally {

@@ -35,6 +35,7 @@ import { StatusBadge, LoadingState } from "@/components/common";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useMaintenanceDetail, useCreateMaintenanceComment, MaintenanceComment } from "@/lib/api-hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 function buildCommentTree(comments: MaintenanceComment[]): MaintenanceComment[] {
   const map = new Map<number, MaintenanceComment>();
@@ -209,14 +210,9 @@ export default function MaintenanceDetailPage() {
       });
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert("파일 다운로드에 실패했습니다.");
+      await downloadBlob(blob, filename);
+    } catch (error) {
+      alert(`파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

@@ -31,6 +31,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { useProjectBoardDetail, useCreateBoardReply } from "@/lib/api-hooks";
 import { useToast } from "@/components/common/app-toast";
 import { formatDate } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -83,12 +84,7 @@ export default function ReplyProjectBoardPage() {
       });
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(blobUrl);
+      await downloadBlob(blob, filename);
     } catch {
       toast("error", "파일 다운로드에 실패했습니다.");
     }

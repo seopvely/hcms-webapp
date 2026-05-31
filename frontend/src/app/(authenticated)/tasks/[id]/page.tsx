@@ -14,6 +14,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { useTaskDetail } from "@/lib/api-hooks";
 import api from "@/lib/axios";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 const taskTypeColors: Record<string, string> = {
   "계약": "bg-gray-100 text-gray-700",
@@ -36,16 +37,9 @@ export default function TaskDetailPage() {
   const handleDownload = useCallback(async (url: string, filename: string) => {
     try {
       const response = await api.get(url, { responseType: "blob" });
-      const blobUrl = window.URL.createObjectURL(response.data);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch {
-      alert("파일 다운로드에 실패했습니다.");
+      await downloadBlob(response.data, filename);
+    } catch (error) {
+      alert(`파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
     }
   }, []);
 
