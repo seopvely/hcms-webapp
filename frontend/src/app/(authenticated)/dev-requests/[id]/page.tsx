@@ -39,6 +39,7 @@ import {
   DevRequestComment,
 } from "@/lib/api-hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { downloadBlob } from "@/lib/download";
 
 function buildCommentTree(comments: DevRequestComment[]): DevRequestComment[] {
   const map = new Map<number, DevRequestComment>();
@@ -223,18 +224,9 @@ export default function DevRequestDetailPage() {
       });
       if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
-    } catch {
-      alert("파일 다운로드에 실패했습니다.");
+      await downloadBlob(blob, filename);
+    } catch (error) {
+      alert(`파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
