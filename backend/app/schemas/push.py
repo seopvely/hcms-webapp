@@ -4,7 +4,6 @@ from pydantic import BaseModel
 class PushTokenRegister(BaseModel):
     token: str
     platform: str  # "ios" | "android"
-    device_id: str | None = None
 
 
 class PushTokenResponse(BaseModel):

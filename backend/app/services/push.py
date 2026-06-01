@@ -10,14 +10,13 @@ from app.core.firebase import send_push
 logger = logging.getLogger(__name__)
 
 
-def register_token(db: Session, manager_seq: int, token: str, platform: str, device_id: str | None = None) -> PushToken:
+def register_token(db: Session, manager_seq: int, token: str, platform: str) -> PushToken:
     """토큰 등록 (upsert). 이미 존재하면 갱신."""
     existing = db.query(PushToken).filter(PushToken.token == token).first()
 
     if existing:
         existing.manager_seq = manager_seq
         existing.platform = platform
-        existing.device_id = device_id
         existing.is_active = True
         existing.updated_at = datetime.now()
         db.commit()
@@ -28,7 +27,6 @@ def register_token(db: Session, manager_seq: int, token: str, platform: str, dev
         manager_seq=manager_seq,
         token=token,
         platform=platform,
-        device_id=device_id,
         is_active=True,
     )
     db.add(new_token)

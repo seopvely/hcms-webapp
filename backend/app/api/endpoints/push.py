@@ -31,7 +31,6 @@ def register_push_token(
         manager_seq=current_user.seq,
         token=request.token,
         platform=request.platform,
-        device_id=request.device_id,
     )
     return token
 

@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
-import { Device } from "@capacitor/device";
 import api from "@/lib/axios";
 
 const PUSH_TOKEN_KEY = "push_token";
@@ -15,7 +14,6 @@ const BASE_DELAY_MS = 2000;
 async function sendTokenToServer(
   token: string,
   platform: "ios" | "android",
-  deviceId: string | null = null,
   retries = MAX_RETRIES
 ): Promise<boolean> {
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -26,7 +24,6 @@ async function sendTokenToServer(
       await api.post("/push/register", {
         token,
         platform,
-        device_id: deviceId,
       });
       console.log("[Push] Token registered on server");
       localStorage.setItem(PUSH_TOKEN_REGISTERED_KEY, "true");
@@ -69,13 +66,12 @@ export async function requestAndRegisterPushToken(): Promise<void> {
     console.log("[Push] FCM token received:", token.substring(0, 20) + "...");
 
     const platform = Capacitor.getPlatform() as "ios" | "android";
-    const { identifier } = await Device.getId();
-    console.log("[Push] Platform:", platform, "Device ID:", identifier);
+    console.log("[Push] Platform:", platform);
 
     localStorage.setItem(PUSH_TOKEN_KEY, token);
     localStorage.removeItem(PUSH_TOKEN_REGISTERED_KEY);
 
-    await sendTokenToServer(token, platform, identifier);
+    await sendTokenToServer(token, platform);
   } catch (err) {
     console.error("[Push] requestAndRegisterPushToken failed:", err);
   }
@@ -98,9 +94,7 @@ export function usePushNotifications() {
     if (savedToken && !isRegistered) {
       console.log("[Push] Hook: retrying server registration for saved token");
       const platform = Capacitor.getPlatform() as "ios" | "android";
-      Device.getId().then(({ identifier }) => {
-        sendTokenToServer(savedToken, platform, identifier);
-      });
+      sendTokenToServer(savedToken, platform);
     }
 
     FirebaseMessaging.addListener(
@@ -129,9 +123,7 @@ export function usePushNotifications() {
         localStorage.setItem(PUSH_TOKEN_KEY, token);
         localStorage.removeItem(PUSH_TOKEN_REGISTERED_KEY);
         const platform = Capacitor.getPlatform() as "ios" | "android";
-        Device.getId().then(({ identifier }) => {
-          sendTokenToServer(token, platform, identifier);
-        });
+        sendTokenToServer(token, platform);
       }
     );
 
