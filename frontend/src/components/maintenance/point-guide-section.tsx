@@ -5,6 +5,18 @@ import { Info, ChevronDown, ChevronUp, Download } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { downloadBlob } from "@/lib/download";
+
+async function handlePdfDownload(path: string, filename: string) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) throw new Error("Download failed");
+    const blob = await response.blob();
+    await downloadBlob(blob, filename);
+  } catch (error) {
+    alert(`파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 export function PointGuideSection() {
   const [isOpen, setIsOpen] = useState(false);
@@ -122,15 +134,13 @@ export function PointGuideSection() {
                 </div>
 
                 {/* PDF download */}
-                <a
-                  href="/maint_point_revised.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handlePdfDownload("/maint_point_revised.pdf", "크레딧_정책_안내서.pdf")}
                   className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   <Download className="h-4 w-4" />
                   크레딧 정책 안내서 다운로드
-                </a>
+                </button>
               </div>
             </TabsContent>
 
@@ -237,15 +247,13 @@ export function PointGuideSection() {
                 </p>
 
                 {/* PDF download */}
-                <a
-                  href="/maint_cost_table.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handlePdfDownload("/maint_cost_table.pdf", "작업별_크레딧_표.pdf")}
                   className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   <Download className="h-4 w-4" />
                   작업별 크레딧 표 다운로드
-                </a>
+                </button>
               </div>
             </TabsContent>
           </Tabs>
