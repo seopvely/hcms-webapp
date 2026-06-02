@@ -28,6 +28,7 @@ import { EmptyState, StatusBadge, LoadingState } from "@/components/common";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useDevRequestList } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
+import { DevPriceGuideSection } from "@/components/dev-requests/price-guide-section";
 
 export default function DevRequestListPage() {
   const { setPageTitle } = useNavigationStore();
@@ -70,6 +71,9 @@ export default function DevRequestListPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
+        {/* Price guide */}
+        <DevPriceGuideSection />
+
         {/* Search + Status Filter + New Request */}
         <div className="flex gap-2">
           <div className="relative flex-1">
