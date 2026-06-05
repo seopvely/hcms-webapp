@@ -8,6 +8,7 @@ import {
   MessageSquare,
   FolderKanban,
   Server,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboard } from "@/lib/api-hooks";
@@ -18,6 +19,7 @@ const tabs = [
   { href: "/maintenance", label: "유지보수", icon: Wrench },
   { href: "/tasks", label: "작업", icon: ClipboardList },
   { href: "/project-board", label: "구축진행", icon: FolderKanban },
+  { href: "/ai-dev-subscription", label: "AI 개발팀", icon: Bot },
   { href: "/inquiries", label: "문의", icon: MessageSquare },
 ];
 

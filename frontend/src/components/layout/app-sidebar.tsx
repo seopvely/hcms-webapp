@@ -15,6 +15,7 @@ import {
   FolderKanban,
   Server,
   Code2,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -53,6 +54,7 @@ export function AppSidebar() {
     { href: "/estimates", label: "견적/계약", icon: FileText },
     { href: "/point-usage", label: "포인트 사용현황", icon: Coins },
     { href: "/inquiries", label: "고객문의", icon: MessageSquare },
+    { href: "/ai-dev-subscription", label: "AI 개발팀", icon: Bot },
     { href: "/services", label: "할 수 있는 일", icon: Briefcase },
   ];
 
