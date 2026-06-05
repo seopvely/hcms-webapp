@@ -1,25 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Info, ChevronDown, ChevronUp, Download } from "lucide-react";
+import { Info, ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { downloadBlob } from "@/lib/download";
 
-async function handlePdfDownload(path: string, filename: string) {
-  try {
-    const response = await fetch(path);
-    if (!response.ok) throw new Error("Download failed");
-    const blob = await response.blob();
-    await downloadBlob(blob, filename);
-  } catch (error) {
-    alert(`파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
 export function PointGuideSection() {
   const [isOpen, setIsOpen] = useState(false);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+
+  async function handlePdfDownload(path: string, filename: string, key: string) {
+    if (downloadingKey) return;
+    setDownloadingKey(key);
+    try {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      await downloadBlob(blob, filename);
+    } catch (error) {
+      alert(`파일 다운로드에 실패했습니다.\n${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setDownloadingKey(null);
+    }
+  }
 
   return (
     <div className="rounded-xl border bg-card shadow-sm">
@@ -135,11 +140,16 @@ export function PointGuideSection() {
 
                 {/* PDF download */}
                 <button
-                  onClick={() => handlePdfDownload("/maint_point_revised.pdf", "크레딧_정책_안내서.pdf")}
-                  className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  onClick={() => handlePdfDownload("/maint_point_revised.pdf", "크레딧_정책_안내서.pdf", "policy")}
+                  disabled={downloadingKey !== null}
+                  className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Download className="h-4 w-4" />
-                  크레딧 정책 안내서 다운로드
+                  {downloadingKey === "policy" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {downloadingKey === "policy" ? "다운로드 중..." : "크레딧 정책 안내서 다운로드"}
                 </button>
               </div>
             </TabsContent>
@@ -248,11 +258,16 @@ export function PointGuideSection() {
 
                 {/* PDF download */}
                 <button
-                  onClick={() => handlePdfDownload("/maint_cost_table.pdf", "작업별_크레딧_표.pdf")}
-                  className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  onClick={() => handlePdfDownload("/maint_cost_table.pdf", "작업별_크레딧_표.pdf", "cost")}
+                  disabled={downloadingKey !== null}
+                  className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Download className="h-4 w-4" />
-                  작업별 크레딧 표 다운로드
+                  {downloadingKey === "cost" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {downloadingKey === "cost" ? "다운로드 중..." : "작업별 크레딧 표 다운로드"}
                 </button>
               </div>
             </TabsContent>
