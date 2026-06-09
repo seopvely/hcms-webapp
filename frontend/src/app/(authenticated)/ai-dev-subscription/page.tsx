@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/common";
 import { CardSkeleton } from "@/components/common/loading-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAIDevSubscriptions } from "@/lib/api-hooks";
+import { SubscriptionGuideSection } from "@/components/ai-dev-subscription/subscription-guide-section";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
@@ -46,6 +47,9 @@ export default function AIDevSubscriptionPage() {
             </div>
           </div>
         </div>
+
+        {/* 구독 안내 */}
+        <SubscriptionGuideSection />
 
         {/* 목록 */}
         {isLoading ? (

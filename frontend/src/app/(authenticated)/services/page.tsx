@@ -21,6 +21,7 @@ import {
   Clock,
   Plus,
   Star,
+  Bot,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -120,6 +121,168 @@ export default function ServicesPage() {
             2026 · VAT 별도 · 고객님의 디지털 성공을 위한 맞춤형 서비스
           </p>
         </div>
+
+        {/* 0. AI 운영 환경 구축 서비스 */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 border-l-4 border-violet-500 pl-4">
+            <Bot className="h-6 w-6 text-violet-600" />
+            <div>
+              <h2 className="text-2xl font-bold">AI 운영 환경 구축 서비스</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">AI는 이미 있습니다. 중요한 것은 활용 방법입니다.</p>
+            </div>
+          </div>
+
+          {/* Key message */}
+          <Card className="rounded-2xl bg-gradient-to-r from-violet-600 to-purple-700 text-white">
+            <CardContent className="pt-6 pb-6 space-y-4">
+              <p className="text-lg font-bold">AI 도구와 AI 활용은 다릅니다</p>
+              <p className="text-white/85 text-sm">
+                AI 도구는 누구나 구매할 수 있습니다. 하지만 어떻게 연결하고, 운영하고, 유지보수하고, 생산성을 높일 것인가에 대한 노하우는 다릅니다. 한결랩은 AI를 실제 업무에 연결합니다.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {["홈페이지 제작", "웹서비스 개발", "콘텐츠 생성", "업무 자동화", "프로젝트 운영", "유지보수"].map((item) => (
+                  <div key={item} className="flex items-center gap-1.5 text-sm">
+                    <Check className="h-4 w-4 text-white/70 shrink-0" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI 운영 프레임워크 */}
+          <Card className="rounded-2xl">
+            <CardContent className="pt-5 pb-5 space-y-3">
+              <h3 className="font-bold">한결랩 AI 운영 프레임워크</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { tool: "ChatGPT", role: "기획 및 문서화", Icon: MessageCircle, color: "text-emerald-600" },
+                  { tool: "Claude", role: "디자인 및 개발", Icon: Code2, color: "text-violet-600" },
+                  { tool: "runmcp", role: "프로젝트 및 작업 관리", Icon: Server, color: "text-blue-600" },
+                  { tool: "한결랩", role: "운영 노하우 제공", Icon: Shield, color: "text-orange-600" },
+                ].map(({ tool, role, Icon, color }) => (
+                  <div key={tool} className="flex items-center gap-3 rounded-xl border p-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <Icon className={`h-4 w-4 ${color}`} />
+                    </div>
+                    <div className="text-sm">
+                      <span className="font-semibold">{tool}</span>
+                      <span className="text-muted-foreground ml-1.5">→ {role}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* STARTER + BUSINESS plan cards */}
+          <div className="grid gap-5 md:grid-cols-2">
+            {/* STARTER */}
+            <Link href={serviceInquiryUrl("AI 운영 환경 구축", "STARTER")} className="block">
+              <Card className="rounded-2xl hover-lift border-slate-300 h-full">
+                <CardContent className="pt-5 pb-5 space-y-3">
+                  <div>
+                    <h3 className="text-lg font-bold">STARTER</h3>
+                    <p className="text-sm text-muted-foreground">AI 운영 환경 구축 패키지</p>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-2xl font-bold">1,990,000</span>
+                      <span className="text-sm text-muted-foreground">원 (구축비)</span>
+                    </div>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {[
+                      "Mac Mini 환경 구성",
+                      "Parallels Desktop 구성",
+                      "Ubuntu VM 구성",
+                      "ChatGPT 활용 환경 구축",
+                      "Claude 활용 환경 구축",
+                      "GitHub 연동",
+                      "HTTPS 적용",
+                      "자동 배포 환경 구축",
+                      "기본 운영 매뉴얼 제공",
+                      "AI 활용 워크플로우 제공",
+                    ].map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm">
+                        <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* BUSINESS */}
+            <Link href={serviceInquiryUrl("AI 운영 환경 구축", "BUSINESS")} className="block">
+              <Card className="rounded-2xl hover-lift border-2 border-violet-500 relative h-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-gradient-to-r from-violet-500 to-purple-500 px-3">추천</Badge>
+                </div>
+                <CardContent className="pt-5 pb-5 space-y-3">
+                  <div>
+                    <h3 className="text-lg font-bold">BUSINESS</h3>
+                    <p className="text-sm text-muted-foreground">AI 운영체계 구축 패키지</p>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-2xl font-bold">4,990,000</span>
+                      <span className="text-sm text-muted-foreground">원 (구축비)</span>
+                    </div>
+                    <p className="text-sm text-violet-600 font-medium mt-0.5">+ 월 구독 199,000원</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">STARTER 포함 + 추가 제공</p>
+                    <ul className="space-y-1.5">
+                      {[
+                        "runmcp 구축",
+                        "모바일 관리",
+                        "세션 유지",
+                        "다중 프로젝트 운영",
+                        "AI 운영 프로세스 구축",
+                        "운영 노하우 제공",
+                      ].map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="border-t pt-3">
+                    <p className="text-xs font-semibold text-violet-700 mb-1.5">월 구독 지원 내용</p>
+                    <ul className="space-y-1.5">
+                      {[
+                        "월 1회 원격 점검",
+                        "프롬프트 개선 지원",
+                        "운영 노하우 업데이트",
+                        "신규 활용 사례 제공",
+                        "운영 프로세스 지원",
+                      ].map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+
+          {/* 고객 준비 사항 */}
+          <Card className="rounded-2xl bg-muted/40">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <h3 className="font-semibold text-sm">고객 준비 사항</h3>
+              <div className="flex flex-wrap gap-2">
+                {["ChatGPT Plus", "Claude Max", "Parallels Desktop", "Mac Mini", "도메인"].map((item) => (
+                  <div key={item} className="flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm">
+                    <Check className="h-3.5 w-3.5 text-green-600" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
         {/* 1. 통합 플랜 (호스팅 + 유지보수) */}
         <section className="space-y-6">
