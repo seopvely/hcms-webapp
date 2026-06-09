@@ -288,6 +288,63 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {/* Maint Subscription Credits */}
+        {data?.maint_subscription?.has_maint_subscription && (
+          <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
+            <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5 opacity-80" />
+                  <h2 className="text-sm font-semibold opacity-90">유지보수 구독 크레딧</h2>
+                </div>
+                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">
+                  {data.maint_subscription.plan_label}
+                </span>
+              </div>
+
+              {data.maint_subscription.monthly_points > 0 && (
+                <>
+                  <p className="text-xs text-white/70 mb-1">운영 크레딧 (이번 달)</p>
+                  <div className="grid grid-cols-3 gap-4 mb-2">
+                    <div>
+                      <p className="text-[10px] text-white/60">월 지급</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.maint_subscription.monthly_points} suffix=" P" />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/60">사용</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.maint_subscription.points_used} suffix=" P" />
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/60">잔여</p>
+                      <p className="text-base font-bold">
+                        <AnimatedCounter value={data.maint_subscription.points_remaining} suffix=" P" />
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/80 rounded-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: `${data.maint_subscription.monthly_points > 0
+                          ? Math.max(0, Math.round((data.maint_subscription.points_remaining / data.maint_subscription.monthly_points) * 100))
+                          : 0}%`
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              <Link href="/maintenance" className="mt-3 flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors pt-3">
+                유지보수 요청 보기 <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </Card>
+        )}
+
         {/* Maintenance Status */}
         {data?.maintenance_stats && (
           <div>

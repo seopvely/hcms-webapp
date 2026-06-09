@@ -548,3 +548,23 @@ class DevSubscription(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     company = relationship("Company", back_populates="dev_subscriptions")
+
+
+class MaintSubscription(Base):
+    __tablename__ = "pacms_maintsubscription"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, ForeignKey("company.seq"), nullable=False)
+    plan_type = Column(String(10), nullable=False)  # basic/growth/business
+    status = Column(String(10), default="active")   # active/inactive/beta
+    start_date = Column(Date, nullable=False)
+    next_charge_date = Column(Date, nullable=False)
+    is_beta = Column(Boolean, default=False)
+    maintenance_points_per_month = Column(Integer, default=0)
+    monthly_price = Column(Integer, default=0)
+    source_estimate_id = Column(Integer, ForeignKey("Estimate.seq"), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    company = relationship("Company", back_populates="maint_subscriptions")

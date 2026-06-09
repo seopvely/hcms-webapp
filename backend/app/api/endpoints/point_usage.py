@@ -10,7 +10,7 @@ from urllib.parse import quote
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
-from app.models.customer import Project, PointHistory, Managelist, ManagelistComment, DevSubscription
+from app.models.customer import Project, PointHistory, Managelist, ManagelistComment, DevSubscription, MaintSubscription
 
 HAS_DATEUTIL = False
 try:
@@ -163,7 +163,11 @@ def get_point_usage(
         .order_by(Project.created_at.desc())
         .all()
     )
-    maintenance_customer = len(maintenance_projects) > 0
+    maint_sub = db.query(MaintSubscription).filter(
+        MaintSubscription.company_id == company_id,
+        MaintSubscription.status.in_(["active", "beta"])
+    ).first()
+    maintenance_customer = len(maintenance_projects) > 0 or maint_sub is not None
 
     current_project = None
     if maintenance_projects:

@@ -18,6 +18,7 @@ from app.models.customer import (
     PointHistory,
     Project,
     DevSubscription,
+    MaintSubscription,
     news_companies,
 )
 
@@ -180,6 +181,31 @@ def get_dashboard(
 
     point_percent = round((remaining_points / total_points) * 100, 1) if total_points > 0 else 0
 
+    # 유지보수 구독 정보
+    maint_sub = (
+        db.query(MaintSubscription)
+        .filter(MaintSubscription.company_id == company_id, MaintSubscription.status.in_(["active", "beta"]))
+        .first()
+    )
+
+    has_maint_subscription = maint_sub is not None
+    maint_plan_type = maint_sub.plan_type if maint_sub else None
+    maint_monthly_points = maint_sub.maintenance_points_per_month if maint_sub else 0
+    maint_sub_points_used = 0
+    maint_sub_points_remaining = 0
+
+    if maint_sub and maint_monthly_points > 0:
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        used_this_month = db.query(func.sum(func.abs(PointHistory.point))).filter(
+            PointHistory.company_id == company_id, PointHistory.point_type == 2,
+            PointHistory.status == 2, PointHistory.point_category == "1",
+            PointHistory.created_at >= month_start,
+        ).scalar() or 0
+        maint_sub_points_used = int(used_this_month)
+        maint_sub_points_remaining = max(0, maint_monthly_points - maint_sub_points_used)
+
+    MAINT_PLAN_LABELS = {"basic": "BASIC", "growth": "GROWTH", "business": "BUSINESS"}
+
     PROJECT_TYPE_MAP = {'1': '웹사이트', '2': '모바일앱', '3': '웹앱', '4': '웹사이트+모바일앱', '5': '도메인', '6': '보안서버', '7': '쇼핑몰', '8': '운영', '9': '유지보수', '10': '서버관리', '11': '서버마이그레이션', '12': '호스팅', '13': '개발구독'}
 
     active_projects = db.query(Project).filter(Project.company_id == company_id, Project.project_status != "완료").all()
@@ -255,5 +281,13 @@ def get_dashboard(
             "maint_points_total": maint_points_total,
             "maint_points_used": maint_points_used,
             "maint_points_remaining": maint_points_remaining,
+        },
+        "maint_subscription": {
+            "has_maint_subscription": has_maint_subscription,
+            "plan_type": maint_plan_type,
+            "plan_label": MAINT_PLAN_LABELS.get(maint_plan_type, "") if maint_plan_type else "",
+            "monthly_points": maint_monthly_points,
+            "points_used": maint_sub_points_used,
+            "points_remaining": maint_sub_points_remaining,
         },
     }

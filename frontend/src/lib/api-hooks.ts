@@ -65,6 +65,14 @@ export interface DashboardData {
     maint_points_used: number;
     maint_points_remaining: number;
   };
+  maint_subscription: {
+    has_maint_subscription: boolean;
+    plan_type: string | null;
+    plan_label: string;
+    monthly_points: number;
+    points_used: number;
+    points_remaining: number;
+  };
   project_progress: {
     id: number;
     title: string;

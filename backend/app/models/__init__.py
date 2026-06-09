@@ -25,6 +25,8 @@ from app.models.customer import (
     ProjectBoardComment,
     ProjectBoardAttachment,
     ProjectBoardCommentAttachment,
+    DevSubscription,
+    MaintSubscription,
 )
 
 __all__ = [
@@ -54,4 +56,6 @@ __all__ = [
     "ProjectBoardComment",
     "ProjectBoardAttachment",
     "ProjectBoardCommentAttachment",
+    "DevSubscription",
+    "MaintSubscription",
 ]

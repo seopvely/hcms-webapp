@@ -33,3 +33,4 @@ class Company(Base):
     updated_at = Column(DateTime, nullable=True)
 
     dev_subscriptions = relationship("DevSubscription", back_populates="company")
+    maint_subscriptions = relationship("MaintSubscription", back_populates="company")
