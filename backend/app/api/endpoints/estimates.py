@@ -345,6 +345,7 @@ def download_estimate_pdf(
 		estimate_items.append(
 			{
 				"name": ei.item_name,
+				"specification": ei.specification or "",
 				"quantity": ei.quantity or 0,
 				"unit": ei.unit or "",
 				"unit_price": ei.unit_price or 0,
@@ -415,6 +416,7 @@ def download_contract_pdf(
 	contract = (
 		db.query(EstimateContract)
 		.filter(EstimateContract.estimate_id == estimate_id)
+		.order_by(EstimateContract.seq.desc())
 		.first()
 	)
 	if not contract:
@@ -442,6 +444,14 @@ def download_contract_pdf(
 		"contract_amount": contract.contract_amount,
 		"payment_terms": contract.payment_terms,
 		"special_terms": contract.special_terms,
+		"customer_signed_at": contract.customer_signed_at,
+		"customer_signed_name": contract.customer_signed_name,
+		"customer_signed_ip": contract.customer_signed_ip,
+		"customer_signed_hash": contract.customer_signed_hash,
+		"manager_signed_at": contract.manager_signed_at,
+		"manager_signed_name": contract.manager_signed_name,
+		"manager_signed_ip": contract.manager_signed_ip,
+		"manager_signed_hash": contract.manager_signed_hash,
 	}
 
 	pdf_bytes = bytes(generate_contract_pdf(data))

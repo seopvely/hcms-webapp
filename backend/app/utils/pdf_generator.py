@@ -42,7 +42,6 @@ def _fmt_date(value) -> str:
     if value is None:
         return ""
     if isinstance(value, str):
-        # Try parsing ISO format
         try:
             value = datetime.fromisoformat(value).date()
         except (ValueError, TypeError):
@@ -51,6 +50,23 @@ def _fmt_date(value) -> str:
         value = value.date()
     if isinstance(value, date):
         return f"{value.year}년 {value.month:02d}월 {value.day:02d}일"
+    return str(value)
+
+
+def _fmt_datetime(value) -> str:
+    """Format a datetime as YYYY년 MM월 DD일 HH:MM:SS."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value)
+        except (ValueError, TypeError):
+            return value
+    if isinstance(value, datetime):
+        return (
+            f"{value.year}년 {value.month:02d}월 {value.day:02d}일 "
+            f"{value.hour:02d}:{value.minute:02d}:{value.second:02d}"
+        )
     return str(value)
 
 
@@ -258,6 +274,7 @@ def generate_estimate_pdf(data: dict) -> bytes:
     pdf._set_font("", 9)
     pdf._set_text_color(COLOR_BLACK)
     for idx, item in enumerate(items, 1):
+        spec = _safe(item.get("specification"))
         row_data = [
             str(idx),
             _safe(item.get("name")),
@@ -270,6 +287,22 @@ def generate_estimate_pdf(data: dict) -> bytes:
             pdf.cell(col_widths[i], 7, val, border=1, align=data_aligns[i],
                      new_x="RIGHT")
         pdf.ln()
+
+        if spec:
+            spec_lines = spec.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+            spec_lines = [l for l in spec_lines if l.strip()] or [spec.strip()]
+            pdf._set_font("", 8)
+            pdf._set_text_color(COLOR_LABEL)
+            remaining_w = sum(col_widths[1:])
+            for line_idx, line in enumerate(spec_lines):
+                is_last = line_idx == len(spec_lines) - 1
+                row_border = "LRB" if is_last else "LR"
+                prefix = "  규격/사양: " if line_idx == 0 else "           "
+                pdf.cell(col_widths[0], 5, "", border=row_border, new_x="RIGHT")
+                pdf.cell(remaining_w, 5, f"{prefix}{line}", border=row_border,
+                         align="L", new_x="LMARGIN", new_y="NEXT")
+            pdf._set_font("", 9)
+            pdf._set_text_color(COLOR_BLACK)
 
     pdf.ln(4)
 
@@ -494,10 +527,23 @@ def generate_contract_pdf(data: dict) -> bytes:
         pdf.ln(3)
 
     # === Signature area ===
+    signed_at = data.get("customer_signed_at")
+    signed_name = _safe(data.get("customer_signed_name"))
+    signed_ip = _safe(data.get("customer_signed_ip"))
+    signed_hash = _safe(data.get("customer_signed_hash"))
+    is_signed = bool(signed_at)
+
+    manager_signed_at = data.get("manager_signed_at")
+    manager_signed_name = _safe(data.get("manager_signed_name"))
+    manager_signed_ip = _safe(data.get("manager_signed_ip"))
+    manager_signed_hash = _safe(data.get("manager_signed_hash"))
+    is_manager_signed = bool(manager_signed_at)
+
     pdf.ln(8)
 
-    # Check if we need a new page for signature area (need ~50mm)
-    if pdf.get_y() > 230:
+    # Check if we need a new page for signature area
+    sig_height_needed = 40 + (35 if is_signed else 0) + (35 if is_manager_signed else 0)
+    if pdf.get_y() + sig_height_needed > 247:
         pdf.add_page()
         pdf.ln(10)
 
@@ -530,7 +576,10 @@ def generate_contract_pdf(data: dict) -> bytes:
     pdf._set_text_color(COLOR_BLACK)
     pdf.cell(sig_col_w, 7, f"상 호: {_safe(data.get('party_a_name'))}", new_x="LMARGIN", new_y="NEXT")
     pdf.set_x(MARGIN)
-    pdf.cell(sig_col_w, 7, f"대표자: {_safe(data.get('party_a_ceo'))}                (인)", new_x="LMARGIN", new_y="NEXT")
+    if is_signed:
+        pdf.cell(sig_col_w, 7, f"서명자: {signed_name}  (전자서명 완료)", new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.cell(sig_col_w, 7, f"대표자: {_safe(data.get('party_a_ceo'))}                (인)", new_x="LMARGIN", new_y="NEXT")
 
     # 을 signature
     pdf.set_xy(MARGIN + CONTENT_W / 2 + 10, y_sig)
@@ -542,6 +591,111 @@ def generate_contract_pdf(data: dict) -> bytes:
     pdf._set_text_color(COLOR_BLACK)
     pdf.cell(sig_col_w, 7, f"상 호: {_safe(data.get('party_b_name'), '한결랩')}", new_x="LMARGIN", new_y="NEXT")
     pdf.set_xy(MARGIN + CONTENT_W / 2 + 10, pdf.get_y())
-    pdf.cell(sig_col_w, 7, f"대표자: {_safe(data.get('party_b_ceo'), '김경섭')}                (인)", new_x="LMARGIN", new_y="NEXT")
+    if is_manager_signed:
+        pdf.cell(sig_col_w, 7, f"서명자: {manager_signed_name}  (전자서명 완료)", new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.cell(sig_col_w, 7, f"대표자: {_safe(data.get('party_b_ceo'), '김경섭')}                (인)", new_x="LMARGIN", new_y="NEXT")
+
+    # === 갑 전자서명 인증 블록 (갑 서명 완료 시에만) ===
+    if is_signed:
+        pdf.ln(12)
+        pdf._set_draw_color(COLOR_ACCENT)
+        pdf.set_line_width(0.5)
+        pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
+        pdf.set_line_width(0.2)
+        pdf.ln(4)
+
+        pdf._set_font("B", 10)
+        pdf._set_text_color(COLOR_ACCENT)
+        pdf.cell(CONTENT_W, 6, "■ 갑 전자서명 인증 정보", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+        COLOR_SIG_BG = (245, 245, 250)
+        pdf._set_fill_color(COLOR_SIG_BG)
+        pdf.rect(MARGIN, pdf.get_y(), CONTENT_W, 28, style="F")
+
+        y_block = pdf.get_y() + 3
+        label_w = 28
+
+        for label, value in [
+            ("서  명  자", signed_name),
+            ("서명 일시", _fmt_datetime(signed_at)),
+            ("서명  IP", signed_ip),
+            ("인증 해시", f"{signed_hash[:16]}...  (SHA-256)" if signed_hash else ""),
+        ]:
+            pdf.set_xy(MARGIN + 4, y_block)
+            pdf._set_font("", 9)
+            pdf._set_text_color(COLOR_LABEL)
+            pdf.cell(label_w, 5.5, label, new_x="RIGHT")
+            pdf._set_text_color(COLOR_BLACK)
+            pdf.cell(CONTENT_W - label_w - 8, 5.5, value, new_x="LMARGIN", new_y="NEXT")
+            y_block += 5.5
+
+        pdf.set_y(y_block + 2)
+        pdf._set_draw_color(COLOR_ACCENT)
+        pdf.set_line_width(0.5)
+        pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
+        pdf.set_line_width(0.2)
+        pdf.ln(3)
+
+        pdf._set_font("", 8)
+        pdf._set_text_color(COLOR_LABEL)
+        pdf.cell(CONTENT_W, 5,
+                 "* 본 계약서는 전자서명법에 의한 전자적 서명이 완료되었습니다.",
+                 align="C", new_x="LMARGIN", new_y="NEXT")
+
+    # === 을 전자서명 인증 블록 (을 서명 완료 시에만) ===
+    if is_manager_signed:
+        COLOR_MANAGER_SIG = (45, 106, 79)   # #2d6a4f dark green
+        COLOR_MANAGER_BG = (236, 253, 245)  # light green
+
+        pdf.ln(8)
+        if pdf.get_y() + 42 > 247:
+            pdf.add_page()
+            pdf.ln(10)
+
+        pdf._set_draw_color(COLOR_MANAGER_SIG)
+        pdf.set_line_width(0.5)
+        pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
+        pdf.set_line_width(0.2)
+        pdf.ln(4)
+
+        pdf._set_font("B", 10)
+        pdf._set_text_color(COLOR_MANAGER_SIG)
+        pdf.cell(CONTENT_W, 6, "■ 을 전자서명 인증 정보", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+        pdf._set_fill_color(COLOR_MANAGER_BG)
+        pdf.rect(MARGIN, pdf.get_y(), CONTENT_W, 28, style="F")
+
+        y_block = pdf.get_y() + 3
+        label_w = 28
+
+        for label, value in [
+            ("서  명  자", manager_signed_name),
+            ("서명 일시", _fmt_datetime(manager_signed_at)),
+            ("서명  IP", manager_signed_ip),
+            ("인증 해시", f"{manager_signed_hash[:16]}...  (SHA-256)" if manager_signed_hash else ""),
+        ]:
+            pdf.set_xy(MARGIN + 4, y_block)
+            pdf._set_font("", 9)
+            pdf._set_text_color(COLOR_LABEL)
+            pdf.cell(label_w, 5.5, label, new_x="RIGHT")
+            pdf._set_text_color(COLOR_BLACK)
+            pdf.cell(CONTENT_W - label_w - 8, 5.5, value, new_x="LMARGIN", new_y="NEXT")
+            y_block += 5.5
+
+        pdf.set_y(y_block + 2)
+        pdf._set_draw_color(COLOR_MANAGER_SIG)
+        pdf.set_line_width(0.5)
+        pdf.line(MARGIN, pdf.get_y(), MARGIN + CONTENT_W, pdf.get_y())
+        pdf.set_line_width(0.2)
+        pdf.ln(3)
+
+        pdf._set_font("", 8)
+        pdf._set_text_color(COLOR_LABEL)
+        pdf.cell(CONTENT_W, 5,
+                 "* 본 계약서는 갑·을 쌍방의 전자서명이 완료되었습니다.",
+                 align="C", new_x="LMARGIN", new_y="NEXT")
 
     return pdf.output()
