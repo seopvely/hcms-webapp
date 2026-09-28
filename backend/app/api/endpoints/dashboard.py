@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case, and_
 from datetime import datetime, timedelta
 
+from app.api.endpoints.estimates import CUSTOMER_VISIBLE_ESTIMATE_STATUSES
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
@@ -57,9 +58,13 @@ def get_dashboard(
     news_ids = news_with_company.union(news_no_company).subquery()
     news_count = db.query(func.count()).select_from(news_ids).scalar() or 0
 
+    # 견적 목록과 동일하게 작성중(사내 작업 단계) 견적서는 집계에서 제외한다.
     estimate_count = (
         db.query(func.count(Estimate.seq))
-        .filter(Estimate.company_id == company_id)
+        .filter(
+            Estimate.company_id == company_id,
+            Estimate.estimate_status.in_(CUSTOMER_VISIBLE_ESTIMATE_STATUSES),
+        )
         .scalar() or 0
     )
 
@@ -208,12 +213,34 @@ def get_dashboard(
 
     PROJECT_TYPE_MAP = {'1': '웹사이트', '2': '모바일앱', '3': '웹앱', '4': '웹사이트+모바일앱', '5': '도메인', '6': '보안서버', '7': '쇼핑몰', '8': '운영', '9': '유지보수', '10': '서버관리', '11': '서버마이그레이션', '12': '호스팅', '13': '개발구독'}
 
-    active_projects = db.query(Project).filter(Project.company_id == company_id, Project.project_status != "완료").all()
+    # project_status: '1'=진행중, '2'=완료, '3'=중지(계약철회 시 PACMS가 3으로 변경)
+    # 진행률에는 진행중('1')만 노출한다. NULL은 NOT IN 특성상 기존과 동일하게 제외된다.
+    active_projects = db.query(Project).filter(
+        Project.company_id == company_id,
+        Project.project_status.notin_(["2", "3"]),
+    ).all()
     project_progress = []
+    today = now.date()
+
+    def _as_date(value):
+        return value.date() if isinstance(value, datetime) else value
+
     for proj in active_projects:
         total_tasks = db.query(func.count(Managelist.seq)).filter(Managelist.project_id == proj.seq).scalar() or 0
         completed_tasks = db.query(func.count(Managelist.seq)).filter(Managelist.project_id == proj.seq, Managelist.status == 4).scalar() or 0
-        progress = round((completed_tasks / total_tasks) * 100) if total_tasks > 0 else 0
+
+        contract_date = _as_date(proj.contract_date)
+        contract_termination_date = _as_date(proj.contract_termination_date)
+        if contract_date and contract_termination_date:
+            total_days = (contract_termination_date - contract_date).days
+            elapsed_days = (today - contract_date).days
+            if total_days > 0:
+                progress = round(max(0, min(elapsed_days, total_days)) / total_days * 100)
+            else:
+                progress = 100 if elapsed_days >= 0 else 0
+        else:
+            progress = 0
+
         project_progress.append({
             "id": proj.seq, "title": proj.title, "status": proj.project_status,
             "total_tasks": total_tasks, "completed_tasks": completed_tasks, "progress": progress,

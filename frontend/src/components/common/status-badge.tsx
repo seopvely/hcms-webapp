@@ -22,6 +22,8 @@ const estimateStatusMap: Record<string, BadgeVariant> = {
   "3": { label: "승인", className: "bg-emerald-100 text-emerald-700" },
   "4": { label: "반려", className: "bg-red-100 text-red-700" },
   "5": { label: "계약전환", className: "bg-purple-100 text-purple-700" },
+  // 계약전환 후 철회된 건. 견적 상태('3' 승인)보다 우선 표시한다.
+  withdrawn: { label: "계약철회", className: "bg-pink-100 text-pink-700" },
 };
 
 const devRequestStatusMap: Record<string, BadgeVariant> = {

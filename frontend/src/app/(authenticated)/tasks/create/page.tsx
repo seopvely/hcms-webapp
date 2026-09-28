@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useNavigationStore } from "@/store/navigation-store";
 import { PageTransition } from "@/components/layout/page-transition";
+import { SimpleEditor } from "@/components/common";
 import { useCreateTask } from "@/lib/api-hooks";
 import { useToast } from "@/components/common/app-toast";
 
@@ -136,7 +137,8 @@ export default function TaskCreatePage() {
       return;
     }
 
-    if (!content.trim()) {
+    const strippedContent = content.replace(/<[^>]*>/g, "").trim();
+    if (!strippedContent) {
       toast("error", "내용을 입력해주세요.");
       return;
     }
@@ -239,12 +241,10 @@ export default function TaskCreatePage() {
               <h3 className="font-semibold">내용</h3>
             </CardHeader>
             <CardContent>
-              <textarea
-                placeholder="작업 내용을 상세히 작성해주세요"
+              <SimpleEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full min-h-[200px] px-3 py-2 rounded-xl border border-input bg-transparent text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                rows={8}
+                onChange={setContent}
+                placeholder="작업 내용을 상세히 작성해주세요"
               />
             </CardContent>
           </Card>

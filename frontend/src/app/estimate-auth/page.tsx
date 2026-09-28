@@ -39,6 +39,15 @@ function EstimateAuthContent() {
         localStorage.setItem("refresh_token", refresh_token);
         setUser(user);
 
+        // 승인 액션은 PACMS 승인 웹훅 호출 시 원본 이메일 토큰이 필요하므로 세션에 임시 보관
+        if (action === "approve") {
+          try {
+            sessionStorage.setItem(`estimate_approval_token_${eid}`, token);
+          } catch {
+            // sessionStorage 접근 불가 시 무시 (승인 시점에 토큰 없음 에러로 처리됨)
+          }
+        }
+
         // Redirect to estimate detail
         router.replace(`/estimates/${eid}${action ? `?action=${action}` : ''}`);
       })

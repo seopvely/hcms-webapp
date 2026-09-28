@@ -167,13 +167,17 @@ def get_available_projects(
         # Calculate remaining points using 6-month cycle logic
         remaining_points = calculate_remaining_points(project, db, company_id)
 
-        # Permit if payment complete, contract valid, and has remaining points
-        permit = bool(payment) and contract_valid and remaining_points > 0
+        # Admin-controlled switch (project.maintenance_request_enabled)
+        request_enabled = bool(project.maintenance_request_enabled)
+
+        # Permit if admin enabled it, payment complete, contract valid, and has remaining points
+        permit = request_enabled and bool(payment) and contract_valid and remaining_points > 0
 
         result.append({
             "id": project.seq,
             "title": project.title,
             "permit": permit,
+            "maintenance_request_enabled": request_enabled,
             "payment_completed": bool(payment),
             "remaining_points": remaining_points,
             "contract_status": "active" if contract_valid else "expired",
@@ -274,6 +278,13 @@ async def create_maintenance(
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found or not accessible")
+
+    # Verify the admin has enabled maintenance requests for this project
+    if not project.maintenance_request_enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="이 프로젝트는 유지보수 요청이 불가능합니다. 관리자에게 문의해주세요."
+        )
 
     # Verify payment status
     payment = (

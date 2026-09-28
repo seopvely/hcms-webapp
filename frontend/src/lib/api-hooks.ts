@@ -184,10 +184,14 @@ export interface TaskDetail {
   task_type: string;
   task_type_label: string;
   status: string;
+  status_label: string;
   created_at: string;
   deadline: string | null;
   worker_name: string | null;
   budget: string | null;
+  estimated_hours: number | null;
+  actual_hours: number | null;
+  work_started_at: string | null;
   attachments: { name: string; size: string; url: string }[];
   comments: TaskComment[];
 }
@@ -199,6 +203,9 @@ export interface EstimateItem {
   status: string;
   total_amount: number;
   created_at: string;
+  /** 계약전환 후 계약이 철회된 견적서 (견적 상태는 승인으로 원복되어 있음) */
+  contract_withdrawn: boolean;
+  withdrawn_at: string | null;
 }
 
 export interface EstimateLineItem {
@@ -207,17 +214,42 @@ export interface EstimateLineItem {
   unit: string;
   unit_price: number;
   amount: number;
+  is_separate: boolean;
+}
+
+export interface EstimateContractInfo {
+  id: number;
+  contract_number: string | null;
+  contract_title: string | null;
+  status: string;
+  status_label: string;
+  contract_amount: number | null;
+  contract_date: string | null;
+  contract_start_date: string | null;
+  contract_end_date: string | null;
+  contract_period: string | null;
+  customer_signed_at: string | null;
+  customer_signed_name: string | null;
+  manager_signed_at: string | null;
+  manager_signed_name: string | null;
+  pdf_available: boolean;
+  is_withdrawn: boolean;
+  withdrawn_at: string | null;
+  withdraw_reason: string;
 }
 
 export interface EstimateDetail {
   id: number;
   title: string;
   status: string;
+  contract: EstimateContractInfo | null;
+  contract_withdrawn: boolean;
   created_at: string;
   valid_until: string | null;
   company_name: string | null;
   items: EstimateLineItem[];
   subtotal: number;
+  separate_item_count: number;
   discount: number;
   discount_description: string;
   tax: number;
@@ -230,6 +262,7 @@ export interface MaintenanceProject {
   id: number;
   title: string;
   permit: boolean;
+  maintenance_request_enabled: boolean;
   payment_completed: boolean;
   remaining_points: number;
   contract_status: string;

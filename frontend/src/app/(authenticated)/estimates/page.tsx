@@ -62,7 +62,7 @@ export default function EstimateListPage() {
                         <p className="text-base font-bold text-primary mb-2">{item.total_amount.toLocaleString("ko-KR")}원</p>
                         <span className="flex items-center gap-1 text-xs text-muted-foreground"><Calendar className="h-3 w-3" />{formatDate(item.created_at)}</span>
                       </div>
-                      <StatusBadge status={item.status} type="estimate" />
+                      <StatusBadge status={item.contract_withdrawn ? "withdrawn" : item.status} type="estimate" />
                     </div>
                   </CardContent>
                 </Card>

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, FileText, Building2, Download, CheckCircle2, XCircle, Pencil } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Building2, Download, CheckCircle2, XCircle, Pencil, FileSignature, Ban } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,7 +17,7 @@ import { StatusBadge, LoadingState } from "@/components/common";
 import { AnimatedCounter } from "@/components/common/animated-counter";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useEstimateDetail } from "@/lib/api-hooks";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
 
 function formatAmount(n: number) {
@@ -66,7 +66,10 @@ function EstimateDetailContent() {
     if (!confirm("견적서를 승인하시겠습니까?")) return;
     setActionProcessing(true);
     try {
-      const { data } = await api.post(`/estimates/${id}/approve`);
+      const tokenKey = `estimate_approval_token_${id}`;
+      const approvalToken = typeof window !== "undefined" ? sessionStorage.getItem(tokenKey) : null;
+      const { data } = await api.post(`/estimates/${id}/approve`, { token: approvalToken });
+      sessionStorage.removeItem(tokenKey);
       setActionResult({ success: true, message: data.message });
     } catch (err: any) {
       setActionResult({ success: false, message: err.response?.data?.detail || "승인 처리에 실패했습니다." });
@@ -140,7 +143,7 @@ function EstimateDetailContent() {
                   <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(data.created_at)}</span>
                 </div>
               </div>
-              <StatusBadge status={data.status} type="estimate" />
+              <StatusBadge status={data.contract_withdrawn ? "withdrawn" : data.status} type="estimate" />
             </div>
             <div className="text-center pt-2 border-t border-white/20">
               <p className="text-sm text-white/70">총 견적금액</p>
@@ -158,7 +161,7 @@ function EstimateDetailContent() {
                 <Download className="h-3.5 w-3.5" />
                 {pdfLoading === "estimate" ? "생성중..." : "견적서 PDF"}
               </button>
-              {data.status === "5" && (
+              {data.contract?.pdf_available && (
                 <button
                   onClick={() => downloadPdf("contract")}
                   disabled={pdfLoading !== null}
@@ -280,6 +283,86 @@ function EstimateDetailContent() {
           </Card>
         )}
 
+        {/* 계약 정보 (계약철회 포함) */}
+        {data.contract && (
+          <Card className={`rounded-2xl ${data.contract.is_withdrawn ? "border-2 border-pink-200" : ""}`}>
+            <CardHeader className="pb-2">
+              <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                <FileSignature className="h-4 w-4" />계약 정보
+                {data.contract.status_label && (
+                  <span className={`ml-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${data.contract.is_withdrawn ? "bg-pink-100 text-pink-700" : "bg-emerald-100 text-emerald-700"}`}>
+                    {data.contract.status_label}
+                  </span>
+                )}
+              </h2>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-3">
+              {data.contract.is_withdrawn && (
+                <div className="rounded-xl border border-pink-200 bg-pink-50 p-3 space-y-1">
+                  <p className="text-sm font-semibold text-pink-700 flex items-center gap-1.5">
+                    <Ban className="h-4 w-4" />이 계약은 철회되었습니다.
+                  </p>
+                  {data.contract.withdrawn_at && (
+                    <p className="text-xs text-pink-700/90">철회일시 : {formatDateTime(data.contract.withdrawn_at)}</p>
+                  )}
+                  {data.contract.withdraw_reason && (
+                    <p className="text-xs text-pink-700/90">철회사유 : {data.contract.withdraw_reason}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground pt-1">
+                    철회된 계약서는 효력을 갖지 않습니다. 자세한 내용은 담당자에게 문의해 주세요.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {data.contract.contract_number && (
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">계약번호</span><span className="font-medium">{data.contract.contract_number}</span></div>
+                )}
+                {data.contract.contract_title && (
+                  <div className="flex items-start justify-between gap-3 text-sm"><span className="text-muted-foreground shrink-0">계약명</span><span className="text-right">{data.contract.contract_title}</span></div>
+                )}
+                {data.contract.contract_amount != null && (
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">계약금액</span><span className="font-medium">{formatAmount(data.contract.contract_amount)}원</span></div>
+                )}
+                {data.contract.contract_date && (
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">계약일</span><span>{formatDate(data.contract.contract_date)}</span></div>
+                )}
+                {(data.contract.contract_start_date || data.contract.contract_end_date) && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">계약기간</span>
+                    <span>
+                      {formatDate(data.contract.contract_start_date)} ~ {formatDate(data.contract.contract_end_date)}
+                      {data.contract.contract_period ? ` (${data.contract.contract_period})` : ""}
+                    </span>
+                  </div>
+                )}
+                {data.contract.customer_signed_at && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">고객 서명</span>
+                    <span>{data.contract.customer_signed_name || "-"} · {formatDateTime(data.contract.customer_signed_at)}</span>
+                  </div>
+                )}
+                {data.contract.manager_signed_at && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">한결랩 서명</span>
+                    <span>{data.contract.manager_signed_name || "-"} · {formatDateTime(data.contract.manager_signed_at)}</span>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full rounded-xl"
+                onClick={() => downloadPdf("contract")}
+                disabled={pdfLoading !== null}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                {pdfLoading === "contract" ? "계약서 생성중..." : "계약서 PDF 내려받기"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="rounded-2xl">
           <CardHeader className="pb-2"><h2 className="text-sm font-semibold flex items-center gap-1.5"><FileText className="h-4 w-4" />견적 항목</h2></CardHeader>
           <CardContent className="px-0">
@@ -298,8 +381,8 @@ function EstimateDetailContent() {
                     <TableRow key={idx}>
                       <TableCell className="pl-6 text-sm">{item.name}</TableCell>
                       <TableCell className="text-center text-sm">{item.quantity}{item.unit}</TableCell>
-                      <TableCell className="text-right text-sm">{formatAmount(item.unit_price)}</TableCell>
-                      <TableCell className="text-right pr-6 text-sm font-medium">{formatAmount(item.amount)}</TableCell>
+                      <TableCell className="text-right text-sm">{item.is_separate ? <span className="text-muted-foreground">-</span> : formatAmount(item.unit_price)}</TableCell>
+                      <TableCell className="text-right pr-6 text-sm font-medium">{item.is_separate ? <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">별도</span> : formatAmount(item.amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -311,6 +394,7 @@ function EstimateDetailContent() {
         <Card className="rounded-2xl">
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">소계</span><span>{formatAmount(data.subtotal)}원</span></div>
+            {data.separate_item_count > 0 && <div className="text-right text-xs text-muted-foreground -mt-1">별도 항목 {data.separate_item_count}건 제외</div>}
             {data.discount > 0 && <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">할인{data.discount_description ? ` (${data.discount_description})` : ""}</span><span className="text-red-500">-{formatAmount(data.discount)}원</span></div>}
             <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">부가세 (VAT)</span><span>{formatAmount(data.tax)}원</span></div>
             <Separator />

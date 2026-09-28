@@ -213,7 +213,16 @@ export default function EditProjectBoardPage() {
               {/* Project */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">프로젝트 <span className="text-red-500">*</span></label>
-                <Select value={selectedProject} onValueChange={(v) => { setSelectedProject(v); setSelectedCategories([]); }}>
+                <Select
+                  value={selectedProject}
+                  onValueChange={(v) => {
+                    // Radix가 내부 <select> 미러를 통해 빈 값으로 onValueChange를 호출하는
+                    // 경우가 있어(프로젝트 목록 로딩 전 값이 주입될 때) 무시한다.
+                    if (!v || v === selectedProject) return;
+                    setSelectedProject(v);
+                    setSelectedCategories([]);
+                  }}
+                >
                   <SelectTrigger className="w-full rounded-xl h-11">
                     <SelectValue placeholder="프로젝트를 선택해주세요" />
                   </SelectTrigger>

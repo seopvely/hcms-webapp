@@ -56,7 +56,6 @@ export default function CreateProjectBoardPage() {
   const [content, setContent] = useState("");
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>("1");
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -119,7 +118,6 @@ export default function CreateProjectBoardPage() {
     formData.append("title", title.trim());
     formData.append("content", content.trim());
     formData.append("project_id", selectedProject);
-    formData.append("status", selectedStatus);
     if (selectedCategories.length > 0) {
       formData.append("category_ids", selectedCategories.join(","));
     }
@@ -200,21 +198,6 @@ export default function CreateProjectBoardPage() {
                   </div>
                 </div>
               )}
-
-              {/* Status */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">상태</label>
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-full rounded-xl h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">진행중</SelectItem>
-                    <SelectItem value="2">완료</SelectItem>
-                    <SelectItem value="3">보류</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Title */}
               <div className="space-y-2">

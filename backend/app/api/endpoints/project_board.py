@@ -415,7 +415,6 @@ async def create_project_board(
     content: str = Form(...),
     project_id: int = Form(...),
     category_ids: Optional[str] = Form(None),
-    status: str = Form("1"),
     files: Optional[List[UploadFile]] = File(None),
     current_user: Manager = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -463,7 +462,7 @@ async def create_project_board(
         content=content,
         customer_writer_id=current_user.seq,
         writer_type="2",
-        status=status,
+        status="1",
         views=0,
         is_notice=False,
         created_at=datetime.now(),
@@ -538,6 +537,15 @@ async def update_project_board(
     if not board:
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없거나 수정 권한이 없습니다.")
 
+    # 프로젝트 검증 (자사 프로젝트만 지정 가능)
+    project = (
+        db.query(Project)
+        .filter(Project.seq == project_id, Project.company_id == company_id)
+        .first()
+    )
+    if not project:
+        raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
+
     board.title = title
     board.content = content
     board.project_id = project_id
@@ -552,7 +560,11 @@ async def update_project_board(
     if cat_ids:
         categories = (
             db.query(ProjectBoardCategory)
-            .filter(ProjectBoardCategory.seq.in_(cat_ids))
+            .filter(
+                ProjectBoardCategory.seq.in_(cat_ids),
+                ProjectBoardCategory.project_id == project_id,
+                ProjectBoardCategory.is_active == True,
+            )
             .all()
         )
         board.categories = categories

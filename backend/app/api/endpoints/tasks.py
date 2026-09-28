@@ -318,6 +318,7 @@ def get_task_detail(
         "budget": item.budget or 0,
         "estimated_hours": item.estimated_hours,
         "actual_hours": item.actual_hours,
+        "work_started_at": item.work_started_at.isoformat() if item.work_started_at else None,
         "writer_name": item.writer.name if item.writer else None,
         "worker_name": item.worker.name if item.worker else None,
         "project_title": item.project.title if item.project else None,

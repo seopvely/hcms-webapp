@@ -7,7 +7,7 @@ import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { SimpleEditor } from "@/components/common";
 import {
   Select,
   SelectContent,
@@ -80,7 +80,7 @@ function CreateInquiryForm() {
     const plan = searchParams.get("plan");
     if (service && plan) {
       setTitle(`[${service}] ${plan} 문의`);
-      setContents(`안녕하세요.\n\n[${service}] ${plan} 서비스에 대해 문의드립니다.\n\n`);
+      setContents(`<p>안녕하세요.</p><p></p><p>[${service}] ${plan} 서비스에 대해 문의드립니다.</p><p></p>`);
       setInquiryType("4"); // 기술 지원
     }
   }, [searchParams]);
@@ -140,14 +140,15 @@ function CreateInquiryForm() {
       return;
     }
 
-    if (!contents.trim()) {
+    const strippedContents = contents.replace(/<[^>]*>/g, "").trim();
+    if (!strippedContents) {
       toast("error", "내용을 입력해주세요.");
       return;
     }
 
     const formData = new FormData();
     formData.append("title", title.trim());
-    formData.append("contents", contents.trim());
+    formData.append("contents", contents);
     formData.append("inquiry_type", inquiryType);
 
     files.forEach((file) => {
@@ -236,16 +237,13 @@ function CreateInquiryForm() {
 
               {/* Contents */}
               <div className="space-y-2">
-                <label htmlFor="contents" className="text-sm font-medium">
+                <label className="text-sm font-medium">
                   내용 <span className="text-red-500">*</span>
                 </label>
-                <Textarea
-                  id="contents"
-                  placeholder="문의 내용을 입력해주세요"
+                <SimpleEditor
                   value={contents}
-                  onChange={(e) => setContents(e.target.value)}
-                  className="rounded-xl min-h-[200px] resize-y"
-                  required
+                  onChange={setContents}
+                  placeholder="문의 내용을 입력해주세요"
                 />
               </div>
 

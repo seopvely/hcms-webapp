@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     FIREBASE_CREDENTIALS_PATH: str = ""
     WEBHOOK_API_KEY: str = ""
+    PACMS_API_BASE_URL: str = "https://cms.hankyeul.com"
+    PACMS_ESTIMATE_WEBHOOK_API_KEY: str = ""
 
     @property
     def cors_origins(self) -> list[str]:

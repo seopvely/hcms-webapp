@@ -251,6 +251,11 @@ export default function MaintenanceNewPage() {
                           if (!project) return null;
 
                           if (!project.permit) {
+                            // Admin has explicitly disabled maintenance requests
+                            if (!project.maintenance_request_enabled) {
+                              return "이 프로젝트는 유지보수 요청이 불가능합니다. 관리자에게 문의해주세요.";
+                            }
+
                             // Check contract validity first
                             if (project.contract_date && project.contract_termination_date) {
                               const today = new Date();

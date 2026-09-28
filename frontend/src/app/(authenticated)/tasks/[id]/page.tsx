@@ -82,8 +82,36 @@ export default function TaskDetailPage() {
           </div>
         </Card>
 
+        {(data.estimated_hours != null || data.actual_hours != null) && (
+          <Card className="rounded-2xl">
+            <CardContent className="pt-4">
+              <div className="flex gap-6">
+                {data.estimated_hours != null && (
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">예상:</span>
+                    <span className="font-medium">{data.estimated_hours}시간</span>
+                  </div>
+                )}
+                {data.actual_hours != null && (
+                  <div className="flex items-center gap-1.5 text-sm flex-wrap gap-y-1">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">실제:</span>
+                    <span className="font-medium">{data.actual_hours}시간</span>
+                    {data.status === "2" && data.work_started_at && (
+                      <Badge className="text-[10px] px-1.5 py-0 rounded-md bg-emerald-100 text-emerald-700 border-0">
+                        진행중 ({data.work_started_at.slice(0, 16).replace("T", " ")}부터 누적 중)
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="rounded-2xl"><CardHeader className="pb-2"><h2 className="text-sm font-semibold">작업 내용</h2></CardHeader>
-          <CardContent><p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{data.content}</p></CardContent>
+          <CardContent><div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: data.content }} /></CardContent>
         </Card>
 
         {data.attachments && data.attachments.length > 0 && (
