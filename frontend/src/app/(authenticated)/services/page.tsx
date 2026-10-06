@@ -24,6 +24,7 @@ import {
   Bot,
 } from "lucide-react";
 import Link from "next/link";
+import { useDashboard } from "@/lib/api-hooks";
 
 function serviceInquiryUrl(service: string, plan: string) {
   return `/inquiries/create?service=${encodeURIComponent(service)}&plan=${encodeURIComponent(plan)}`;
@@ -104,6 +105,10 @@ const DEV_SUB_PLANS = [
 
 export default function ServicesPage() {
   const setPageTitle = useNavigationStore((state) => state.setPageTitle);
+  const { data: dashboardData } = useDashboard();
+  const myMaintPlan = dashboardData?.maint_subscription?.has_maint_subscription
+    ? dashboardData.maint_subscription.plan_type
+    : null;
 
   useEffect(() => {
     setPageTitle("할 수 있는 일");
@@ -292,11 +297,14 @@ export default function ServicesPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {/* Basic */}
-            <Link href={serviceInquiryUrl("통합 플랜", "Basic")} className="block">
+            <Link href={myMaintPlan === "basic" ? "/maint-subscription" : serviceInquiryUrl("통합 플랜", "Basic")} className="block">
               <Card className="rounded-2xl hover-lift">
                 <CardHeader>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Basic</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold">Basic</h3>
+                      {myMaintPlan === "basic" && <Badge className="bg-emerald-600 hover:bg-emerald-600">이용 중</Badge>}
+                    </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-bold">50,000</span>
                       <span className="text-muted-foreground">원/월</span>
@@ -339,7 +347,7 @@ export default function ServicesPage() {
             </Link>
 
             {/* Growth */}
-            <Link href={serviceInquiryUrl("통합 플랜", "Growth")} className="block">
+            <Link href={myMaintPlan === "growth" ? "/maint-subscription" : serviceInquiryUrl("통합 플랜", "Growth")} className="block">
               <Card className="rounded-2xl hover-lift border-2 border-blue-500 relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500">
@@ -348,7 +356,10 @@ export default function ServicesPage() {
                 </div>
                 <CardHeader>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Growth</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold">Growth</h3>
+                      {myMaintPlan === "growth" && <Badge className="bg-emerald-600 hover:bg-emerald-600">이용 중</Badge>}
+                    </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-bold">110,000</span>
                       <span className="text-muted-foreground">원/월</span>
@@ -395,11 +406,14 @@ export default function ServicesPage() {
             </Link>
 
             {/* Business */}
-            <Link href={serviceInquiryUrl("통합 플랜", "Business")} className="block">
+            <Link href={myMaintPlan === "business" ? "/maint-subscription" : serviceInquiryUrl("통합 플랜", "Business")} className="block">
               <Card className="rounded-2xl hover-lift">
                 <CardHeader>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-bold">Business</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold">Business</h3>
+                      {myMaintPlan === "business" && <Badge className="bg-emerald-600 hover:bg-emerald-600">이용 중</Badge>}
+                    </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-bold">220,000</span>
                       <span className="text-muted-foreground">원/월</span>

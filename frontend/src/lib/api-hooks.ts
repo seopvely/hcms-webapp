@@ -1159,3 +1159,41 @@ export function useAIDevSubscription(seq: number) {
     enabled: !!seq,
   });
 }
+
+// ============ 통합 플랜(유지보수 구독) ============
+
+export interface MaintSubscriptionInfo {
+  has_subscription: boolean;
+  subscription: {
+    seq: number;
+    plan_type: string;
+    plan_label: string;
+    status: string;
+    status_label: string;
+    is_beta: boolean;
+    start_date: string | null;
+    next_charge_date: string | null;
+    monthly_points: number;
+    points_used: number;
+    points_remaining: number;
+  } | null;
+  benefits: string[];
+  recent_usage: {
+    id: number;
+    content: string | null;
+    point: number;
+    created_at: string | null;
+  }[];
+}
+
+async function fetchMaintSubscription(): Promise<MaintSubscriptionInfo> {
+  const { data } = await api.get("/maint-subscription");
+  return data;
+}
+
+export function useMaintSubscription() {
+  return useQuery({
+    queryKey: ["maint-subscription"],
+    queryFn: fetchMaintSubscription,
+  });
+}

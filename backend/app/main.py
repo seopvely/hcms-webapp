@@ -18,6 +18,7 @@ from app.api.endpoints.webhook import router as webhook_router
 from app.api.endpoints.project_board import router as project_board_router
 from app.api.endpoints.dev_requests import router as dev_requests_router
 from app.api.endpoints.ai_dev_subscription import router as ai_dev_subscription_router
+from app.api.endpoints.maint_subscription import router as maint_subscription_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,5 +55,6 @@ api_router.include_router(webhook_router)
 api_router.include_router(project_board_router)
 api_router.include_router(dev_requests_router)
 api_router.include_router(ai_dev_subscription_router)
+api_router.include_router(maint_subscription_router)
 
 app.include_router(api_router)

@@ -338,9 +338,14 @@ export default function DashboardPage() {
                 </>
               )}
 
-              <Link href="/maintenance" className="mt-3 flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors pt-3">
-                유지보수 요청 보기 <ArrowRight className="h-3 w-3" />
-              </Link>
+              <div className="mt-3 flex items-center gap-4 pt-3">
+                <Link href="/maint-subscription" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors">
+                  내 플랜 보기 <ArrowRight className="h-3 w-3" />
+                </Link>
+                <Link href="/maintenance" className="flex items-center gap-1 text-xs text-white/80 hover:text-white transition-colors">
+                  유지보수 요청 보기 <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
             </div>
           </Card>
         )}

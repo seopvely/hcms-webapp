@@ -16,6 +16,7 @@ import {
   Server,
   Code2,
   Bot,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
@@ -42,9 +43,11 @@ export function AppSidebar() {
   const { data: dashboardData } = useDashboard();
   const hasProject = (dashboardData?.project_progress?.length ?? 0) > 0;
   const hasDevSubscription = dashboardData?.dev_subscription?.has_dev_subscription ?? false;
+  const hasMaintSubscription = dashboardData?.maint_subscription?.has_maint_subscription ?? false;
 
   const navItems = [
     { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+    ...(hasMaintSubscription ? [{ href: "/maint-subscription", label: "내 통합 플랜", icon: Layers }] : []),
     { href: "/site-status", label: "사이트 현황", icon: Server },
     { href: "/news", label: "최신소식", icon: Newspaper },
     { href: "/maintenance", label: "유지보수 요청", icon: Wrench },
