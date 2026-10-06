@@ -15,6 +15,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.company import Company
+from app.utils.free_maint import is_in_free_maint
 from app.services.email import (
     notify_project_board_created,
     notify_project_board_reply_created,
@@ -94,14 +95,16 @@ def list_company_projects(
         term_date = p.contract_termination_date
         if hasattr(term_date, "date"):
             term_date = term_date.date()
+        free_maint = is_in_free_maint(p, today)
         is_active = (
             term_date is not None
             and term_date >= today
-        )
+        ) or free_maint  # 무상 유지보수 기간도 게시판 이용 가능
         items.append({
             "id": p.seq,
             "title": p.title,
             "is_active": is_active,
+            "free_maint": free_maint,
             "contract_date": p.contract_date.isoformat() if p.contract_date else None,
             "contract_termination_date": p.contract_termination_date.isoformat() if p.contract_termination_date else None,
         })
@@ -435,7 +438,7 @@ async def create_project_board(
     term_date = project.contract_termination_date
     if hasattr(term_date, "date"):
         term_date = term_date.date()
-    if term_date and term_date < today:
+    if term_date and term_date < today and not is_in_free_maint(project, today):
         raise HTTPException(status_code=400, detail="계약기간이 만료된 프로젝트입니다.")
 
     # 카테고리 검증

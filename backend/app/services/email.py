@@ -182,3 +182,28 @@ def notify_dev_request_comment_created(db, dev_request_id, company_name, request
         [("업체명", company_name), ("요청 제목", request_title), ("작성자", writer_name)],
         f"{PACMS_BASE_URL}/managed/managelist_detail/{dev_request_id}", "댓글 확인하기",
     ))
+
+
+FREE_MAINT_ALERT_TITLES = {
+    "started": "무상 유지보수 기간 시작",
+    "d30": "무상 유지보수 종료 D-30 (연장/플랜 영업 대상)",
+    "d7": "무상 유지보수 종료 D-7 (연장/플랜 영업 대상)",
+    "ended": "무상 유지보수 기간 종료",
+}
+
+
+def notify_free_maint_alert(db, kind, project_id, company_name, project_title, start_date, end_date, days_left=None):
+    """무상 유지보수 시작/종료 임박/종료 알림 (담당자). cron 작업에서 호출하므로 동기 발송."""
+    emails = get_agent_emails(db)
+    if not emails:
+        return
+    title = FREE_MAINT_ALERT_TITLES.get(kind, "무상 유지보수 알림")
+    items = [
+        ("고객사", company_name),
+        ("프로젝트", project_title),
+        ("무상 기간", f"{start_date} ~ {end_date}"),
+    ]
+    if days_left is not None:
+        items.append(("남은 기간", f"D-{days_left}"))
+    html = _build_html(title, items, f"{PACMS_BASE_URL}/managed/project_update/{project_id}", "프로젝트 확인하기")
+    _send_email(emails, f"[HCMS] {title} - {company_name} / {project_title}", html)

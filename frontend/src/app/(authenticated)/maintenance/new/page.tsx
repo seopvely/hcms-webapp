@@ -261,18 +261,41 @@ export default function MaintenanceNewPage() {
                               return "이 프로젝트는 유지보수 요청이 불가능합니다. 관리자에게 문의해주세요.";
                             }
 
-                            // Check contract validity first
-                            if (project.contract_date && project.contract_termination_date) {
-                              const today = new Date();
-                              const terminationDate = new Date(project.contract_termination_date);
+                            // 무상 유지보수 기간이면 계약만료가 아니라 결제 상태가 사유
+                            if (project.contract_status === "free_maint" && !project.payment_completed) {
+                              return "결제가 완료되지 않은 프로젝트입니다. 관리자에게 문의해주세요.";
+                            }
 
-                              if (terminationDate < today) {
-                                return `계약 기간이 만료되었습니다. (계약기간: ${project.contract_date?.slice(0, 10)} ~ ${project.contract_termination_date?.slice(0, 10)})`;
-                              }
+                            // 무상 유지보수 종료 — 플랜 신청/연장 문의로 전환 유도
+                            if (project.contract_status === "free_ended") {
+                              return (
+                                <div className="space-y-2">
+                                  <p>
+                                    무상 유지보수 기간이 종료되었습니다 (~{project.free_maint_end_date?.slice(0, 10)}).
+                                    유지보수 플랜 신청 또는 계약 연장 후 이용하실 수 있습니다.
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Link href="/services" className="inline-flex items-center rounded-xl bg-[#667eea] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+                                      유지보수 플랜 보기
+                                    </Link>
+                                    <Link
+                                      href={`/inquiries/create?service=${encodeURIComponent("계약연장")}&plan=${encodeURIComponent(project.title)}`}
+                                      className="inline-flex items-center rounded-xl border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                                    >
+                                      계약 연장 문의
+                                    </Link>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            // Check contract validity first
+                            if (project.contract_status === "expired" && project.contract_date && project.contract_termination_date) {
+                              return `계약 기간이 만료되었습니다. (계약기간: ${project.contract_date?.slice(0, 10)} ~ ${project.contract_termination_date?.slice(0, 10)})`;
                             }
 
                             // Check payment status
-                            if (!(project as any).payment_completed) {
+                            if (!project.payment_completed) {
                               return "결제가 완료되지 않은 프로젝트입니다. 관리자에게 문의해주세요.";
                             }
 
@@ -286,7 +309,17 @@ export default function MaintenanceNewPage() {
                           }
 
                           if (project.free_maint) {
-                            return `무상 유지보수 기간입니다 (~${project.free_maint_end_date?.slice(0, 10)}). 유지보수 포인트가 차감되지 않습니다.`;
+                            return (
+                              <div className="space-y-1">
+                                <p>
+                                  무상 유지보수 기간입니다 (~{project.free_maint_end_date?.slice(0, 10)}
+                                  {project.free_maint_days_left != null ? `, D-${project.free_maint_days_left}` : ""}). 유지보수 포인트가 차감되지 않습니다.
+                                </p>
+                                {project.free_maint_scope && (
+                                  <p className="whitespace-pre-line">무상 범위: {project.free_maint_scope} (범위를 벗어난 작업은 별도 견적으로 진행됩니다)</p>
+                                )}
+                              </div>
+                            );
                           }
 
                           return `잔여 포인트: ${project.remaining_points}P`;

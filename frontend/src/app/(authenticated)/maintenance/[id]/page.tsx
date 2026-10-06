@@ -272,8 +272,18 @@ export default function MaintenanceDetailPage() {
             </div>
           </div>
 
+          {/* Free Maintenance Badge */}
+          {data.is_free_maint && (
+            <div className="px-4 py-2 bg-teal-50 border-b flex items-center justify-between">
+              <span className="text-xs text-teal-800">무상 유지보수 기간 요청</span>
+              <Badge className="rounded-lg bg-teal-100 text-teal-700 border border-teal-200 hover:bg-teal-100">
+                포인트 미차감
+              </Badge>
+            </div>
+          )}
+
           {/* Points Badge */}
-          {data.points_used > 0 && (
+          {!data.is_free_maint && data.points_used > 0 && (
             <div className="px-4 py-2 bg-blue-50 border-b flex items-center justify-between">
               <span className="text-xs text-muted-foreground">사용 포인트</span>
               <Badge variant="secondary" className="rounded-lg font-bold">

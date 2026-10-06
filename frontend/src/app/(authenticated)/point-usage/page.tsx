@@ -14,6 +14,7 @@ import {
   Users,
   AlertTriangle,
   Download,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -206,7 +207,9 @@ export default function PointUsagePage() {
                 <SelectContent>
                   {data.projects_with_balance.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
-                      {p.title} (월 {formatNumber(p.monthly_point)}P / 잔여: {formatNumber(p.remaining_points)}P)
+                      {p.free_maint
+                        ? `${p.title} (무상 유지보수 ~${p.free_maint_end_date})`
+                        : `${p.title} (월 ${formatNumber(p.monthly_point)}P / 잔여: ${formatNumber(p.remaining_points)}P)`}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -215,8 +218,34 @@ export default function PointUsagePage() {
           </Card>
         )}
 
+        {/* Free Maintenance Info — 계약만료 후 무상 유지보수 기간 (포인트 미차감) */}
+        {hasMaintenanceData && data.free_maint && (
+          <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
+            <div className="bg-gradient-to-r from-teal-500 to-emerald-500 p-5 text-white">
+              <h2 className="text-sm font-semibold opacity-90 mb-1">{project!.title}</h2>
+              <p className="text-xs text-white/70">
+                계약기간: {project!.contract_date} ~ {project!.contract_termination_date}
+              </p>
+              <div className="mt-4 bg-white/15 rounded-xl p-4 flex items-start gap-3">
+                <ShieldCheck className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-bold">
+                    무상 유지보수 기간 · D-{data.free_maint.days_left}
+                  </p>
+                  <p className="text-xs text-white/85">
+                    {data.free_maint.start_date} ~ {data.free_maint.end_date} 동안 유지보수 요청 시 포인트가 차감되지 않습니다.
+                  </p>
+                  {data.free_maint.scope && (
+                    <p className="text-xs text-white/85 whitespace-pre-line">무상 범위: {data.free_maint.scope}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Contract Info */}
-        {hasMaintenanceData && (
+        {hasMaintenanceData && !data.free_maint && (
           <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
             <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
               <h2 className="text-sm font-semibold opacity-90 mb-1">
@@ -526,8 +555,30 @@ export default function PointUsagePage() {
           ) : (
             <div className="space-y-2 animate-stagger">
               {histories.items.map((item) => {
-                const pt = POINT_TYPE_MAP[item.point_type] || { label: "-", color: "bg-slate-100 text-slate-700" };
-                const st = STATUS_MAP[item.status] || { label: "-", color: "bg-slate-100 text-slate-700" };
+                if (item.is_free_maint) {
+                  return (
+                    <Card key={item.id} className="rounded-2xl overflow-hidden border-l-4 border-l-teal-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-teal-100 text-teal-700">
+                            무상
+                          </Badge>
+                          <span className="text-base font-bold whitespace-nowrap text-teal-600">0P</span>
+                        </div>
+                        <p className="text-sm text-foreground line-clamp-2">{item.content}</p>
+                        {item.managelist_title && (
+                          <p className="text-xs text-muted-foreground mt-1">요청: {item.managelist_title}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDateTime(item.created_at)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+                const pt = (item.point_type !== null && POINT_TYPE_MAP[item.point_type]) || { label: "-", color: "bg-slate-100 text-slate-700" };
+                const st = (item.status !== null && STATUS_MAP[item.status]) || { label: "-", color: "bg-slate-100 text-slate-700" };
                 const wt = item.worker_type ? WORKER_TYPE_MAP[item.worker_type] : null;
                 const isCharge = Number(item.point_type) === 1;
                 const isAlloc = Number(item.point_type) === 3;

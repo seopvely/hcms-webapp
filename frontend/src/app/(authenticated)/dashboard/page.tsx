@@ -21,6 +21,7 @@ import {
   AlertCircle,
   ExternalLink,
   Code2,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -192,6 +193,71 @@ export default function DashboardPage() {
             </div>
           </Card>
         )}
+
+        {/* Free Maintenance — 계약만료 후 무상 유지보수 기간 / 종료 후 전환 유도 */}
+        {data?.free_maint && (() => {
+          const fm = data.free_maint;
+          const showCta = (fm.state === "free_ended" || fm.ending_soon) && !data.maint_subscription?.has_maint_subscription;
+          const extendHref = `/inquiries/create?service=${encodeURIComponent("계약연장")}&plan=${encodeURIComponent(fm.project_title || "")}`;
+          return (
+            <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
+              <div className={`p-5 text-white bg-gradient-to-r ${
+                fm.state === "free_ended"
+                  ? "from-slate-500 to-slate-600"
+                  : fm.ending_soon
+                    ? "from-amber-500 to-orange-500"
+                    : "from-teal-500 to-emerald-500"
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 opacity-80" />
+                    <h2 className="text-sm font-semibold opacity-90">
+                      {fm.state === "free_ended" ? "무상 유지보수 종료" : "무상 유지보수 중"}
+                    </h2>
+                  </div>
+                  {fm.state === "free_maint" && fm.days_left !== null && (
+                    <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-bold">D-{fm.days_left}</span>
+                  )}
+                </div>
+                <p className="text-base font-bold">{fm.project_title}</p>
+                <p className="text-xs text-white/80 mt-1">
+                  무상 기간: {formatDate(fm.start_date)} ~ {formatDate(fm.end_date)}
+                </p>
+                {fm.state === "free_maint" ? (
+                  <p className="text-xs text-white/90 mt-2">
+                    {fm.ending_soon
+                      ? "무상 유지보수가 곧 종료됩니다. 종료 후에는 유지보수 플랜 또는 계약 연장이 필요합니다."
+                      : "계약은 만료되었지만 이 기간에는 포인트 차감 없이 유지보수를 요청할 수 있습니다."}
+                  </p>
+                ) : (
+                  <p className="text-xs text-white/90 mt-2">
+                    유지보수 플랜을 신청하거나 계약을 연장하시면 계속 유지보수를 받으실 수 있습니다.
+                  </p>
+                )}
+                {fm.scope && fm.state === "free_maint" && (
+                  <p className="text-xs text-white/80 mt-1 line-clamp-2">무상 범위: {fm.scope}</p>
+                )}
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {fm.state === "free_maint" && (
+                    <Link href="/maintenance/new" className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-white/90">
+                      유지보수 요청 <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
+                  {showCta && (
+                    <>
+                      <Link href="/services" className="inline-flex items-center gap-1 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/30">
+                        유지보수 플랜 보기
+                      </Link>
+                      <Link href={extendHref} className="inline-flex items-center gap-1 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/30">
+                        계약 연장 문의
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Dev Subscription Credits */}
         {data?.dev_subscription?.has_dev_subscription && (
@@ -429,8 +495,15 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     {proj.contract_termination_date && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        만료: {formatDate(proj.contract_termination_date)}
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span>만료: {formatDate(proj.contract_termination_date)}</span>
+                        {(proj.free_maint_state === "free_maint" || proj.free_maint_state === "free_upcoming") && proj.free_maint_end_date && (
+                          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                            proj.free_maint_state === "free_maint" ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-600"
+                          }`}>
+                            무상 ~{formatDate(proj.free_maint_end_date)}
+                          </span>
+                        )}
                       </p>
                     )}
                   </CardContent>

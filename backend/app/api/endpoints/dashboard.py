@@ -8,6 +8,13 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.utils.point_cycle import get_point_cycle
+from app.utils.free_maint import (
+    FREE_ENDING_SOON_DAYS,
+    contract_active_q,
+    find_free_ended_project,
+    find_free_maint_project,
+    free_maint_state,
+)
 from app.models.customer import (
     Managelist,
     ManagelistComment,
@@ -163,7 +170,7 @@ def get_dashboard(
     now = datetime.now()
     active_project = (
         db.query(Project)
-        .filter(Project.company_id == company_id, Project.point > 0, Project.contract_date <= now, Project.contract_termination_date >= now)
+        .filter(Project.company_id == company_id, contract_active_q(now))
         .order_by(Project.created_at.desc())
         .first()
     )
@@ -183,6 +190,23 @@ def get_dashboard(
         total_points = used_points = remaining_points = 0
 
     point_percent = round((remaining_points / total_points) * 100, 1) if total_points > 0 else 0
+
+    # 무상 유지보수 — 무상 기간 중이거나 최근 종료된 프로젝트 안내 (다른 계약이 진행 중이어도 표시)
+    free_maint = None
+    free_project = find_free_maint_project(db, company_id, now.date()) or find_free_ended_project(db, company_id, now.date())
+    if free_project:
+        state = free_maint_state(free_project, now.date())
+        free_maint = {
+            "project_id": free_project.seq,
+            "project_title": free_project.title,
+            "state": state["state"],
+            "start_date": state["start_date"],
+            "end_date": state["end_date"],
+            "days_left": state["days_left"],
+            "days_since_end": state["days_since_end"],
+            "scope": state["scope"],
+            "ending_soon": state["state"] == "free_maint" and state["days_left"] <= FREE_ENDING_SOON_DAYS,
+        }
 
     # 유지보수 구독 정보
     maint_sub = (
@@ -246,6 +270,8 @@ def get_dashboard(
             "contract_termination_date": proj.contract_termination_date.isoformat() if proj.contract_termination_date else None,
             "project_type": PROJECT_TYPE_MAP.get(proj.project_type, proj.project_type),
             "monthly_point": proj.point or 0,
+            "free_maint_state": free_maint_state(proj, today)["state"],
+            "free_maint_end_date": proj.free_maint_end_date.isoformat() if proj.free_maint_end_date else None,
         })
 
     # 개발 구독 정보
@@ -296,6 +322,7 @@ def get_dashboard(
         "monthly_payment": monthly_payment,
         "point_summary": {"total_points": total_points, "used_points": abs(used_points), "remaining_points": remaining_points, "point_percent": point_percent},
         "project_progress": project_progress,
+        "free_maint": free_maint,
         "dev_subscription": {
             "has_dev_subscription": has_dev_subscription,
             "dev_plan_type": dev_plan_type,

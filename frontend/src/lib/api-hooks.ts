@@ -84,8 +84,25 @@ export interface DashboardData {
     contract_termination_date: string | null;
     project_type: string | null;
     monthly_point: number;
+    free_maint_state?: FreeMaintState;
+    free_maint_end_date?: string | null;
   }[];
+  // 계약기간 중인 유지보수 계약이 없을 때 무상 유지보수 중이거나 최근 종료된 프로젝트
+  free_maint?: {
+    project_id: number;
+    project_title: string;
+    state: "free_maint" | "free_ended";
+    start_date: string;
+    end_date: string;
+    days_left: number | null;
+    days_since_end: number | null;
+    scope: string | null;
+    ending_soon: boolean;
+  } | null;
 }
+
+// 무상 유지보수 상태: 계약기간 중 무상 예정 / 무상 기간 중 / 최근 종료(전환 유도 대상)
+export type FreeMaintState = "free_upcoming" | "free_maint" | "free_ended" | null;
 
 // Maintenance
 export interface MaintenanceItem {
@@ -132,6 +149,7 @@ export interface MaintenanceDetail {
   worker_type: string | null;
   worker_name: string | null;
   points_used: number;
+  is_free_maint?: boolean; // 무상 유지보수 기간 요청 (포인트 차감 없음)
   project_title: string | null;
   attachments: { id: number; name: string; size: string; url: string }[];
   comments: MaintenanceComment[];
@@ -266,11 +284,13 @@ export interface MaintenanceProject {
   maintenance_request_enabled: boolean;
   payment_completed: boolean;
   remaining_points: number;
-  contract_status: string; // "active" | "expired" | "free_maint"
+  contract_status: string; // "active" | "expired" | "free_maint" | "free_ended"
   contract_date: string | null;
   contract_termination_date: string | null;
   free_maint?: boolean; // 계약만료 후 무상 유지보수 기간 (포인트 차감 없음)
   free_maint_end_date?: string | null;
+  free_maint_days_left?: number | null;
+  free_maint_scope?: string | null;
 }
 
 // Point Usage
@@ -288,18 +308,22 @@ export interface PointUsageProjectBalance {
   monthly_point: number;
   remaining_points: number;
   total_points: number;
+  free_maint?: boolean;
+  free_maint_end_date?: string | null;
 }
 
 export interface PointUsageHistoryItem {
-  id: number;
+  id: number | string; // 무상 요청 행은 "free-{seq}"
   created_at: string;
   content: string;
-  point_type: number;
+  point_type: number | null;
   point_category: string;
   point: number;
-  status: number;
+  status: number | null;
   worker_type: number | null;
   managelist_title: string;
+  managelist_id?: number;
+  is_free_maint?: boolean; // 무상 유지보수 기간 요청 (0P)
 }
 
 export interface PointUsageWorkerStat {
@@ -344,6 +368,13 @@ export interface PointUsageData {
   date_from: string;
   date_to: string;
   point_type_filter: string;
+  // 현재 선택된 프로젝트가 무상 유지보수 기간이면 포인트 대신 기간 정보
+  free_maint?: {
+    start_date: string;
+    end_date: string;
+    days_left: number;
+    scope: string | null;
+  };
   maintenance_summary?: {
     total: number;
     used: number;
@@ -398,6 +429,7 @@ export interface ProjectBoardProject {
   id: number;
   title: string;
   is_active: boolean;
+  free_maint?: boolean; // 무상 유지보수 기간 (계약만료 후에도 이용 가능)
   contract_date: string | null;
   contract_termination_date: string | null;
 }

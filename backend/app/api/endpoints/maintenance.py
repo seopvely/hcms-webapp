@@ -13,6 +13,7 @@ from sqlalchemy import func, or_
 
 from app.core.deps import get_current_user
 from app.utils.point_cycle import get_point_cycle
+from app.utils.free_maint import free_maint_state
 from app.services.email import notify_maintenance_created, notify_maintenance_comment_created
 from app.db.session import get_db
 from app.models.manager import Manager
@@ -81,15 +82,55 @@ def calculate_remaining_points(project: Project, db: Session, company_id: int) -
     return max(0, cycle["total_points"] - abs(used_points_in_cycle))
 
 
-def is_in_free_maint(project: Project, today: Optional[date] = None) -> bool:
-    """무상 유지보수 기간(계약만료 후 N개월) 여부 - 중지 프로젝트 제외"""
-    if str(project.project_status or "") == "3":
-        return False
-    start, end = project.free_maint_start_date, project.free_maint_end_date
-    if not start or not end:
-        return False
-    today = today or datetime.now().date()
-    return start <= today <= end
+def get_request_permit(project: Project, db: Session, company_id: int) -> dict:
+    """유지보수 요청 가능 여부 (프로젝트 선택 목록과 등록 API 공통 기준)"""
+    payment = (
+        db.query(Payment)
+        .filter(
+            Payment.project_id == project.seq,
+            Payment.payment_status == 1  # 결제완료
+        )
+        .first()
+    )
+
+    now = datetime.now().date()
+    contract_valid = False
+    if project.contract_date and project.contract_termination_date:
+        contract_start = project.contract_date.date() if isinstance(project.contract_date, datetime) else project.contract_date
+        contract_end = project.contract_termination_date.date() if isinstance(project.contract_termination_date, datetime) else project.contract_termination_date
+        contract_valid = contract_start <= now <= contract_end
+
+    # Calculate remaining points using 6-month cycle logic
+    remaining_points = calculate_remaining_points(project, db, company_id)
+
+    # Admin-controlled switch (project.maintenance_request_enabled)
+    request_enabled = bool(project.maintenance_request_enabled)
+
+    # 무상 유지보수 기간: 계약이 만료되었어도 포인트 차감 없이 요청 가능
+    free_state = free_maint_state(project, now)
+    free_maint = free_state["state"] == "free_maint"
+
+    # Permit if admin enabled it, payment complete, and (free maintenance period or contract valid with remaining points)
+    permit = request_enabled and bool(payment) and (free_maint or (contract_valid and remaining_points > 0))
+
+    if contract_valid:
+        contract_status = "active"
+    elif free_maint:
+        contract_status = "free_maint"
+    elif free_state["state"] == "free_ended":
+        contract_status = "free_ended"
+    else:
+        contract_status = "expired"
+
+    return {
+        "permit": permit,
+        "request_enabled": request_enabled,
+        "payment_completed": bool(payment),
+        "remaining_points": remaining_points,
+        "contract_status": contract_status,
+        "free_maint": free_maint,
+        "free_state": free_state,
+    }
 
 
 def save_upload_file(file: UploadFile) -> tuple[str, str]:
@@ -124,46 +165,20 @@ def get_available_projects(
 
     result = []
     for project in projects:
-        # Check payment status
-        payment = (
-            db.query(Payment)
-            .filter(
-                Payment.project_id == project.seq,
-                Payment.payment_status == 1  # 결제완료
-            )
-            .first()
-        )
-
-        # Check contract period
-        now = datetime.now().date()
-        contract_valid = False
-        if project.contract_date and project.contract_termination_date:
-            contract_start = project.contract_date.date() if isinstance(project.contract_date, datetime) else project.contract_date
-            contract_end = project.contract_termination_date.date() if isinstance(project.contract_termination_date, datetime) else project.contract_termination_date
-            contract_valid = contract_start <= now <= contract_end
-
-        # Calculate remaining points using 6-month cycle logic
-        remaining_points = calculate_remaining_points(project, db, company_id)
-
-        # Admin-controlled switch (project.maintenance_request_enabled)
-        request_enabled = bool(project.maintenance_request_enabled)
-
-        # 무상 유지보수 기간: 계약이 만료되었어도 포인트 차감 없이 요청 가능
-        free_maint = is_in_free_maint(project, now)
-
-        # Permit if admin enabled it, payment complete, and (free maintenance period or contract valid with remaining points)
-        permit = request_enabled and bool(payment) and (free_maint or (contract_valid and remaining_points > 0))
-
+        info = get_request_permit(project, db, company_id)
+        free_state = info["free_state"]
         result.append({
             "id": project.seq,
             "title": project.title,
-            "permit": permit,
-            "maintenance_request_enabled": request_enabled,
-            "payment_completed": bool(payment),
-            "remaining_points": remaining_points,
-            "contract_status": "active" if contract_valid else ("free_maint" if free_maint else "expired"),
-            "free_maint": free_maint,
-            "free_maint_end_date": project.free_maint_end_date.isoformat() if free_maint else None,
+            "permit": info["permit"],
+            "maintenance_request_enabled": info["request_enabled"],
+            "payment_completed": info["payment_completed"],
+            "remaining_points": info["remaining_points"],
+            "contract_status": info["contract_status"],
+            "free_maint": info["free_maint"],
+            "free_maint_end_date": free_state["end_date"] if info["contract_status"] in ("free_maint", "free_ended") else None,
+            "free_maint_days_left": free_state["days_left"],
+            "free_maint_scope": project.free_maint_scope if info["free_maint"] else None,
             "contract_date": project.contract_date.isoformat() if project.contract_date else None,
             "contract_termination_date": project.contract_termination_date.isoformat() if project.contract_termination_date else None,
         })
@@ -270,18 +285,21 @@ async def create_maintenance(
             detail="이 프로젝트는 유지보수 요청이 불가능합니다. 관리자에게 문의해주세요."
         )
 
-    # Verify payment status
-    payment = (
-        db.query(Payment)
-        .filter(
-            Payment.project_id == project_id,
-            Payment.payment_status == 1  # 결제완료
-        )
-        .first()
-    )
+    info = get_request_permit(project, db, company_id)
 
-    if not payment:
+    # Verify payment status
+    if not info["payment_completed"]:
         raise HTTPException(status_code=400, detail="Project payment not completed")
+
+    # 계약기간 중(잔여 포인트 있음) 또는 무상 유지보수 기간이어야 요청 가능 (/maintenance/projects 의 permit 과 동일 기준)
+    if not info["permit"]:
+        if info["contract_status"] == "active":
+            detail = "잔여 포인트가 없어 유지보수 요청이 불가능합니다."
+        elif info["contract_status"] == "free_ended":
+            detail = "무상 유지보수 기간이 종료되었습니다. 유지보수 플랜 신청 또는 계약 연장 후 이용해주세요."
+        else:
+            detail = "계약 기간이 만료된 프로젝트는 유지보수 요청이 불가능합니다."
+        raise HTTPException(status_code=403, detail=detail)
 
     # Create maintenance request
     new_maintenance = Managelist(
@@ -294,7 +312,7 @@ async def create_maintenance(
         status=1,  # 접수
         created_at=datetime.now(),
         points_used=0,
-        is_free_maint=is_in_free_maint(project),  # 무상 기간 요청은 PACMS에서 포인트 책정/차감 안 함
+        is_free_maint=info["free_maint"],  # 무상 기간 요청은 PACMS에서 포인트 책정/차감 안 함
     )
 
     db.add(new_maintenance)
@@ -324,7 +342,7 @@ async def create_maintenance(
             maintenance_id=new_maintenance.seq,
             company_name=company_name,
             project_title=project.title or "",
-            title=title,
+            title=f"[무상] {title}" if new_maintenance.is_free_maint else title,
             writer_name=current_user.name or "고객",
         )
     except Exception:
@@ -676,6 +694,7 @@ def get_maintenance_detail(
         "writer_name": item.writer.name if item.writer else None,
         "project_title": item.project.title if item.project else None,
         "points_used": item.points_used or 0,
+        "is_free_maint": bool(item.is_free_maint),
         "attachments": attachments,
         "comments": comments,
         "point_histories": point_histories,
