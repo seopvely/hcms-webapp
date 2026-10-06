@@ -81,6 +81,17 @@ def calculate_remaining_points(project: Project, db: Session, company_id: int) -
     return max(0, cycle["total_points"] - abs(used_points_in_cycle))
 
 
+def is_in_free_maint(project: Project, today: Optional[date] = None) -> bool:
+    """무상 유지보수 기간(계약만료 후 N개월) 여부 - 중지 프로젝트 제외"""
+    if str(project.project_status or "") == "3":
+        return False
+    start, end = project.free_maint_start_date, project.free_maint_end_date
+    if not start or not end:
+        return False
+    today = today or datetime.now().date()
+    return start <= today <= end
+
+
 def save_upload_file(file: UploadFile) -> tuple[str, str]:
     """Save uploaded file and return (file_path, original_filename)"""
     ext = os.path.splitext(file.filename)[1].lower().lstrip(".")
@@ -137,8 +148,11 @@ def get_available_projects(
         # Admin-controlled switch (project.maintenance_request_enabled)
         request_enabled = bool(project.maintenance_request_enabled)
 
-        # Permit if admin enabled it, payment complete, contract valid, and has remaining points
-        permit = request_enabled and bool(payment) and contract_valid and remaining_points > 0
+        # 무상 유지보수 기간: 계약이 만료되었어도 포인트 차감 없이 요청 가능
+        free_maint = is_in_free_maint(project, now)
+
+        # Permit if admin enabled it, payment complete, and (free maintenance period or contract valid with remaining points)
+        permit = request_enabled and bool(payment) and (free_maint or (contract_valid and remaining_points > 0))
 
         result.append({
             "id": project.seq,
@@ -147,7 +161,9 @@ def get_available_projects(
             "maintenance_request_enabled": request_enabled,
             "payment_completed": bool(payment),
             "remaining_points": remaining_points,
-            "contract_status": "active" if contract_valid else "expired",
+            "contract_status": "active" if contract_valid else ("free_maint" if free_maint else "expired"),
+            "free_maint": free_maint,
+            "free_maint_end_date": project.free_maint_end_date.isoformat() if free_maint else None,
             "contract_date": project.contract_date.isoformat() if project.contract_date else None,
             "contract_termination_date": project.contract_termination_date.isoformat() if project.contract_termination_date else None,
         })
@@ -209,6 +225,7 @@ def list_maintenance(
                 "views_count": comment_count,
                 "project_title": m.project.title if m.project else None,
                 "points_used": m.points_used or 0,
+                "is_free_maint": bool(m.is_free_maint),
             }
         )
 
@@ -277,6 +294,7 @@ async def create_maintenance(
         status=1,  # 접수
         created_at=datetime.now(),
         points_used=0,
+        is_free_maint=is_in_free_maint(project),  # 무상 기간 요청은 PACMS에서 포인트 책정/차감 안 함
     )
 
     db.add(new_maintenance)

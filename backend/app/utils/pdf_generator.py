@@ -856,6 +856,31 @@ def _default_payment_items(project_type: Optional[str]) -> list:
     return ["1. 계약 체결 시 전액 지급"]
 
 
+
+def _free_maint_months(value):
+    """무상 유지보수 개월 수 (없거나 0 이하면 None)"""
+    try:
+        months = int(value)
+    except (TypeError, ValueError):
+        return None
+    return months if months > 0 else None
+
+
+def _free_maint_period(base_date, months):
+    """계약종료일 기준 무상 유지보수 (시작일, 종료일): 다음날 ~ 시작일 + N개월 - 1일"""
+    import calendar
+    import datetime as _dt
+    if not base_date or not months:
+        return None
+    if isinstance(base_date, _dt.datetime):
+        base_date = base_date.date()
+    start = base_date + _dt.timedelta(days=1)
+    month_index = start.month - 1 + months
+    year, month = start.year + month_index // 12, month_index % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    end = _dt.date(year, month, day) - _dt.timedelta(days=1)
+    return start, end
+
 def generate_contract_pdf(data: dict) -> bytes:
     """
     Generate contract PDF from a data dict.
@@ -1068,6 +1093,25 @@ def generate_contract_pdf(data: dict) -> bytes:
             y_item += BODY_LH
         pdf.set_y(y + box_h)
         pdf.ln(6)
+
+    # 제N조 (무상 유지보수) — 계약만료일 다음날부터 N개월 (PACMS contract_preview.html 과 동일)
+    free_maint_months = _free_maint_months(data.get("free_maint_months"))
+    if free_maint_months:
+        pdf.article_title(f"제{next_no()}조 (무상 유지보수)")
+        period = _free_maint_period(data.get("free_maint_base_date"), free_maint_months)
+        period_text = (
+            f" ({period[0].year}년 {period[0].month:02d}월 {period[0].day:02d}일 ~ "
+            f"{period[1].year}년 {period[1].month:02d}월 {period[1].day:02d}일)" if period else ""
+        )
+        scope = _safe(data.get("free_maint_scope")) or "납품 결과물의 하자보수 및 경미한 수정"
+        for item in [
+            f'1. "을"은 계약기간 만료일 다음날부터 {free_maint_months}개월간 무상 유지보수를 제공한다.{period_text}',
+            f"2. 무상 유지보수 범위: {scope}",
+            "3. 무상 유지보수 기간 중 유지보수 요청은 HCMS(고객 포털)를 통해 접수하며, 유지보수 포인트를 차감하지 않는다.",
+            '4. 무상 유지보수 범위를 벗어난 기능 추가·변경 등의 작업은 "갑"과 "을"이 별도 협의(견적)하여 진행한다.',
+        ]:
+            pdf.para(item, indent=INDENT + SUB_INDENT)
+        pdf.ln(5)
 
     # 제N조 (저작권 및 지적재산권) — 제작/개발 유형만
     if project_type in DEV_TYPES:

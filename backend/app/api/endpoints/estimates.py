@@ -695,6 +695,10 @@ def download_contract_pdf(
 		"contract_amount": contract.contract_amount,
 		"payment_terms": contract.payment_terms,
 		"special_terms": contract.special_terms,
+		"free_maint_months": contract.free_maint_months,
+		"free_maint_scope": contract.free_maint_scope,
+		# 무상 유지보수 기간 계산 기준 (계약서 종료일, 없으면 견적서 계약종료일)
+		"free_maint_base_date": contract.contract_end_date or estimate.contract_termination_date,
 		"customer_signed_at": contract.customer_signed_at,
 		"customer_signed_name": contract.customer_signed_name,
 		"customer_signed_ip": contract.customer_signed_ip,

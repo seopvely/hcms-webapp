@@ -236,6 +236,11 @@ export default function MaintenanceNewPage() {
                                 요청 불가
                               </Badge>
                             )}
+                            {project.permit && project.free_maint && (
+                              <Badge className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">
+                                무상 유지보수
+                              </Badge>
+                            )}
                           </div>
                         </SelectItem>
                       ))}
@@ -278,6 +283,10 @@ export default function MaintenanceNewPage() {
 
                             // Generic fallback
                             return "이 프로젝트는 현재 유지보수 요청이 불가능합니다.";
+                          }
+
+                          if (project.free_maint) {
+                            return `무상 유지보수 기간입니다 (~${project.free_maint_end_date?.slice(0, 10)}). 유지보수 포인트가 차감되지 않습니다.`;
                           }
 
                           return `잔여 포인트: ${project.remaining_points}P`;

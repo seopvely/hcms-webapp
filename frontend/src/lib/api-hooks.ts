@@ -96,6 +96,7 @@ export interface MaintenanceItem {
   project_title: string | null;
   comments_count: number;
   points_used: number;
+  is_free_maint?: boolean; // 무상 유지보수 기간 요청 (포인트 차감 없음)
 }
 
 export interface PointHistoryItem {
@@ -265,9 +266,11 @@ export interface MaintenanceProject {
   maintenance_request_enabled: boolean;
   payment_completed: boolean;
   remaining_points: number;
-  contract_status: string;
+  contract_status: string; // "active" | "expired" | "free_maint"
   contract_date: string | null;
   contract_termination_date: string | null;
+  free_maint?: boolean; // 계약만료 후 무상 유지보수 기간 (포인트 차감 없음)
+  free_maint_end_date?: string | null;
 }
 
 // Point Usage

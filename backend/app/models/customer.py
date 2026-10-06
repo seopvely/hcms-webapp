@@ -56,6 +56,11 @@ class Project(Base):
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     extension_count = Column(Integer, nullable=True, default=0)
+    # 무상 유지보수 (PACMS 관리: 계약만료일 다음날부터 N개월, 기간 중 포인트 차감 없음)
+    free_maint_months = Column(Integer, nullable=True)
+    free_maint_scope = Column(Text, nullable=True)
+    free_maint_start_date = Column(Date, nullable=True)
+    free_maint_end_date = Column(Date, nullable=True)
 
     company = relationship("Company", backref="projects")
 
@@ -76,6 +81,7 @@ class Managelist(Base):
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     points_used = Column(Integer, nullable=True, default=0)
+    is_free_maint = Column(Boolean, nullable=False, default=False)  # 무상 유지보수 기간 요청
     dev_subscription_id = Column(Integer, ForeignKey("pacms_devsubscription.seq"), nullable=True)
 
     company = relationship("Company")
@@ -518,6 +524,8 @@ class EstimateContract(Base):
     payment_terms = Column(Text, nullable=True)
     special_terms = Column(Text, nullable=True)
     maintenance_point = Column(Integer, nullable=True)
+    free_maint_months = Column(Integer, nullable=True)  # 무상 유지보수 기간(개월, 계약만료일 다음날부터)
+    free_maint_scope = Column(Text, nullable=True)
     status = Column(String(1), nullable=False, default="1")
     sent_at = Column(DateTime, nullable=True)
     sent_to_email = Column(String(254), nullable=True)
