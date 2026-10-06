@@ -318,6 +318,13 @@ export interface PointUsageData {
   projects_with_balance: PointUsageProjectBalance[];
   period_start: string;
   period_end: string;
+  cycle?: {
+    index: number;
+    count: number;
+    start: string;
+    end: string;
+    next_reset: string | null;
+  };
   total_points: number;
   used_points: number;
   remaining_points: number;

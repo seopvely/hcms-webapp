@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
 
 from app.core.deps import get_current_user
+from app.utils.point_cycle import get_point_cycle
 from app.services.email import notify_maintenance_created, notify_maintenance_comment_created
 from app.db.session import get_db
 from app.models.manager import Manager
@@ -46,54 +47,23 @@ def month_diff(d1: date, d2: date) -> int:
 
 def calculate_remaining_points(project: Project, db: Session, company_id: int) -> int:
     """
-    Calculate remaining points for a project based on 6-month cycles.
-
-    Business Rules:
-    - Points are charged monthly in 6-month cycles
-    - For a 12-month contract: first 6 months get monthly points,
-      after those 6 months expire, the next 6 months of points are granted
-    - If less than 6 months remain in contract, use remaining months × monthly_point
-    - Remaining points = (available months in current cycle × monthly_point) - used_points_in_cycle
+    현재 6개월 주기의 잔여 포인트 (주기 계산은 app.utils.point_cycle — point-usage/대시보드와 동일).
+    - 계약 기간 밖이면 0
+    - 잔여 = 주기 개월수 × 월 포인트 - 현재 주기 사용 포인트 (0 미만이면 0)
     """
-    if not project.contract_date or not project.contract_termination_date:
-        return 0
-
     if not project.point or project.point <= 0:
         return 0
 
-    # Convert to date if datetime
+    cycle = get_point_cycle(project)
+    if not cycle:
+        return 0
+
+    today = datetime.now().date()
     contract_start = project.contract_date.date() if isinstance(project.contract_date, datetime) else project.contract_date
     contract_end = project.contract_termination_date.date() if isinstance(project.contract_termination_date, datetime) else project.contract_termination_date
-    today = datetime.now().date()
-
-    # Check if contract has started or expired
     if today < contract_start or today > contract_end:
         return 0
 
-    # Calculate total contract months and elapsed months
-    total_contract_months = month_diff(contract_start, contract_end)
-    months_elapsed = month_diff(contract_start, today)
-
-    # Determine which 6-month cycle we're in
-    current_cycle_index = months_elapsed // 6
-    cycle_start_month = current_cycle_index * 6
-    cycle_end_month = min((current_cycle_index + 1) * 6, total_contract_months)
-    months_in_current_cycle = cycle_end_month - cycle_start_month
-
-    # Available points = total months in current cycle × monthly allocation
-    available_points = months_in_current_cycle * project.point
-
-    # Calculate the date range for the current cycle
-    try:
-        from dateutil.relativedelta import relativedelta
-        cycle_start_date = contract_start + relativedelta(months=cycle_start_month)
-        cycle_end_date = contract_start + relativedelta(months=cycle_end_month)
-    except:
-        # Fallback: use simple calculation without dateutil
-        cycle_start_date = contract_start
-        cycle_end_date = contract_end
-
-    # Query used points in the current cycle
     # Only count PointHistory with point_type=2 (사용), status=2 (실행)
     used_points_in_cycle = (
         db.query(func.sum(PointHistory.point))
@@ -102,16 +72,13 @@ def calculate_remaining_points(project: Project, db: Session, company_id: int) -
             PointHistory.company_id == company_id,
             PointHistory.point_type == 2,  # 사용
             PointHistory.status == 2,       # 실행
-            PointHistory.created_at >= cycle_start_date,
-            PointHistory.created_at <= cycle_end_date,
+            PointHistory.created_at >= cycle["query_start"],
+            PointHistory.created_at < cycle["query_end"],
         )
         .scalar()
     ) or 0
 
-    # Remaining points = available - used, never below 0
-    remaining_points = max(0, available_points - abs(used_points_in_cycle))
-
-    return remaining_points
+    return max(0, cycle["total_points"] - abs(used_points_in_cycle))
 
 
 def save_upload_file(file: UploadFile) -> tuple[str, str]:

@@ -11,6 +11,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import Project, PointHistory, Managelist, ManagelistComment, DevSubscription, MaintSubscription
+from app.utils.point_cycle import get_point_cycle
 
 HAS_DATEUTIL = False
 try:
@@ -230,18 +231,20 @@ def get_point_usage(
         contract_start_date = contract_start.date() if isinstance(contract_start, datetime) else contract_start
         contract_end_date = contract_end.date() if isinstance(contract_end, datetime) else contract_end
 
-        contract_months = min((contract_end_date.year - contract_start_date.year) * 12 + (contract_end_date.month - contract_start_date.month), 6)
-        total_points = current_project.point * max(contract_months, 1)
+        # 포인트는 계약 시작일 기준 6개월 주기마다 초기화 — 총/사용/잔여는 현재 주기 안에서만 계산
+        cycle = get_point_cycle(current_project)
+        cycle_start, cycle_end = cycle["query_start"], cycle["query_end"]
+        total_points = cycle["total_points"]
 
         used_points = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
             PointHistory.project_id == current_project.seq, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.created_at >= contract_start, PointHistory.created_at <= contract_end
+            PointHistory.status == 2, PointHistory.created_at >= cycle_start, PointHistory.created_at < cycle_end
         ).scalar() or 0)
         remaining_points = total_points - used_points
 
         used_maintenance = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
             PointHistory.project_id == current_project.seq, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.created_at >= contract_start, PointHistory.created_at <= contract_end,
+            PointHistory.status == 2, PointHistory.created_at >= cycle_start, PointHistory.created_at < cycle_end,
             or_(PointHistory.point_category == "1", PointHistory.point_category.is_(None))
         ).scalar() or 0)
         maintenance_summary = {"total": total_points, "used": used_maintenance, "remaining": max(0, total_points - used_maintenance)}
@@ -254,21 +257,24 @@ def get_point_usage(
         }
         response["period_start"] = contract_start_date.strftime("%Y-%m-%d")
         response["period_end"] = contract_end_date.strftime("%Y-%m-%d")
+        response["cycle"] = {
+            "index": cycle["index"] + 1,
+            "count": cycle["count"],
+            "start": cycle["start"].strftime("%Y-%m-%d"),
+            "end": cycle["end"].strftime("%Y-%m-%d"),
+            "next_reset": cycle["next_reset"].strftime("%Y-%m-%d") if cycle["next_reset"] else None,
+        }
         response["total_points"] = total_points
         response["used_points"] = used_points
         response["remaining_points"] = remaining_points
         response["maintenance_summary"] = maintenance_summary
 
         for project in maintenance_projects:
-            proj_start = project.contract_date
-            proj_end = project.contract_termination_date
-            proj_start_date = proj_start.date() if isinstance(proj_start, datetime) else proj_start
-            proj_end_date = proj_end.date() if isinstance(proj_end, datetime) else proj_end
-            proj_months = min((proj_end_date.year - proj_start_date.year) * 12 + (proj_end_date.month - proj_start_date.month), 6)
-            proj_total = project.point * max(proj_months, 1)
+            proj_cycle = get_point_cycle(project)
+            proj_total = proj_cycle["total_points"]
             proj_used = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
                 PointHistory.project_id == project.seq, PointHistory.point_type == 2,
-                PointHistory.status == 2, PointHistory.created_at >= proj_start, PointHistory.created_at <= proj_end
+                PointHistory.status == 2, PointHistory.created_at >= proj_cycle["query_start"], PointHistory.created_at < proj_cycle["query_end"]
             ).scalar() or 0)
             response["projects_with_balance"].append({
                 "id": project.seq, "title": project.title,
@@ -277,7 +283,7 @@ def get_point_usage(
 
         point_histories_for_stats = db.query(PointHistory).filter(
             PointHistory.project_id == current_project.seq, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.created_at >= contract_start, PointHistory.created_at <= contract_end
+            PointHistory.status == 2, PointHistory.created_at >= cycle_start, PointHistory.created_at < cycle_end
         ).all()
 
         worker_stats_dict = {}
@@ -298,13 +304,9 @@ def get_point_usage(
         response["worker_stats"] = list(worker_stats_dict.values())
 
         chart_data = []
-        for i in range(6):
-            if HAS_DATEUTIL:
-                month_start_c = contract_start_date + relativedelta(months=i)
-                month_end_c = contract_start_date + relativedelta(months=i + 1)
-            else:
-                month_start_c = contract_start_date + timedelta(days=i * 30)
-                month_end_c = contract_start_date + timedelta(days=(i + 1) * 30)
+        for i in range(cycle["months"]):
+            month_start_c = cycle["start"] + relativedelta(months=i)
+            month_end_c = cycle["start"] + relativedelta(months=i + 1)
 
             month_usage = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
                 PointHistory.project_id == current_project.seq, PointHistory.point_type == 2, PointHistory.status == 2,

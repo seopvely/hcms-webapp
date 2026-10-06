@@ -7,6 +7,7 @@ from app.api.endpoints.estimates import CUSTOMER_VISIBLE_ESTIMATE_STATUSES
 from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
+from app.utils.point_cycle import get_point_cycle
 from app.models.customer import (
     Managelist,
     ManagelistComment,
@@ -168,15 +169,12 @@ def get_dashboard(
     )
 
     if active_project:
-        contract_start = active_project.contract_date
-        contract_end = active_project.contract_termination_date
-        contract_start_date = contract_start.date() if isinstance(contract_start, datetime) else contract_start
-        contract_end_date = contract_end.date() if isinstance(contract_end, datetime) else contract_end
-        contract_months = min((contract_end_date.year - contract_start_date.year) * 12 + (contract_end_date.month - contract_start_date.month), 6)
-        total_points = active_project.point * max(contract_months, 1)
+        # 6개월 주기 초기화 — 현재 주기 기준 (point-usage 와 동일)
+        cycle = get_point_cycle(active_project)
+        total_points = cycle["total_points"]
         used_points_result = (
             db.query(func.sum(func.abs(PointHistory.point)))
-            .filter(PointHistory.project_id == active_project.seq, PointHistory.point_type == 2, PointHistory.status == 2, PointHistory.created_at >= contract_start, PointHistory.created_at <= contract_end)
+            .filter(PointHistory.project_id == active_project.seq, PointHistory.point_type == 2, PointHistory.status == 2, PointHistory.created_at >= cycle["query_start"], PointHistory.created_at < cycle["query_end"])
             .scalar()
         )
         used_points = int(used_points_result or 0)

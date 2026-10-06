@@ -222,15 +222,25 @@ export default function PointUsagePage() {
               <h2 className="text-sm font-semibold opacity-90 mb-1">
                 {project!.title}
               </h2>
-              <p className="text-xs text-white/70 mb-4">
+              <p className="text-xs text-white/70">
                 계약기간: {data.period_start} ~ {data.period_end}
               </p>
+              {data.cycle ? (
+                <p className="text-xs text-white/85 mt-1 mb-4">
+                  이번 주기({data.cycle.index}/{data.cycle.count}): {data.cycle.start} ~ {data.cycle.end}
+                  {data.cycle.next_reset
+                    ? ` · ${data.cycle.next_reset} 초기화`
+                    : " · 마지막 주기"}
+                </p>
+              ) : (
+                <div className="mb-4" />
+              )}
 
               {/* Summary Stats */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-white/10 rounded-xl p-3 text-center">
                   <Coins className="h-4 w-4 mx-auto mb-1 opacity-80" />
-                  <p className="text-xs text-white/70">총 포인트</p>
+                  <p className="text-xs text-white/70">이번 주기 포인트</p>
                   <p className="text-lg font-bold">
                     <AnimatedCounter value={data.total_points} />
                   </p>
