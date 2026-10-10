@@ -145,6 +145,7 @@ async def create_inquiry(
         contents=contents,
         inquiry_type=inquiry_type,
         status=1,  # 대기중
+        priority="medium",  # DB NOT NULL·기본값 없음 — 빠지면 STRICT 모드에서 INSERT 실패
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
@@ -355,6 +356,10 @@ async def create_inquiry_answer(
     )
 
     db.add(new_answer)
+    # 답변완료 문의에 고객이 답글을 달면 진행중으로 재오픈(직원이 놓치지 않게 — SPEC 02 §5)
+    if str(inquiry.status) == "3":
+        inquiry.status = "2"
+        inquiry.updated_at = datetime.now()
     db.commit()
     db.refresh(new_answer)
 

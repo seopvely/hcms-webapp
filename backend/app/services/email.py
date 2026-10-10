@@ -242,3 +242,27 @@ def notify_customer_maintenance_reply(to_email, customer_name, maintenance_id, t
         items,
         f"{settings.PUBLIC_BASE_URL}/maintenance/{maintenance_id}", "처리 내역 확인하기",
     ))
+
+
+def notify_customer_inquiry_answer(to_emails, company_name, inquiry_id, inquiry_title, writer_name):
+    """직원 문의 답변 → 회사 고객 담당자 전원에게 메일(cms render_inquiry_answer 와 같은 대상). 링크는 hcms."""
+    if not to_emails:
+        return
+    esc = html.escape
+    send_email_async(list(to_emails), f"[HCMS] 문의사항 답변 등록 - {inquiry_title}", _build_html(
+        "등록하신 문의사항에 답변이 등록되었습니다",
+        [("문의 제목", esc(inquiry_title or "")), ("회사", esc(company_name or "")), ("답변자", esc(writer_name or ""))],
+        f"{settings.PUBLIC_BASE_URL}/inquiries/{inquiry_id}", "답변 확인하기",
+    ))
+
+
+def send_customer_invite(to_email, customer_name, company_name, login_id, token):
+    """고객 계정 초대 메일 — 비밀번호는 담지 않고 설정 링크(72시간, 1회용)만 보낸다."""
+    if not to_email:
+        return
+    esc = html.escape
+    send_email_async([to_email], "[HCMS] 고객 포털 계정 안내", _build_html(
+        f"{esc(customer_name or '고객')}님, 한결랩 고객 포털 계정이 준비되었습니다",
+        [("회사", esc(company_name or "")), ("아이디", esc(login_id or "")), ("링크 유효기간", "72시간(1회용)")],
+        f"{settings.PUBLIC_BASE_URL}/invite#token={token}", "비밀번호 설정하기",
+    ))

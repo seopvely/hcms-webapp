@@ -362,6 +362,8 @@ class Inquiry(Base):
     inquiry_type = Column(Integer, nullable=True)
     status = Column(Integer, nullable=True, default=1)
     priority = Column(String(50), nullable=True)
+    inquiry_file = Column(String(100), nullable=True)  # 구버전 단일 첨부
+    answered_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -381,6 +383,7 @@ class InquiryAnswer(Base):
     admin_writer_id = Column(Integer, ForeignKey("pacms_customauthuser.id"), nullable=True)
     customer_writer_id = Column(Integer, ForeignKey("manager.seq"), nullable=True)
     parent_answer_id = Column(Integer, ForeignKey("inquiry_answer.seq"), nullable=True)
+    answer_file = Column(String(100), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -706,3 +709,14 @@ class ManagelistCommentTemplate(Base):
     created_by_id = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=False)
+
+
+class RecentActivity(Base):
+    """최근 활동(Django 소유) — cms 문의 답변 시 함께 기록된다."""
+    __tablename__ = "recent_activity"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    activity = Column(String(255), nullable=False)
+    company_id = Column(Integer, nullable=False)
+    writer_id = Column(Integer, nullable=False)
+    created_at = Column(DateTime, nullable=False)

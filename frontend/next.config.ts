@@ -17,6 +17,15 @@ const nextConfig: NextConfig = {
       { source: "/managed/point-guide", destination: "/managed/points/guide", permanent: false },
       { source: "/managed/history", destination: "/managed/maintenance/comments", permanent: false },
       { source: "/managed/agent", destination: "/managed/staff", permanent: false },
+      { source: "/managed/oneperone", destination: "/managed/inquiries", permanent: false },
+      { source: "/managed/inquiry_list", destination: "/managed/inquiries", permanent: false },
+      { source: "/managed/inquiry_detail/:id", destination: "/managed/inquiries/:id", permanent: false },
+      { source: "/managed/inditask", destination: "/managed/tasks", permanent: false },
+      { source: "/managed/inditask_detail/:id", destination: "/managed/tasks/:id", permanent: false },
+      { source: "/managed/inditask_register", destination: "/managed/tasks/new", permanent: false },
+      { source: "/managed/custom", destination: "/managed/accounts", permanent: false },
+      { source: "/managed/suppliermanage", destination: "/managed/accounts", permanent: false },
+      { source: "/managed/suppliermanage/:id", destination: "/managed/accounts/:id", permanent: false },
     ];
   },
 

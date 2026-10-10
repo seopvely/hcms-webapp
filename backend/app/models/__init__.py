@@ -3,6 +3,7 @@ from app.models.manager import Manager
 from app.models.push_token import PushToken
 from app.models.free_maint_alert_log import FreeMaintAlertLog
 from app.models.staff_auth import StaffSession, StaffAuditLog
+from app.models.customer_invite import CustomerInvite
 from app.models.customer import (
     CustomAuthUser,
     Project,
@@ -38,6 +39,7 @@ __all__ = [
     "FreeMaintAlertLog",
     "StaffSession",
     "StaffAuditLog",
+    "CustomerInvite",
     "CustomAuthUser",
     "Project",
     "Managelist",

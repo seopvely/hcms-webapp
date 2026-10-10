@@ -21,6 +21,7 @@ from app.api.endpoints.ai_dev_subscription import router as ai_dev_subscription_
 from app.api.endpoints.maint_subscription import router as maint_subscription_router
 from app.api.endpoints.maint_renewal import router as maint_renewal_router
 from app.api.endpoints.staff_auth import router as staff_auth_router
+from app.api.endpoints.invite import router as invite_router
 from app.api.endpoints.managed import router as managed_router
 
 logging.basicConfig(level=logging.INFO)
@@ -61,6 +62,7 @@ api_router.include_router(ai_dev_subscription_router)
 api_router.include_router(maint_subscription_router)
 api_router.include_router(maint_renewal_router)
 api_router.include_router(staff_auth_router)
+api_router.include_router(invite_router)
 api_router.include_router(managed_router)
 
 app.include_router(api_router)

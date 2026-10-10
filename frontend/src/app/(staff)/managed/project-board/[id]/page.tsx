@@ -1,0 +1,255 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Paperclip, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { AppAlertDialog } from "@/components/common/app-alert-dialog";
+import { DetailSkeleton } from "@/components/common/loading-skeleton";
+import { SimpleEditor } from "@/components/common/simple-editor";
+import { useToast } from "@/components/common/app-toast";
+import { PageTransition } from "@/components/layout/page-transition";
+import { BOARD_STATUS_COLORS } from "@/components/managed/board-status";
+import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
+import { SafeHtml } from "@/components/managed/safe-html";
+import { useNavigationStore } from "@/store/navigation-store";
+import { staffFileUrl } from "@/lib/staff-maintenance";
+import { type BoardFile, type BoardPost, useBoardCategories, useBoardMutation, useBoardProjects, useStaffBoardPost } from "@/lib/staff-content";
+import { useStaffMe } from "@/lib/staff-hooks";
+
+function Files({ files }: { files: BoardFile[] }) {
+  if (!files.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {files.map((f) => (
+        <a key={f.id} href={staffFileUrl(f.url)} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-muted">
+          <Paperclip className="h-3 w-3" /> {f.filename}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+// 게시글 상세(id=new 면 새 글). 직원 답글·댓글·상태변경.
+export default function StaffBoardDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  if (id === "new") return <NewPost />;
+  return <PostView seq={Number(id)} />;
+}
+
+function PostView({ seq }: { seq: number }) {
+  const router = useRouter();
+  const setPageTitle = useNavigationStore((s) => s.setPageTitle);
+  const { toast } = useToast();
+  const { data: me } = useStaffMe();
+  const { data, isLoading } = useStaffBoardPost(seq);
+  const mutate = useBoardMutation();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPageTitle("프로젝트구축진행");
+  }, [setPageTitle]);
+
+  if (isLoading || !data) return <DetailSkeleton />;
+  const canWrite = data.write_enabled;
+  const canManage = (p: { writer_id: number | null }) => canWrite && (p.writer_id === me?.id || !!me?.is_admin);
+
+  const call = async (url: string, body: object | FormData, ok: string) => {
+    try {
+      await mutate.mutateAsync({ url, body });
+      toast("success", ok);
+      return true;
+    } catch (err) {
+      toast("error", apiErrorDetail(err, "처리에 실패했습니다."));
+      return false;
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (await call(deleteTarget, {}, "삭제했습니다.") && deleteTarget === `/${seq}/delete`) router.replace("/managed/project-board");
+    setDeleteTarget(null);
+  };
+
+  const renderPost = (p: BoardPost, isRoot: boolean) => (
+    <Card key={p.seq} className={`rounded-2xl ${isRoot ? "" : "ml-4"}`}>
+      <CardContent className="space-y-3 pt-5 pb-5">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {!isRoot && <Badge variant="outline">답글</Badge>}
+          <span className="font-semibold text-foreground">{p.writer_name}</span>
+          <span>{p.is_staff ? "직원" : "고객"}</span>
+          <span>{fmtDateTime(p.created_at)}</span>
+          {p.categories.map((c) => <Badge key={c} variant="outline">{c}</Badge>)}
+          <div className="flex-1" />
+          {isRoot && canWrite && (
+            <select className="h-7 rounded-lg border px-1 text-xs" value={p.status ?? "1"} onChange={(e) => call(`/${p.seq}/status`, { status: e.target.value }, "상태를 변경했습니다.")}>
+              <option value="1">진행중</option><option value="2">완료</option><option value="3">보류</option>
+            </select>
+          )}
+          {isRoot && !canWrite && <Badge className={BOARD_STATUS_COLORS[p.status ?? ""] ?? "bg-muted"}>{p.status_label}</Badge>}
+          {canManage(p) && (
+            <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs text-red-600" onClick={() => setDeleteTarget(`/${p.seq}/delete`)}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        {isRoot ? <h1 className="text-lg font-bold">{p.title}</h1> : <p className="font-semibold">{p.title}</p>}
+        <SafeHtml html={p.content} />
+        <Files files={p.attachments} />
+        {p.comments.length > 0 && (
+          <div className="space-y-2 border-t pt-3">
+            {p.comments.map((c) => (
+              <div key={c.seq} className={`rounded-xl px-3 py-2 ${c.is_staff ? "bg-muted/40" : "bg-blue-50/60"} ${c.parent_id ? "ml-4" : ""}`}>
+                <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">{c.writer_name}</span>
+                  <span>{fmtDateTime(c.created_at)}</span>
+                  <div className="flex-1" />
+                  {canManage(c) && (
+                    <button className="text-red-600" onClick={() => setDeleteTarget(`/comments/${c.seq}/delete`)}><Trash2 className="h-3 w-3" /></button>
+                  )}
+                </div>
+                <SafeHtml html={c.content} />
+                <Files files={c.attachments} />
+              </div>
+            ))}
+          </div>
+        )}
+        {canWrite && <CommentBox onSubmit={(form) => call(`/${p.seq}/comments`, form, "댓글을 등록했습니다.")} />}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <PageTransition>
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" className="rounded-xl" asChild>
+          <Link href="/managed/project-board"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link>
+        </Button>
+        <p className="text-sm text-muted-foreground">{data.company_name} · {data.project_title}</p>
+        {renderPost(data, true)}
+        {data.replies.map((r) => renderPost(r, false))}
+        {canWrite && (
+          <ReplyBox
+            onSubmit={async (title, content) => {
+              const form = new FormData();
+              form.append("project_id", String(data.project_id));
+              form.append("parent_id", String(seq));
+              form.append("title", title);
+              form.append("content", content);
+              return call("", form, "답글을 등록했습니다.");
+            }}
+          />
+        )}
+      </div>
+      <AppAlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} title="삭제" description="삭제하면 되돌릴 수 없습니다(답글·댓글·첨부 포함)." confirmText="삭제" variant="destructive" onConfirm={confirmDelete} />
+    </PageTransition>
+  );
+}
+
+function CommentBox({ onSubmit }: { onSubmit: (form: FormData) => Promise<boolean> }) {
+  const [text, setText] = useState("");
+  const submit = async () => {
+    const form = new FormData();
+    form.append("content", text.replace(/\n/g, "<br>"));
+    if (await onSubmit(form)) setText("");
+  };
+  return (
+    <div className="flex gap-2">
+      <Input className="rounded-xl" placeholder="댓글" value={text} onChange={(e) => setText(e.target.value)} />
+      <Button className="rounded-xl" disabled={!text.trim()} onClick={submit}>등록</Button>
+    </div>
+  );
+}
+
+function ReplyBox({ onSubmit }: { onSubmit: (title: string, content: string) => Promise<boolean> }) {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [key, setKey] = useState(0);
+  return (
+    <Card className="rounded-2xl">
+      <CardContent className="space-y-3 pt-5 pb-5">
+        <h2 className="font-semibold">답글 작성</h2>
+        <Input className="rounded-xl" placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <SimpleEditor key={key} value={content} onChange={setContent} />
+        <div className="flex justify-end">
+          <Button className="rounded-xl" disabled={!title.trim()} onClick={async () => { if (await onSubmit(title, content)) { setTitle(""); setContent(""); setKey((k) => k + 1); } }}>등록</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NewPost() {
+  const router = useRouter();
+  const setPageTitle = useNavigationStore((s) => s.setPageTitle);
+  const { toast } = useToast();
+  const mutate = useBoardMutation();
+  const { data: projects } = useBoardProjects();
+  const [projectId, setProjectId] = useState<number | undefined>();
+  const { data: categories } = useBoardCategories(projectId);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [cats, setCats] = useState<number[]>([]);
+  const [notice, setNotice] = useState(false);
+  const [files, setFiles] = useState<FileList | null>(null);
+
+  useEffect(() => {
+    setPageTitle("프로젝트구축진행 글쓰기");
+  }, [setPageTitle]);
+
+  const submit = async () => {
+    if (!projectId) return toast("warning", "프로젝트를 선택하세요.");
+    const form = new FormData();
+    form.append("project_id", String(projectId));
+    form.append("title", title);
+    form.append("content", content);
+    form.append("category_ids", cats.join(","));
+    form.append("is_notice", String(notice));
+    Array.from(files ?? []).forEach((f) => form.append("files", f));
+    try {
+      const res = await mutate.mutateAsync({ url: "", body: form });
+      toast("success", "등록했습니다. 고객에게 푸시가 발송됩니다.");
+      router.replace(`/managed/project-board/${res.seq}`);
+    } catch (err) {
+      toast("error", apiErrorDetail(err, "등록에 실패했습니다."));
+    }
+  };
+
+  return (
+    <PageTransition>
+      <Card className="mx-auto max-w-3xl rounded-2xl">
+        <CardContent className="space-y-4 pt-5 pb-5">
+          <Field label="프로젝트 *">
+            <select className={selectClass} value={projectId ?? ""} onChange={(e) => { setProjectId(e.target.value ? Number(e.target.value) : undefined); setCats([]); }}>
+              <option value="">선택</option>
+              {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+          {!!categories?.items.length && (
+            <div className="flex flex-wrap gap-2 text-xs">
+              {categories.items.map((c) => (
+                <label key={c.id} className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1">
+                  <Checkbox checked={cats.includes(c.id)} onCheckedChange={() => setCats((x) => (x.includes(c.id) ? x.filter((i) => i !== c.id) : [...x, c.id]))} /> {c.name}
+                </label>
+              ))}
+            </div>
+          )}
+          <Field label="제목 *"><Input className="rounded-xl" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+          <SimpleEditor value={content} onChange={setContent} />
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <label className="flex items-center gap-2"><Checkbox checked={notice} onCheckedChange={(v) => setNotice(v === true)} /> 공지</label>
+            <Input type="file" multiple className="max-w-xs rounded-xl" onChange={(e) => setFiles(e.target.files)} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" className="rounded-xl" onClick={() => router.back()}>취소</Button>
+            <Button className="rounded-xl" onClick={submit} disabled={mutate.isPending}>등록</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </PageTransition>
+  );
+}

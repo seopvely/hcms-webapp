@@ -25,6 +25,7 @@ HCMS_OWNED_TABLES = {
     "free_maint_alert_log",
     "staff_session",
     "staff_audit_log",
+    "customer_invite",
 }
 
 

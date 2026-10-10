@@ -23,8 +23,8 @@ export const STAFF_NAV: StaffNavGroup[] = [
     items: [
       { label: "유지보수 요청", href: "/managed/maintenance" },
       { label: "유지보수 일정", href: "/managed/maintenance/schedule" },
-      { label: "건별작업", href: cms("/managed/inditask"), legacy: true },
-      { label: "고객문의", href: cms("/managed/oneperone"), legacy: true },
+      { label: "건별작업", href: "/managed/tasks" },
+      { label: "고객문의", href: "/managed/inquiries" },
       { label: "포인트 장부", href: "/managed/points" },
       { label: "처리내역 검색", href: "/managed/maintenance/comments" },
       { label: "포인트 안내", href: "/managed/points/guide" },
@@ -37,7 +37,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
       { label: "진행중 프로젝트", href: cms("/managed/processlist"), legacy: true },
       { label: "계약 달력", href: cms("/managed/projectmanage/calendar/"), legacy: true },
       { label: "도메인", href: cms("/managed/domain"), legacy: true },
-      { label: "프로젝트구축진행", href: cms("/managed/project-board/"), legacy: true },
+      { label: "프로젝트구축진행", href: "/managed/project-board" },
       { label: "외주관리", href: cms("/managed/outsourcing/"), legacy: true },
       { label: "외주 달력", href: cms("/managed/outsourcing/calendar/"), legacy: true },
     ],
@@ -45,11 +45,10 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "고객",
     items: [
+      { label: "업체·고객 계정", href: "/managed/accounts" },
       { label: "고객사 이동(대리 로그인)", href: "/managed/customers" },
-      { label: "고객리스트", href: cms("/managed/custom"), legacy: true },
-      { label: "업체관리", href: cms("/managed/suppliermanage"), legacy: true },
       { label: "유지보수 전환", href: cms("/managed/maint-renewal/"), legacy: true },
-      { label: "최신소식", href: cms("/managed/news/"), legacy: true },
+      { label: "최신소식", href: "/managed/news" },
       { label: "레퍼런스 사이트", href: cms("/managed/reference-sites/"), legacy: true },
     ],
   },
