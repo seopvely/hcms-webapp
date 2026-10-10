@@ -41,6 +41,12 @@ hcms 쪽 cron 은 한 줄이다(hcms 사용자 crontab):
 */5 * * * * cd /home/hcms/hcms-customer-app/backend && venv/bin/python -m app.jobs.runner tick >> logs/jobs.cron.log 2>&1
 ```
 
+**이 줄은 아직 설치하지 않았다**(ENABLED_JOBS 가 비어 있으면 아무 일도 안 하므로 첫 job 을 켜는 날 설치).
+
+**처음 켜기 전**: `run <job> --dry-run` 으로 건수를 확인한다. 만료·충전 job 은 cms 의 '정확히 그날' 대신 '기간 안 + 미처리'로 바뀌어,
+첫 실행에서 지금 해당되는 건을 한꺼번에 처리한다(10-11 dry-run: 도메인 만료 1건, 나머지 0건). 과거 건을 보내지 않으려면 그 키로
+`job_claim` 행을 미리 넣는다.
+
 기존 `0 9 * * * … app.jobs.free_maint_alerts` 줄은 `free_maint_alerts` 를 ENABLED_JOBS 에 넣는 날 지운다(이중 실행 방지).
 점검: `venv/bin/python -m app.jobs.runner list` / `run <job> --dry-run`.
 
