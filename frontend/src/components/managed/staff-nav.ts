@@ -85,16 +85,17 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "업무도구",
     items: [
-      { label: "알람", href: cms("/managed/alarm/"), legacy: true },
-      { label: "미팅약속", href: cms("/managed/meeting/"), legacy: true },
-      { label: "할일", href: cms("/managed/todo/"), legacy: true },
-      { label: "세금계산서", href: cms("/managed/tax/"), legacy: true },
+      { label: "알람", href: "/managed/alarms" },
+      { label: "미팅약속", href: "/managed/meetings" },
+      { label: "할일", href: "/managed/todos" },
+      { label: "세금계산서", href: "/managed/tax", adminOnly: true },
     ],
   },
   {
     title: "설정·외부",
     items: [
       { label: "직원 계정", href: "/managed/staff", adminOnly: true },
+      { label: "AI 프롬프트", href: "/managed/settings/ai-prompts" },
       { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },
       { label: "WealthReach 관리자", href: "/managed/sso/wealthreach", newTab: true },
     ],

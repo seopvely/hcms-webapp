@@ -3,9 +3,12 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import get_current_staff
 from app.api.endpoints.managed.accounts import router as accounts_router
+from app.api.endpoints.managed.ai_prompts import router as ai_prompts_router
+from app.api.endpoints.managed.alarms import router as alarms_router
 from app.api.endpoints.managed.billing import router as billing_router
 from app.api.endpoints.managed.fde import router as fde_router
 from app.api.endpoints.managed.maint_renewal import router as maint_renewal_router
+from app.api.endpoints.managed.meetings import router as meetings_router
 from app.api.endpoints.managed.subscriptions import router as subscriptions_router
 from app.api.endpoints.managed.comment_templates import router as comment_templates_router
 from app.api.endpoints.managed.contracts import router as contracts_router
@@ -27,6 +30,8 @@ from app.api.endpoints.managed.sales import router as sales_router
 from app.api.endpoints.managed.sso import router as sso_router
 from app.api.endpoints.managed.staff_accounts import router as staff_accounts_router
 from app.api.endpoints.managed.tasks import router as tasks_router
+from app.api.endpoints.managed.tax import router as tax_router
+from app.api.endpoints.managed.todos import router as todos_router
 
 router = APIRouter(prefix="/managed", tags=["managed"], dependencies=[Depends(get_current_staff)])
 router.include_router(me_router)
@@ -54,3 +59,8 @@ router.include_router(billing_router)
 router.include_router(subscriptions_router)
 router.include_router(maint_renewal_router)
 router.include_router(fde_router)
+router.include_router(alarms_router)
+router.include_router(todos_router)
+router.include_router(meetings_router)
+router.include_router(tax_router)
+router.include_router(ai_prompts_router)

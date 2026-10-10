@@ -708,3 +708,83 @@ def sync_sales_alarm(db: Session, alarm: PaymentAlarm, today: date | None = None
             alarm.next_payment_date = nxt
             alarm.updated_at = now
     return new
+
+
+# ── 매입 예산 경고(cms plan_utils.purchase_budget_status · budget_alerts) ───────────
+
+BUDGET_WARN_RATE, BUDGET_OVER_RATE = 80, 100
+BUDGET_LEVEL_LABELS = {"warn": "경고", "over": "초과"}
+
+
+def purchase_budget_status(db: Session, year: int, month: int) -> list[dict]:
+    """해당 월 매입 목표 대비 실적(공급가). 월 전체(category='')가 첫 항목, 분류는 집행률 높은 순."""
+    targets, total_target = {}, 0
+    for b in db.query(PlanBudget).filter(PlanBudget.year == year, PlanBudget.month == month, PlanBudget.kind == "purchase"):
+        total_target += b.amount
+        if b.category:
+            targets[b.category] = targets.get(b.category, 0) + b.amount
+    ms, me = date(year, month, 1), date(year, month, cal.monthrange(year, month)[1])
+    actuals = {}
+    for catk, total in db.query(PurchaseTaxInvoice.expense_category, func.sum(PurchaseTaxInvoice.supply_amount)).filter(
+            PurchaseTaxInvoice.is_deleted == False, PurchaseTaxInvoice.issue_date >= ms, PurchaseTaxInvoice.issue_date <= me  # noqa: E712
+    ).group_by(PurchaseTaxInvoice.expense_category):
+        actuals[catk or "기타"] = actuals.get(catk or "기타", 0) + int(total or 0)
+
+    def entry(catk, label, target, actual):
+        rate = round(actual / target * 100, 1) if target else None
+        level = None if rate is None else "over" if rate >= BUDGET_OVER_RATE else "warn" if rate >= BUDGET_WARN_RATE else None
+        return {"category": catk, "label": label, "target": target, "actual": actual, "rate": rate, "level": level}
+
+    out = [entry("", "월 전체", total_target, sum(actuals.values()))] if total_target > 0 else []
+    for catk in sorted(targets, key=lambda c: -(actuals.get(c, 0) / targets[c] if targets[c] else 0)):
+        if targets[catk] > 0:
+            out.append(entry(catk, catk, targets[catk], actuals.get(catk, 0)))
+    return out
+
+
+def budget_warning_messages(db: Session, year: int, month: int, categories: set | None = None) -> list[str]:
+    msgs = []
+    for s_ in purchase_budget_status(db, year, month):
+        if not s_["level"] or (categories is not None and s_["category"] and s_["category"] not in categories):
+            continue
+        msgs.append(f"{year}년 {month}월 {s_['label']} 매입 집행률 {s_['rate']}% ({BUDGET_LEVEL_LABELS[s_['level']]}: "
+                    f"목표 {s_['target']:,}원 / 실적 {s_['actual']:,}원)")
+    return msgs
+
+
+def notify_purchase_budget(db: Session, year: int, month: int) -> list[dict]:
+    """새로 경고/초과에 도달한 항목을 기록(purchase_budget_alert)하고 에이전트에게 메일 — 같은 단계는 한 번만."""
+    from app.core.config import settings
+    from app.models.customer import CustomAuthUser, PurchaseBudgetAlert
+    from app.services.email import send_email_sync
+
+    logged = {(a.category, a.level) for a in db.query(PurchaseBudgetAlert).filter(PurchaseBudgetAlert.year == year, PurchaseBudgetAlert.month == month)}
+    new = [x for x in purchase_budget_status(db, year, month) if x["level"] and (
+        (x["level"] == "over" and (x["category"], "over") not in logged)
+        or (x["level"] == "warn" and (x["category"], "warn") not in logged and (x["category"], "over") not in logged))]
+    if not new:
+        return []
+    recipients = [u.email for u in db.query(CustomAuthUser).filter(CustomAuthUser.group == "agent", CustomAuthUser.is_active == True) if u.email]  # noqa: E712
+    error = ""
+    if recipients:
+        has_over = any(x["level"] == "over" for x in new)
+        lines = [f"{year}년 {month}월 매입 목표 대비 집행률이 기준에 도달했습니다.", ""]
+        lines += [f"- [{BUDGET_LEVEL_LABELS[x['level']]}] {x['label']}: {x['rate']}% (목표 {x['target']:,}원 / 실적 {x['actual']:,}원)" for x in new]
+        lines += ["", "※ 경고 = 목표의 80% 이상, 초과 = 100% 이상. 금액은 공급가(부가세 제외) 기준입니다.",
+                  f"매출·매입계획에서 확인: {settings.STAFF_BASE_URL}/managed/sales-plan/?year={year}&month={month}", "", "PACMS 시스템",
+                  date.today().strftime("%Y-%m-%d")]
+        from html import escape
+        try:
+            send_email_sync(recipients, f"[PACMS] {year}년 {month}월 매입 예산 {'초과' if has_over else '경고'} 알림",
+                            "<pre style='font-family:inherit'>" + escape("\n".join(lines)) + "</pre>")
+        except Exception as e:  # noqa: BLE001 — 메일 실패가 등록을 막지 않게
+            error = str(e)
+    now = datetime.now()
+    for x in new:
+        for lv in (["over", "warn"] if x["level"] == "over" else ["warn"]):
+            if (x["category"], lv) in logged:
+                continue
+            db.add(PurchaseBudgetAlert(year=year, month=month, category=x["category"], level=lv, target=x["target"], actual=x["actual"],
+                                       rate=x["rate"], recipients=", ".join(recipients) if lv == x["level"] else "(초과 발송 시 함께 기록)",
+                                       error_message=error, created_at=now))
+    return new

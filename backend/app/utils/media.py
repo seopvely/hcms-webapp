@@ -80,3 +80,13 @@ def save_upload(upload, purpose: str) -> tuple[str, str]:
     with open(os.path.join(MEDIA_ROOT, rel_path), "wb") as f:
         f.write(data)
     return rel_path, original[:255]
+
+
+def delete_media(stored: str | None) -> None:
+    """첨부 실파일 삭제(cms 의 file.delete 와 같은 효과). 경로가 허용 범위 밖이거나 없으면 조용히 넘어간다."""
+    path = resolve_media_path(stored)
+    if path:
+        try:
+            os.remove(path)
+        except OSError:
+            pass

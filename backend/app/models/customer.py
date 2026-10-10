@@ -1091,9 +1091,79 @@ class PurchaseTaxInvoice(Base):
     supply_amount = Column(BigInteger, nullable=False)
     tax_amount = Column(BigInteger, nullable=False, default=0)
     expense_category = Column(String(30), nullable=False, default="")
+    deduction_status = Column(String(20), nullable=False, default="review")  # deductible / non_deductible / review
+    payment_method = Column(String(20), nullable=False, default="")
+    memo = Column(Text, nullable=False, default="")
+    is_submitted = Column(Boolean, nullable=False, default=False)
     is_deleted = Column(Boolean, nullable=False, default=False)
+    client_id = Column(Integer, nullable=True)
     source_outsourcing_id = Column(Integer, nullable=True)
     source_payment_alarm_id = Column(Integer, nullable=True)
+    source_payment_history_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class SalesTaxInvoice(Base):
+    """매출 세금계산서 (Django 소유)."""
+    __tablename__ = "managed_salestaxinvoice"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    issue_date = Column(Date, nullable=False)
+    buyer_name = Column(String(100), nullable=False)
+    buyer_no = Column(String(20), nullable=False, default="")
+    item = Column(String(200), nullable=False, default="")
+    supply_amount = Column(BigInteger, nullable=False)
+    tax_amount = Column(BigInteger, nullable=False, default=0)
+    issue_status = Column(String(20), nullable=False, default="issued")  # issued / pending / cancelled / revised
+    payment_status = Column(String(20), nullable=False, default="unpaid")  # unpaid / partial / paid
+    payment_date = Column(Date, nullable=True)
+    memo = Column(Text, nullable=False, default="")
+    is_submitted = Column(Boolean, nullable=False, default=False)
+    is_deleted = Column(Boolean, nullable=False, default=False)
+    client_id = Column(Integer, nullable=True)
+    source_payment_history_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class TaxAttachment(Base):
+    __tablename__ = "managed_taxattachment"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    file = Column(String(100), nullable=False)
+    original_name = Column(String(255), nullable=False)
+    file_size = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False)
+    purchase_invoice_id = Column(BigInteger, nullable=True)
+    sales_invoice_id = Column(BigInteger, nullable=True)
+
+
+class PurchaseSupplier(Base):
+    __tablename__ = "purchase_supplier"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    business_number = Column(String(20), nullable=False, default="")
+    use_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class PurchaseBudgetAlert(Base):
+    __tablename__ = "purchase_budget_alert"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    category = Column(String(50), nullable=False, default="")
+    level = Column(String(10), nullable=False)
+    target = Column(BigInteger, nullable=False)
+    actual = Column(BigInteger, nullable=False)
+    rate = Column(Numeric(8, 1), nullable=True)
+    recipients = Column(Text, nullable=False, default="")
+    error_message = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
 
 
 class TithePurchaseCheck(Base):
