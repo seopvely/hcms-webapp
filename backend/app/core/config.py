@@ -45,10 +45,22 @@ class Settings(BaseSettings):
     # /managed 쓰기 허용 영역(쉼표 구분: maintenance,points,inquiries,tasks,...).
     # 이관 절차상 cms 쪽 같은 기능의 쓰기를 막는 시점에 켠다. 비어 있으면 해당 화면은 읽기 전용.
     MANAGED_WRITE_AREAS: str = ""
+    # 스케줄러: 켤 job 이름(쉼표). 비어 있으면 아무것도 돌지 않는다 — cms cron 줄을 끄는 날 같이 켠다(SPEC 11 §5).
+    ENABLED_JOBS: str = ""
+    # 맥미니 iMessage 전달기가 outbox 를 읽을 때 쓰는 서버간 키(없으면 /api/internal 은 503)
+    INTERNAL_API_KEY: str = ""
+    # 납부내역 → 매출 세금계산서 동기화 기준일(cms SYNC_START_DATE)
+    TAX_SYNC_START_DATE: str = "2026-07-01"
+    # 유지보수 프로젝트 정기 충전: 이 날짜 이전 회차는 따라잡기 대상에서 뺀다(과거 회차 일괄 충전 방지)
+    POINT_CHARGE_CATCHUP_FROM: str = ""
 
     @property
     def managed_write_areas(self) -> set[str]:
         return {a.strip() for a in self.MANAGED_WRITE_AREAS.split(",") if a.strip()}
+
+    @property
+    def enabled_jobs(self) -> set[str]:
+        return {a.strip() for a in self.ENABLED_JOBS.split(",") if a.strip()}
 
     @property
     def cors_origins(self) -> list[str]:

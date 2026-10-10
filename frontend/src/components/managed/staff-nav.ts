@@ -96,6 +96,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
     items: [
       { label: "직원 계정", href: "/managed/staff", adminOnly: true },
       { label: "AI 프롬프트", href: "/managed/settings/ai-prompts" },
+      { label: "이관 상태·배치", href: "/managed/settings/jobs", adminOnly: true },
       { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },
       { label: "WealthReach 관리자", href: "/managed/sso/wealthreach", newTab: true },
     ],

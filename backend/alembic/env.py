@@ -29,6 +29,9 @@ HCMS_OWNED_TABLES = {
     "service_plan",
     "fde_engagement",
     "fde_engagement_addon",
+    "job_run",
+    "job_claim",
+    "notification_event",
 }
 
 

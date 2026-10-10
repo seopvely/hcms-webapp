@@ -16,6 +16,7 @@ from app.api.endpoints.managed.conversion import router as conversion_router
 from app.api.endpoints.managed.dashboard import router as dashboard_router
 from app.api.endpoints.managed.domains import router as domains_router
 from app.api.endpoints.managed.estimates import router as estimates_router
+from app.api.endpoints.managed.jobs import router as jobs_router
 from app.api.endpoints.managed.impersonate import router as impersonate_router
 from app.api.endpoints.managed.inquiries import router as inquiries_router
 from app.api.endpoints.managed.lookup import router as lookup_router
@@ -64,3 +65,4 @@ router.include_router(todos_router)
 router.include_router(meetings_router)
 router.include_router(tax_router)
 router.include_router(ai_prompts_router)
+router.include_router(jobs_router)

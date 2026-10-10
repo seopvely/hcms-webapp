@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.customer import CustomAuthUser, EstimateContractHistory
+from app.services.notify import emit
 from app.services import contracts as svc
 from app.services.email import notify_manager_contract_signed
 from app.services.staff_auth import client_ip
@@ -93,6 +94,7 @@ def sign(body: SignBody, request: Request, background: BackgroundTasks, db: Sess
     svc.archive_pdf(db, c)
     # action 'signed' + 서명자 이름 — 맥미니 iMessage 전달기가 이 행을 읽는다(형식 유지)
     svc.history(db, c, "signed", f"고객 서명 완료: {signer} (타임스탬프 인증: {c.customer_signed_hash[:16]}...)", request, None, signer)
+    emit(db, "contract.signed_by_customer", f"[계약 서명] {c.contract_number or ''} {c.contract_title or ''} 서명자 {signer}", "estimate_contract", c.seq)
     db.commit()
     owner = db.query(CustomAuthUser).filter(CustomAuthUser.id == (c.sent_by_id or c.created_by_id)).first()
     if owner and owner.email:

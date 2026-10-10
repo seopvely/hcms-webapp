@@ -5,6 +5,7 @@ from app.models.free_maint_alert_log import FreeMaintAlertLog
 from app.models.staff_auth import StaffSession, StaffAuditLog
 from app.models.customer_invite import CustomerInvite
 from app.models.fde import FdeEngagement, FdeEngagementAddon, ServicePlan
+from app.models.jobs import JobClaim, JobRun, NotificationEvent
 from app.models.customer import (
     CustomAuthUser,
     Project,
@@ -44,6 +45,9 @@ __all__ = [
     "ServicePlan",
     "FdeEngagement",
     "FdeEngagementAddon",
+    "JobRun",
+    "JobClaim",
+    "NotificationEvent",
     "CustomAuthUser",
     "Project",
     "Managelist",

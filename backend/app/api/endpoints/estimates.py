@@ -21,6 +21,7 @@ from app.models.company import Company
 from app.models.manager import Manager as HcmsManager
 from app.core.security import create_access_token, create_refresh_token
 from app.utils.pdf_generator import generate_estimate_pdf, generate_contract_pdf
+from app.services.notify import emit
 from app.services.email import notify_manager_estimate_action
 from app.services.contracts import build_pdf_data as build_contract_pdf_data
 
@@ -778,6 +779,8 @@ def approve_estimate(
 		created_at=datetime.now(),
 	)
 	db.add(history)
+	emit(db, "estimate.approved", f"[견적 승인] {estimate.estimate_number or ''} {estimate.estimate_title or ''} ({current_user.name})",
+	     "Estimate", estimate_id)
 	db.commit()
 	if "estimates" in settings.managed_write_areas:
 		_notify_estimate_manager(db, estimate, "approved", current_user.name)
@@ -832,6 +835,8 @@ def reject_estimate(
 		created_at=datetime.now(),
 	)
 	db.add(history)
+	emit(db, "estimate.rejected", f"[견적 거절] {estimate.estimate_number or ''} {estimate.estimate_title or ''} ({current_user.name})"
+	     + (f" 사유: {body.reason[:120]}" if body.reason else ""), "Estimate", estimate_id)
 	db.commit()
 	_notify_estimate_manager(db, estimate, "rejected", current_user.name, body.reason or "")
 
@@ -873,6 +878,8 @@ def request_revision(
 		updated_at=datetime.now(),
 	)
 	db.add(revision)
+	emit(db, "estimate.revision_requested", f"[견적 수정요청] {estimate.estimate_number or ''} {estimate.estimate_title or ''} "
+	     f"({revision.requester_name}) {body.title[:80]}", "Estimate", estimate_id)
 	db.commit()
 	_notify_estimate_manager(db, estimate, "revision", revision.requester_name or current_user.name,
 	                         f"{body.title}\n{body.content}")
