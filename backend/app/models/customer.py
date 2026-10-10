@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column,
     Integer,
+    BigInteger,
     String,
     Boolean,
     DateTime,
@@ -585,7 +586,66 @@ class MaintSubscription(Base):
     monthly_price = Column(Integer, default=0)
     source_estimate_id = Column(Integer, ForeignKey("Estimate.seq"), nullable=True)
     notes = Column(Text, nullable=True)
+    # PACMS 0137 — 유지보수 전환 흐름에서 추가된 컬럼 (기존 구독은 모두 NULL)
+    project_id = Column(Integer, ForeignKey("project.seq"), nullable=True)
+    end_date = Column(Date, nullable=True)
+    renewal_id = Column(Integer, ForeignKey("maint_renewal.seq"), nullable=True)
+    hosting_type = Column(String(1), nullable=True)  # I(한결랩) / E(외부)
+    hosting_provider = Column(String(200), nullable=True)
+    domain_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     company = relationship("Company", back_populates="maint_subscriptions")
+    services = relationship(
+        "MaintSubscriptionService",
+        order_by="(MaintSubscriptionService.order_no, MaintSubscriptionService.seq)",
+    )
+
+
+class MaintRenewal(Base):
+    """PACMS maint_renewal — 프로젝트 만료 시 유지보수 의향 확인 건.
+    HCMS는 고객 응답(status/chosen_plan/hosting/responded_at/memo append)만 UPDATE한다."""
+    __tablename__ = "maint_renewal"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("project.seq"), nullable=False)
+    company_id = Column(Integer, ForeignKey("company.seq"), nullable=True)
+    due_date = Column(Date, nullable=False)
+    status = Column(String(10), nullable=False)  # pending/contacted/accepted/declined/estimated/converted/ended/closed
+    chosen_plan = Column(String(10), nullable=True)
+    contract_months = Column(Integer, nullable=False)
+    hosting_type = Column(String(1), nullable=True)
+    hosting_provider = Column(String(200), nullable=True)
+    external_hosting_end_date = Column(Date, nullable=True)
+    domain_id = Column(Integer, nullable=True)
+    estimate_id = Column(Integer, ForeignKey("Estimate.seq"), nullable=True)
+    new_project_id = Column(Integer, ForeignKey("project.seq"), nullable=True)
+    notified_at = Column(DateTime, nullable=True)
+    contacted_at = Column(DateTime, nullable=True)
+    responded_at = Column(DateTime, nullable=True)
+    handled_by_id = Column(BigInteger, nullable=True)  # PACMS 직원 — HCMS는 건드리지 않음
+    memo = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    project = relationship("Project", foreign_keys=[project_id])
+
+
+class MaintSubscriptionService(Base):
+    """PACMS maint_subscription_service — 구독별 실제 이용 서비스 (읽기 전용)"""
+    __tablename__ = "maint_subscription_service"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    subscription_id = Column(Integer, ForeignKey("pacms_maintsubscription.seq"), nullable=False)
+    service_code = Column(String(30), nullable=False)
+    name = Column(String(100), nullable=False)
+    spec = Column(String(200), nullable=True)
+    status = Column(String(10), nullable=False)  # pending/active/inactive
+    domain_id = Column(Integer, nullable=True)
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    memo = Column(Text, nullable=True)
+    order_no = Column("order", Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)

@@ -289,7 +289,7 @@ export default function ServicesPage() {
           </Card>
         </section>
 
-        {/* 1. 통합 플랜 (호스팅 + 유지보수) */}
+        {/* 1. 통합 플랜 (호스팅 + 유지보수) — 요금·포함 서비스 문구는 backend/app/utils/maint_plans.py (PACMS PLAN_DEFAULTS/PLAN_SERVICES 미러)와 수동 동기화 */}
         <section className="space-y-6">
           <div className="flex items-center gap-3 border-l-4 border-blue-500 pl-4">
             <Server className="h-6 w-6 text-blue-600" />

@@ -3,12 +3,12 @@
 계약만료일 다음날부터 N개월간 무상 유지보수 — 기간 중 유지보수 요청은 포인트를 차감하지 않는다.
 """
 from datetime import date, datetime, timedelta
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from app.models.customer import Project, MaintSubscription
+from app.models.customer import Project
 
 # 무상 종료 후 전환 유도(플랜 신청/연장 문의)를 노출하는 기간
 FREE_ENDED_CTA_DAYS = 60
@@ -97,27 +97,18 @@ def free_maint_state(project: Project, today: Optional[date] = None) -> dict:
     return result
 
 
-def has_maint_subscription(db: Session, company_id: int) -> bool:
-    return (
-        db.query(MaintSubscription.seq)
-        .filter(MaintSubscription.company_id == company_id, MaintSubscription.status.in_(["active", "beta"]))
-        .first()
-        is not None
-    )
-
-
-def find_free_maint_project(db: Session, company_id: int, today: Optional[date] = None) -> Optional[Project]:
-    """무상 유지보수 기간 중인 프로젝트 (가장 늦게 끝나는 것)"""
+def find_free_maint_projects(db: Session, company_id: int, today: Optional[date] = None) -> List[Project]:
+    """무상 유지보수 기간 중인 프로젝트 전체 (늦게 끝나는 순)"""
     return (
         db.query(Project)
         .filter(Project.company_id == company_id, free_maint_q(today))
         .order_by(Project.free_maint_end_date.desc())
-        .first()
+        .all()
     )
 
 
-def find_free_ended_project(db: Session, company_id: int, today: Optional[date] = None) -> Optional[Project]:
-    """최근(FREE_ENDED_CTA_DAYS 이내) 무상 유지보수가 끝난 프로젝트"""
+def find_free_ended_projects(db: Session, company_id: int, today: Optional[date] = None) -> List[Project]:
+    """최근(FREE_ENDED_CTA_DAYS 이내) 무상 유지보수가 끝난 프로젝트 전체 (최근 종료 순)"""
     today = _today(today)
     candidates = (
         db.query(Project)
@@ -129,7 +120,4 @@ def find_free_ended_project(db: Session, company_id: int, today: Optional[date] 
         .order_by(Project.free_maint_end_date.desc())
         .all()
     )
-    for p in candidates:
-        if free_maint_state(p, today)["state"] == "free_ended":
-            return p
-    return None
+    return [p for p in candidates if free_maint_state(p, today)["state"] == "free_ended"]

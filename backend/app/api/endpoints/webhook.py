@@ -18,7 +18,7 @@ router = APIRouter(prefix="/webhook", tags=["webhook"])
 
 
 class WebhookData(BaseModel):
-    type: str
+    type: str | None = None  # maint_renewal_notice 등 일부 이벤트는 data.type 을 보내지 않는다
     company_id: int | None = None
     company_name: str | None = None
     title: str | None = None
@@ -44,6 +44,10 @@ class WebhookData(BaseModel):
     board_id: int | None = None
     parent_id: int | None = None
     action: str | None = None
+    renewal_id: int | None = None
+    project_title: str | None = None
+    due_date: str | None = None
+    message: str | None = None
 
 
 class WebhookPayload(BaseModel):
@@ -54,6 +58,12 @@ class WebhookPayload(BaseModel):
 
 
 EVENT_PUSH_CONFIG = {
+    "maint_renewal_notice": {
+        "title": "유지보수 계속 이용 안내",
+        "body_template": "{title}",
+        "route_prefix": "/dashboard",
+        "id_field": "renewal_id",
+    },
     "managelist_comment": {
         "title": "유지보수 답변 등록",
         "body_template": "{title} 건에 새 답변이 등록되었습니다.",
@@ -152,10 +162,17 @@ def receive_pacms_webhook(
         body = "개발 요청에 답변이 등록되었습니다."
 
     target_id = getattr(data, config["id_field"], None)
+    route = f"{config['route_prefix']}{target_id}" if target_id else ""
+
+    if event_type == "maint_renewal_notice":
+        # 대시보드 배너로 유도 — 대시보드는 id 없는 고정 경로
+        body = data.message or f"[{data.project_title or ''}] 계약이 {data.due_date or ''}에 만료됩니다. 유지보수 연장을 확인해 주세요."
+        route = config["route_prefix"]
+
     push_data = {
         "type": event_type,
         "target_id": str(target_id) if target_id else "",
-        "route": f"{config['route_prefix']}{target_id}" if target_id else "",
+        "route": route,
     }
 
     success_count = send_push_notification(title, body, token_strings, push_data)

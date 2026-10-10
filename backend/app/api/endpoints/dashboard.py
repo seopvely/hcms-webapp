@@ -8,11 +8,12 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.utils.point_cycle import get_point_cycle
+from app.utils.maint_plans import hosting_label, plans_payload
 from app.utils.free_maint import (
     FREE_ENDING_SOON_DAYS,
     contract_active_q,
-    find_free_ended_project,
-    find_free_maint_project,
+    find_free_ended_projects,
+    find_free_maint_projects,
     free_maint_state,
 )
 from app.models.customer import (
@@ -28,6 +29,7 @@ from app.models.customer import (
     Project,
     DevSubscription,
     MaintSubscription,
+    MaintRenewal,
     news_companies,
 )
 
@@ -191,12 +193,12 @@ def get_dashboard(
 
     point_percent = round((remaining_points / total_points) * 100, 1) if total_points > 0 else 0
 
-    # 무상 유지보수 — 무상 기간 중이거나 최근 종료된 프로젝트 안내 (다른 계약이 진행 중이어도 표시)
-    free_maint = None
-    free_project = find_free_maint_project(db, company_id, now.date()) or find_free_ended_project(db, company_id, now.date())
-    if free_project:
-        state = free_maint_state(free_project, now.date())
-        free_maint = {
+    # 무상 유지보수 — 무상 기간 중이거나 최근 종료된 프로젝트 안내 (다른 계약이 진행 중이어도 표시, 프로젝트마다 한 장씩)
+    free_maints = []
+    today = now.date()
+    for free_project in find_free_maint_projects(db, company_id, today) + find_free_ended_projects(db, company_id, today):
+        state = free_maint_state(free_project, today)
+        free_maints.append({
             "project_id": free_project.seq,
             "project_title": free_project.title,
             "state": state["state"],
@@ -206,12 +208,43 @@ def get_dashboard(
             "days_since_end": state["days_since_end"],
             "scope": state["scope"],
             "ending_soon": state["state"] == "free_maint" and state["days_left"] <= FREE_ENDING_SOON_DAYS,
+        })
+
+    # 유지보수 전환 안내 — 직원이 고객 안내를 보낸(contacted) 건 + 최근 14일 내 응답한 건(접수 문구 유지)
+    renewal_rows = (
+        db.query(MaintRenewal)
+        .filter(
+            MaintRenewal.company_id == company_id,
+            (MaintRenewal.status == "contacted")
+            | (
+                MaintRenewal.status.in_(["accepted", "declined", "estimated"])
+                & MaintRenewal.contacted_at.isnot(None)
+                & (MaintRenewal.responded_at >= now - timedelta(days=14))
+            ),
+        )
+        .order_by(MaintRenewal.due_date)
+        .all()
+    )
+    maint_renewals = [
+        {
+            "id": r.seq,
+            "project_id": r.project_id,
+            "project_title": r.project.title if r.project else "",
+            "due_date": r.due_date.isoformat(),
+            "days_left": (r.due_date - today).days,
+            "status": r.status,
+            "responded": r.status != "contacted",
+            "chosen_plan": r.chosen_plan,
+            "hosting_type": r.hosting_type,
         }
+        for r in renewal_rows
+    ]
 
     # 유지보수 구독 정보
     maint_sub = (
         db.query(MaintSubscription)
         .filter(MaintSubscription.company_id == company_id, MaintSubscription.status.in_(["active", "beta"]))
+        .order_by(MaintSubscription.created_at.desc())
         .first()
     )
 
@@ -322,7 +355,7 @@ def get_dashboard(
         "monthly_payment": monthly_payment,
         "point_summary": {"total_points": total_points, "used_points": abs(used_points), "remaining_points": remaining_points, "point_percent": point_percent},
         "project_progress": project_progress,
-        "free_maint": free_maint,
+        "free_maints": free_maints,
         "dev_subscription": {
             "has_dev_subscription": has_dev_subscription,
             "dev_plan_type": dev_plan_type,
@@ -341,5 +374,9 @@ def get_dashboard(
             "monthly_points": maint_monthly_points,
             "points_used": maint_sub_points_used,
             "points_remaining": maint_sub_points_remaining,
+            "hosting_type": maint_sub.hosting_type if maint_sub else None,
+            "hosting_label": hosting_label(maint_sub.hosting_type, maint_sub.hosting_provider, maint_sub.start_date, maint_sub.end_date) if maint_sub else None,
         },
+        "maint_renewals": maint_renewals,
+        "maint_plans": plans_payload() if maint_renewals else None,
     }

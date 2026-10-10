@@ -92,6 +92,12 @@ export default function MaintSubscriptionPage() {
                   <span>다음 갱신 {sub.next_charge_date ? formatDate(sub.next_charge_date) : "-"}</span>
                 </div>
               </div>
+              {sub.hosting_label && (
+                <div className="mt-2 flex items-center gap-1.5 text-sm text-white/85">
+                  <Server className="h-4 w-4 shrink-0" />
+                  <span>{sub.hosting_label}</span>
+                </div>
+              )}
             </div>
 
             {/* 이번 달 크레딧 */}
@@ -138,8 +144,46 @@ export default function MaintSubscriptionPage() {
               </Card>
             )}
 
-            {/* 포함 서비스 */}
-            {data.benefits.length > 0 && (
+            {/* 이용 서비스 — PACMS 에 등록된 실제 서비스 */}
+            {data.services.length > 0 && (
+              <Card className="rounded-2xl">
+                <CardContent className="pt-5 space-y-3">
+                  <h2 className="font-bold">이용 서비스</h2>
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {data.services.map((svc, i) => (
+                      <li key={`${svc.code}-${i}`} className="flex items-start gap-2 text-sm">
+                        <Check className={`h-4 w-4 mt-0.5 shrink-0 ${svc.status === "inactive" ? "text-gray-300" : "text-green-600"}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={svc.status === "inactive" ? "text-muted-foreground line-through" : ""}>
+                              {svc.name}
+                              {svc.spec && <span className="text-muted-foreground"> · {svc.spec}</span>}
+                            </span>
+                            <Badge
+                              className={`text-[10px] px-1.5 py-0 ${
+                                svc.status === "active"
+                                  ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                  : svc.status === "inactive"
+                                    ? "bg-gray-100 text-gray-500 hover:bg-gray-100"
+                                    : "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                              }`}
+                            >
+                              {svc.status_label}
+                            </Badge>
+                          </div>
+                          {svc.code === "external_hosting" && svc.memo && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{svc.memo}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 포함 서비스 — 서비스 미등록 구독은 요금제 기본 문구로 표시 */}
+            {data.services.length === 0 && data.benefits.length > 0 && (
               <Card className="rounded-2xl">
                 <CardContent className="pt-5 space-y-3">
                   <h2 className="font-bold">포함 서비스</h2>

@@ -8,42 +8,13 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import MaintSubscription, PointHistory
+from app.utils.maint_plans import PLAN_LABELS, hosting_label, plan_services, service_text
 
 router = APIRouter(prefix="/maint-subscription", tags=["maint-subscription"])
 
-PLAN_LABELS = {"basic": "BASIC", "growth": "GROWTH", "business": "BUSINESS"}
-
 STATUS_LABELS = {"active": "이용중", "beta": "베타 이용중", "inactive": "해지"}
 
-# 통합 플랜(호스팅 + 유지보수) 포함 서비스 — /services 페이지 플랜 카드와 동일하게 유지
-PLAN_BENEFITS = {
-    "basic": [
-        "웹호스팅 1사이트",
-        "10GB SSD 스토리지",
-        "SSL/TLS 인증서",
-        "일일 자동 백업",
-        "Uptime 모니터링",
-        "이메일 지원",
-    ],
-    "growth": [
-        "웹호스팅 3사이트",
-        "50GB SSD 스토리지",
-        "SSL/TLS 인증서",
-        "일일 자동 백업",
-        "24시간 모니터링",
-        "CDN 가속 지원",
-        "이메일 + 전화 지원",
-    ],
-    "business": [
-        "웹호스팅 무제한",
-        "100GB SSD 스토리지",
-        "SSL/TLS 인증서",
-        "실시간 백업",
-        "24시간 모니터링 + 장애 대응",
-        "CDN + DDoS 방어",
-        "전담 엔지니어 배정",
-    ],
-}
+SERVICE_STATUS_LABELS = {"pending": "준비중", "active": "제공중", "inactive": "중지"}
 
 
 @router.get("")
@@ -59,7 +30,7 @@ def get_my_maint_subscription(
         .first()
     )
     if not sub:
-        return {"has_subscription": False, "subscription": None, "benefits": [], "recent_usage": []}
+        return {"has_subscription": False, "subscription": None, "services": [], "benefits": [], "recent_usage": []}
 
     # 이번 달 사용 크레딧 — 대시보드 구독 카드와 같은 기준(유지보수 카테고리, 실행 완료)
     now = datetime.now()
@@ -98,8 +69,26 @@ def get_my_maint_subscription(
             "monthly_points": monthly_points,
             "points_used": points_used,
             "points_remaining": max(0, monthly_points - points_used),
+            "end_date": sub.end_date.isoformat() if sub.end_date else None,
+            "hosting_type": sub.hosting_type,
+            "hosting_provider": sub.hosting_provider,
+            "hosting_label": hosting_label(sub.hosting_type, sub.hosting_provider, sub.start_date, sub.end_date),
         },
-        "benefits": PLAN_BENEFITS.get(sub.plan_type, []),
+        # PACMS 에 등록된 실제 이용 서비스. 없으면(기존 구독) 프론트는 benefits 폴백을 표시
+        "services": [
+            {
+                "code": svc.service_code,
+                "name": svc.name,
+                "spec": svc.spec,
+                "status": svc.status,
+                "status_label": SERVICE_STATUS_LABELS.get(svc.status, svc.status),
+                "start_date": svc.start_date.isoformat() if svc.start_date else None,
+                "end_date": svc.end_date.isoformat() if svc.end_date else None,
+                "memo": svc.memo,
+            }
+            for svc in sub.services
+        ],
+        "benefits": [service_text(b) for b in plan_services(sub.plan_type, sub.hosting_type)],
         "recent_usage": [
             {
                 "id": p.seq,

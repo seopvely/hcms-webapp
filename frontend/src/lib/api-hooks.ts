@@ -72,6 +72,8 @@ export interface DashboardData {
     monthly_points: number;
     points_used: number;
     points_remaining: number;
+    hosting_type?: "I" | "E" | null;
+    hosting_label?: string | null;
   };
   project_progress: {
     id: number;
@@ -87,18 +89,56 @@ export interface DashboardData {
     free_maint_state?: FreeMaintState;
     free_maint_end_date?: string | null;
   }[];
-  // 계약기간 중인 유지보수 계약이 없을 때 무상 유지보수 중이거나 최근 종료된 프로젝트
-  free_maint?: {
-    project_id: number;
-    project_title: string;
-    state: "free_maint" | "free_ended";
-    start_date: string;
-    end_date: string;
-    days_left: number | null;
-    days_since_end: number | null;
-    scope: string | null;
-    ending_soon: boolean;
-  } | null;
+  // 무상 유지보수 중이거나 최근 종료된 프로젝트 (프로젝트마다 한 장씩 표시)
+  free_maints?: FreeMaintInfo[];
+  // 유지보수 계속 이용 안내 (직원이 안내한 건 + 최근 응답한 건)
+  maint_renewals?: MaintRenewalInfo[];
+  maint_plans?: Record<string, MaintPlanInfo> | null;
+}
+
+export type HostingType = "I" | "E";
+
+export interface MaintRenewalInfo {
+  id: number;
+  project_id: number;
+  project_title: string;
+  due_date: string;
+  days_left: number; // 음수면 만료 후 경과
+  status: string;
+  responded: boolean;
+  chosen_plan: string | null;
+  hosting_type: HostingType | null;
+}
+
+export interface MaintPlanInfo {
+  label: string;
+  points: number;
+  hosting_price: number;
+  maint_price: number;
+  internal_price: number;
+  external_price: number;
+  services_internal: string[];
+  services_external: string[];
+}
+
+export interface MaintRenewalRespondInput {
+  response: "accepted" | "declined";
+  chosen_plan?: string;
+  hosting_type?: HostingType;
+  hosting_provider?: string;
+  memo?: string;
+}
+
+export interface FreeMaintInfo {
+  project_id: number;
+  project_title: string;
+  state: "free_maint" | "free_ended";
+  start_date: string;
+  end_date: string;
+  days_left: number | null;
+  days_since_end: number | null;
+  scope: string | null;
+  ending_soon: boolean;
 }
 
 // 무상 유지보수 상태: 계약기간 중 무상 예정 / 무상 기간 중 / 최근 종료(전환 유도 대상)
@@ -1211,7 +1251,13 @@ export interface MaintSubscriptionInfo {
     monthly_points: number;
     points_used: number;
     points_remaining: number;
+    end_date: string | null;
+    hosting_type: HostingType | null;
+    hosting_provider: string | null;
+    hosting_label: string | null;
   } | null;
+  // PACMS 에 등록된 실제 이용 서비스 — 비어 있으면 benefits(요금제 기본 문구) 표시
+  services: MaintServiceItem[];
   benefits: string[];
   recent_usage: {
     id: number;
@@ -1230,5 +1276,31 @@ export function useMaintSubscription() {
   return useQuery({
     queryKey: ["maint-subscription"],
     queryFn: fetchMaintSubscription,
+  });
+}
+
+export interface MaintServiceItem {
+  code: string;
+  name: string;
+  spec: string | null;
+  status: "pending" | "active" | "inactive" | string;
+  status_label: string;
+  start_date: string | null;
+  end_date: string | null;
+  memo: string | null;
+}
+
+// ============ 유지보수 계속 이용 안내 응답 ============
+
+export function useRespondMaintRenewal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: MaintRenewalRespondInput & { id: number }) => {
+      const { data } = await api.post(`/maint-renewal/${id}/respond`, input);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }

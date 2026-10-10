@@ -309,6 +309,19 @@ def get_point_usage(
             "scope": state["scope"],
         }
 
+    # 선택된 프로젝트(무상/유상)와 무관하게 선택 목록에는 항상 전체 프로젝트를 내려준다
+    for project in active_projects:
+        proj_cycle = get_point_cycle(project)
+        proj_total = proj_cycle["total_points"]
+        proj_used = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
+            PointHistory.project_id == project.seq, PointHistory.point_type == 2,
+            PointHistory.status == 2, PointHistory.created_at >= proj_cycle["query_start"], PointHistory.created_at < proj_cycle["query_end"]
+        ).scalar() or 0)
+        response["projects_with_balance"].append({
+            "id": project.seq, "title": project.title,
+            "monthly_point": project.point, "remaining_points": proj_total - proj_used, "total_points": proj_total
+        })
+
     for project in maintenance_projects:
         if project in free_projects:
             response["projects_with_balance"].append({
@@ -362,18 +375,6 @@ def get_point_usage(
         response["used_points"] = used_points
         response["remaining_points"] = remaining_points
         response["maintenance_summary"] = maintenance_summary
-
-        for project in active_projects:
-            proj_cycle = get_point_cycle(project)
-            proj_total = proj_cycle["total_points"]
-            proj_used = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
-                PointHistory.project_id == project.seq, PointHistory.point_type == 2,
-                PointHistory.status == 2, PointHistory.created_at >= proj_cycle["query_start"], PointHistory.created_at < proj_cycle["query_end"]
-            ).scalar() or 0)
-            response["projects_with_balance"].append({
-                "id": project.seq, "title": project.title,
-                "monthly_point": project.point, "remaining_points": proj_total - proj_used, "total_points": proj_total
-            })
 
         point_histories_for_stats = db.query(PointHistory).filter(
             PointHistory.project_id == current_project.seq, PointHistory.point_type == 2,

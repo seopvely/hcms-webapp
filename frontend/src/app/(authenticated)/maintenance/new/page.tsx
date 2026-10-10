@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Wrench,
@@ -53,12 +53,13 @@ const ALLOWED_EXTENSIONS = [
 
 const ALLOWED_ACCEPT = ALLOWED_EXTENSIONS.map((ext) => `.${ext}`).join(",");
 
-export default function MaintenanceNewPage() {
+function MaintenanceNewContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setPageTitle } = useNavigationStore();
   const { toast } = useToast();
 
-  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [pickedProject, setPickedProject] = useState<string>("");
   const [title, setTitle] = useState("");
   const [contents, setContents] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -70,6 +71,11 @@ export default function MaintenanceNewPage() {
 
   const { data: projectsData, isLoading } = useMaintenanceProjects();
   const createMutation = useCreateMaintenance();
+
+  // 대시보드 등에서 ?project_id= 로 진입하면 해당 프로젝트를 미리 선택 (목록에 있는 경우만, 직접 고르면 그 값 우선)
+  const presetProjectId = searchParams.get("project_id") ?? "";
+  const presetValid = !!projectsData?.projects.some((p) => p.id.toString() === presetProjectId);
+  const selectedProject = pickedProject || (presetValid ? presetProjectId : "");
 
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -219,7 +225,7 @@ export default function MaintenanceNewPage() {
                 </div>
               ) : (
                 <>
-                  <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <Select value={selectedProject} onValueChange={setPickedProject}>
                     <SelectTrigger className="w-full rounded-xl">
                       <SelectValue placeholder="프로젝트를 선택해주세요" />
                     </SelectTrigger>
@@ -465,5 +471,13 @@ export default function MaintenanceNewPage() {
         </form>
       </div>
     </PageTransition>
+  );
+}
+
+export default function MaintenanceNewPage() {
+  return (
+    <Suspense>
+      <MaintenanceNewContent />
+    </Suspense>
   );
 }

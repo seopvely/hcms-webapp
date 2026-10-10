@@ -88,7 +88,7 @@ def get_request_permit(project: Project, db: Session, company_id: int) -> dict:
         db.query(Payment)
         .filter(
             Payment.project_id == project.seq,
-            Payment.payment_status == 1  # 결제완료
+            Payment.payment_status.in_(["1", "3"])  # 결제완료 또는 결제대기 (결제실패·결제건 없음은 불가)
         )
         .first()
     )
@@ -287,7 +287,7 @@ async def create_maintenance(
 
     info = get_request_permit(project, db, company_id)
 
-    # Verify payment status
+    # Verify payment status (결제완료 또는 결제대기)
     if not info["payment_completed"]:
         raise HTTPException(status_code=400, detail="Project payment not completed")
 

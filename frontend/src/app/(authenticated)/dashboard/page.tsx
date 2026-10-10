@@ -30,6 +30,7 @@ import { StatusBadge, LoadingState } from "@/components/common";
 import { AnimatedCounter } from "@/components/common/animated-counter";
 import { CardSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
+import { MaintRenewalBanner } from "@/components/dashboard/maint-renewal-banner";
 import { useDashboard, useSiteStatus } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
 
@@ -194,13 +195,19 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {/* 유지보수 계속 이용 안내 — 직원이 안내한 계약 만료 건 */}
+        {data?.maint_renewals && (
+          <MaintRenewalBanner renewals={data.maint_renewals} plans={data.maint_plans} />
+        )}
+
         {/* Free Maintenance — 계약만료 후 무상 유지보수 기간 / 종료 후 전환 유도 */}
-        {data?.free_maint && (() => {
-          const fm = data.free_maint;
-          const showCta = (fm.state === "free_ended" || fm.ending_soon) && !data.maint_subscription?.has_maint_subscription;
+        {data?.free_maints?.map((fm) => {
+          // 같은 프로젝트에 유지보수 계속 이용 안내가 있으면 전환 CTA는 그쪽으로 일원화
+          const hasRenewal = data.maint_renewals?.some((r) => r.project_id === fm.project_id);
+          const showCta = (fm.state === "free_ended" || fm.ending_soon) && !data.maint_subscription?.has_maint_subscription && !hasRenewal;
           const extendHref = `/inquiries/create?service=${encodeURIComponent("계약연장")}&plan=${encodeURIComponent(fm.project_title || "")}`;
           return (
-            <Card className="rounded-2xl overflow-hidden border-0 shadow-lg">
+            <Card key={fm.project_id} className="rounded-2xl overflow-hidden border-0 shadow-lg">
               <div className={`p-5 text-white bg-gradient-to-r ${
                 fm.state === "free_ended"
                   ? "from-slate-500 to-slate-600"
@@ -239,7 +246,7 @@ export default function DashboardPage() {
                 )}
                 <div className="flex flex-wrap gap-2 mt-4">
                   {fm.state === "free_maint" && (
-                    <Link href="/maintenance/new" className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-white/90">
+                    <Link href={`/maintenance/new?project_id=${fm.project_id}`} className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 hover:bg-white/90">
                       유지보수 요청 <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   )}
@@ -257,7 +264,7 @@ export default function DashboardPage() {
               </div>
             </Card>
           );
-        })()}
+        })}
 
         {/* Dev Subscription Credits */}
         {data?.dev_subscription?.has_dev_subscription && (
@@ -367,6 +374,9 @@ export default function DashboardPage() {
                   {data.maint_subscription.plan_label}
                 </span>
               </div>
+              {data.maint_subscription.hosting_label && (
+                <p className="text-xs text-white/80 -mt-1 mb-3">{data.maint_subscription.hosting_label}</p>
+              )}
 
               {data.maint_subscription.monthly_points > 0 && (
                 <>

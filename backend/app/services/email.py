@@ -1,3 +1,4 @@
+import html
 import smtplib
 import logging
 import threading
@@ -207,3 +208,19 @@ def notify_free_maint_alert(db, kind, project_id, company_name, project_title, s
         items.append(("남은 기간", f"D-{days_left}"))
     html = _build_html(title, items, f"{PACMS_BASE_URL}/managed/project_update/{project_id}", "프로젝트 확인하기")
     _send_email(emails, f"[HCMS] {title} - {company_name} / {project_title}", html)
+
+
+def notify_maint_renewal_response(db, renewal_id, company_name, project_title, due_date, response_label,
+                                  plan_label, hosting_text, monthly_price, memo, writer_name):
+    emails = get_agent_emails(db)
+    if not emails:
+        return
+    items = [("업체명", company_name), ("프로젝트", project_title), ("기준일", due_date), ("응답", response_label)]
+    if plan_label:
+        items += [("요금제", plan_label), ("호스팅", hosting_text), ("월 청구액", f"{monthly_price:,}원")]
+    items += [("메모", html.escape(memo) if memo else "-"), ("응답자", writer_name)]
+    send_email_async(emails, f"[HCMS] 유지보수 전환 응답({response_label}): {company_name} / {project_title}", _build_html(
+        "고객이 유지보수 계속 이용 안내에 응답했습니다",
+        items,
+        f"{PACMS_BASE_URL}/managed/maint-renewal/{renewal_id}/", "전환 건 확인하기",
+    ))
