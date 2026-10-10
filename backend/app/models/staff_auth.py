@@ -20,6 +20,7 @@ class StaffSession(Base):
     csrf_hash = Column(String(64), nullable=True)
     pending_totp_secret = Column(String(64), nullable=True)  # 인증앱 등록 중인 비밀키(확인 전까지만)
     attempts = Column(Integer, nullable=False, default=0)
+    amr = Column(String(50), nullable=True)  # 통과한 인증 수단: "pwd" | "pwd,otp"
     created_at = Column(DateTime, nullable=False, default=datetime.now)
     expires_at = Column(DateTime, nullable=False)
     last_seen_at = Column(DateTime, nullable=True)

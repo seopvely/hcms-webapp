@@ -32,6 +32,7 @@ import { useProjectBoardDetail, useCreateBoardReply } from "@/lib/api-hooks";
 import { useToast } from "@/components/common/app-toast";
 import { formatDate } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 const MAX_FILES = 10;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -78,7 +79,7 @@ export default function ReplyProjectBoardPage() {
 
   const handleDownload = async (attachmentId: number, filename: string) => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       const response = await fetch(`/api/project-board/attachments/${attachmentId}/download`, {
         headers: { Authorization: `Bearer ${token}` },
       });

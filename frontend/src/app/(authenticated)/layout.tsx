@@ -5,10 +5,12 @@ import { useAuthStore } from "@/store/auth-store";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { PageSpinner } from "@/components/common/page-spinner";
 import { ToastProvider } from "@/components/common/app-toast";
 import { NavigationSpinnerProvider } from "@/components/common/navigation-spinner";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { getAccessToken } from "@/lib/auth-token";
 
 export default function AuthenticatedLayout({
   children,
@@ -21,7 +23,7 @@ export default function AuthenticatedLayout({
   usePushNotifications();
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) {
       router.replace("/login");
     } else {
@@ -37,6 +39,7 @@ export default function AuthenticatedLayout({
         <div className="min-h-screen bg-background">
           <AppSidebar />
           <div className="lg:pl-64">
+            <ImpersonationBanner />
             <AppHeader />
             <main className="p-4 pb-24 lg:pb-4">
               {children}

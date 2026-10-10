@@ -36,6 +36,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { useMaintenanceDetail, useCreateMaintenanceComment, MaintenanceComment } from "@/lib/api-hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 function buildCommentTree(comments: MaintenanceComment[]): MaintenanceComment[] {
   const map = new Map<number, MaintenanceComment>();
@@ -196,7 +197,7 @@ export default function MaintenanceDetailPage() {
 
   const handleDownload = async (type: "attachment" | "comment-attachment" | "comment-file", id: number, filename: string) => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       let endpoint = "";
       if (type === "attachment") {
         endpoint = `/api/maintenance/attachments/${id}/download`;

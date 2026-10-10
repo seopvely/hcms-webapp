@@ -60,8 +60,15 @@ def get_current_staff(request: Request, db: Session = Depends(get_db)) -> Custom
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="비활성화된 계정입니다.")
 
+    request.state.staff_session = row
     now = datetime.now()
     if row.last_seen_at is None or now - row.last_seen_at > timedelta(minutes=5):
         row.last_seen_at = now
         db.commit()
     return user
+
+
+def require_staff_admin(staff: CustomAuthUser = Depends(get_current_staff)) -> CustomAuthUser:
+    if not staff_auth.is_admin(staff):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="관리자만 사용할 수 있습니다.")
+    return staff

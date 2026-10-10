@@ -30,6 +30,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { useInquiryDetail, useCreateInquiryAnswer } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 function getStatusBadgeVariant(status: number) {
   switch (status) {
@@ -72,7 +73,7 @@ export default function InquiryDetailPage() {
 
   const handleDownload = async (attachmentId: number, filename: string) => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       const response = await fetch(
         `/api/inquiries/attachments/${attachmentId}/download`,
         {

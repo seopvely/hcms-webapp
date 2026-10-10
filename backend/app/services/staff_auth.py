@@ -91,7 +91,8 @@ def authenticate_staff(db: Session, email: str, password: str) -> CustomAuthUser
 
 # ── 세션 ────────────────────────────────────────────────────────────────
 
-def create_session(db: Session, request: Request, user_id: int, stage: str) -> tuple[str, str | None, StaffSession]:
+def create_session(db: Session, request: Request, user_id: int, stage: str,
+                   amr: str | None = None) -> tuple[str, str | None, StaffSession]:
     """세션 행을 만들고 (세션 토큰, CSRF 토큰, 행) 을 돌려준다. 토큰 원문은 저장하지 않는다."""
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32) if stage == STAGE_ACTIVE else None
@@ -104,6 +105,7 @@ def create_session(db: Session, request: Request, user_id: int, stage: str) -> t
         stage=stage,
         csrf_hash=_hash(csrf) if csrf else None,
         attempts=0,
+        amr=amr,
         created_at=now,
         expires_at=now + ttl,
         last_seen_at=now,
@@ -129,6 +131,17 @@ def csrf_matches(row: StaffSession, csrf: str | None) -> bool:
 
 def revoke(row: StaffSession) -> None:
     row.revoked_at = datetime.now()
+
+
+def revoke_user_sessions(db: Session, user_id: int) -> None:
+    """직원의 모든 세션을 끊는다(비활성화·비밀번호 변경·2FA 초기화 시)."""
+    db.query(StaffSession).filter(StaffSession.user_id == user_id, StaffSession.revoked_at.is_(None)).update(
+        {StaffSession.revoked_at: datetime.now()}, synchronize_session=False)
+
+
+def is_admin(user: CustomAuthUser) -> bool:
+    """관리자 역할: superuser 또는 등급(previlege) '1'."""
+    return bool(user.is_superuser) or user.previlege == "1"
 
 
 # ── TOTP ────────────────────────────────────────────────────────────────

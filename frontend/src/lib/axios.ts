@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearImpersonation, getAccessToken, getImpersonationToken } from "@/lib/auth-token";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -8,7 +9,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -21,6 +22,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const isLoginRequest = error.config?.url?.includes("/auth/");
       if (!isLoginRequest) {
+        if (getImpersonationToken()) {
+          // 대리 로그인 토큰 만료 — 이 탭만 정리하고 직원 화면으로
+          clearImpersonation();
+          window.location.href = "/managed/customers";
+          return Promise.reject(error);
+        }
         localStorage.removeItem("access_token");
         window.location.href = "/login";
       }

@@ -40,6 +40,7 @@ import {
 } from "@/lib/api-hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 function buildCommentTree(comments: DevRequestComment[]): DevRequestComment[] {
   const map = new Map<number, DevRequestComment>();
@@ -210,7 +211,7 @@ export default function DevRequestDetailPage() {
     filename: string
   ) => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       let endpoint = "";
       if (type === "attachment") {
         endpoint = `/api/dev-requests/attachments/${fileId}/download`;

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { clearImpersonation } from "@/lib/auth-token";
 
 interface User {
   id: string;
@@ -20,6 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    clearImpersonation();
     set({ user: null, isAuthenticated: false });
   },
 }));

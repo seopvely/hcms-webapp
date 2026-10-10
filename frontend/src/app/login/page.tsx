@@ -30,30 +30,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   // 2단계 인증 실패·만료로 돌아온 경우 사유를 보여준다
   const [error, setError] = useState(() => searchParams.get("reason") || "");
-  const [autoLoginLoading, setAutoLoginLoading] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
-
-  useEffect(() => {
-    const key = searchParams.get("key");
-    const loginId = searchParams.get("login_id");
-
-    if (key && loginId) {
-      setAutoLoginLoading(true);
-      api.post("/auth/site-key-login", { site_key: key, login_id: loginId })
-        .then((response) => {
-          const { access_token, refresh_token, user } = response.data;
-          localStorage.setItem("access_token", access_token);
-          localStorage.setItem("refresh_token", refresh_token);
-          setUser(user);
-          requestAndRegisterPushToken();
-          router.push("/dashboard");
-        })
-        .catch(() => {
-          setError("자동 로그인에 실패했습니다. 직접 로그인해주세요.");
-          setAutoLoginLoading(false);
-        });
-    }
-  }, [searchParams, router, setUser]);
 
   useEffect(() => {
     const userAgent = navigator.userAgent;
@@ -114,17 +91,6 @@ function LoginContent() {
       );
     }
   };
-
-  if (autoLoginLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" />
-          <p className="mt-3 text-sm text-muted-foreground">자동 로그인 중...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">

@@ -42,6 +42,7 @@ import {
 } from "@/lib/api-hooks";
 import { formatDate } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 function getStatusBadgeClass(status: string) {
   switch (status) {
@@ -106,7 +107,7 @@ export default function ProjectBoardDetailPage() {
 
   const handleDownload = async (attachmentId: number, filename: string, type: "board" | "comment" = "board") => {
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       const url = type === "board"
         ? `/api/project-board/attachments/${attachmentId}/download`
         : `/api/project-board/comment-attachments/${attachmentId}/download`;

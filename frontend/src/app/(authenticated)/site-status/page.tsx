@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Server, CheckCircle, XCircle, AlertCircle, Clock, ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
+import { getAccessToken } from "@/lib/auth-token";
 
 interface SiteStatus {
   site_id: number;
@@ -56,8 +57,7 @@ interface SiteErrors {
 }
 
 function getToken() {
-  if (typeof localStorage !== "undefined") return localStorage.getItem("access_token") || "";
-  return "";
+  return getAccessToken() || "";
 }
 
 async function fetchSiteStatus(): Promise<SiteStatus[]> {

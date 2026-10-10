@@ -31,6 +31,9 @@ class CustomAuthUser(Base):
     password = Column(String(128), nullable=False)
     is_superuser = Column(Integer, nullable=False, default=0)
     previlege = Column(String(1), nullable=True)
+    phone_number = Column(String(13), nullable=True)
+    department = Column(String(100), nullable=True)
+    position = Column(String(100), nullable=True)
     last_login = Column(DateTime, nullable=True)
     # TOTP 2단계 인증 — cms(member/twofactor.py)와 같은 컬럼·알고리즘을 공유한다
     two_factor_enabled = Column(Boolean, nullable=False, default=False)

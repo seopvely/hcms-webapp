@@ -36,6 +36,7 @@ import { usePointUsage } from "@/lib/api-hooks";
 import { formatDateTime } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 const WORKER_TYPE_MAP: Record<number, { label: string; color: string }> = {
   1: { label: "계약", color: "bg-blue-100 text-blue-700" },
@@ -121,7 +122,7 @@ export default function PointUsagePage() {
   async function handleExcelDownload() {
     setExcelLoading(true);
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       const params = new URLSearchParams();
       if (selectedProjectId) params.append("project_id", String(selectedProjectId));
       if (debouncedSearch) params.append("search_text", debouncedSearch);

@@ -19,6 +19,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { useEstimateDetail } from "@/lib/api-hooks";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { downloadBlob } from "@/lib/download";
+import { getAccessToken } from "@/lib/auth-token";
 
 function formatAmount(n: number) {
   return n.toLocaleString("ko-KR");
@@ -44,7 +45,7 @@ function EstimateDetailContent() {
   const downloadPdf = async (type: "estimate" | "contract") => {
     setPdfLoading(type);
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       const endpoint = type === "estimate"
         ? `/api/estimates/${id}/pdf`
         : `/api/estimates/${id}/contract-pdf`;

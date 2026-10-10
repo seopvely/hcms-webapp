@@ -6,6 +6,7 @@ export interface StaffNavItem {
   label: string;
   href: string;
   legacy?: boolean; // true = cms 에서 열기
+  newTab?: boolean; // hcms 경로지만 새 탭(SSO 등)
 }
 
 export interface StaffNavGroup {
@@ -44,6 +45,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "고객",
     items: [
+      { label: "고객사 이동(대리 로그인)", href: "/managed/customers" },
       { label: "고객리스트", href: cms("/managed/custom"), legacy: true },
       { label: "업체관리", href: cms("/managed/suppliermanage"), legacy: true },
       { label: "유지보수 전환", href: cms("/managed/maint-renewal/"), legacy: true },
@@ -92,9 +94,9 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "설정·외부",
     items: [
-      { label: "에이전트", href: cms("/managed/agent"), legacy: true },
-      { label: "CreateSite 콘솔", href: cms("/api/sso/createsite"), legacy: true },
-      { label: "WealthReach 관리자", href: cms("/api/sso/wealthreach"), legacy: true },
+      { label: "직원 계정", href: "/managed/staff" },
+      { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },
+      { label: "WealthReach 관리자", href: "/managed/sso/wealthreach", newTab: true },
     ],
   },
 ];

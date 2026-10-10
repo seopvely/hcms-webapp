@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "./axios";
+import { getAccessToken } from "@/lib/auth-token";
 
 // ============ Types ============
 
@@ -810,7 +811,7 @@ export interface SiteStatus {
 }
 
 async function fetchSiteStatusList(): Promise<SiteStatus[]> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") || "" : "";
+  const token = getAccessToken() || "";
   const hubUrl = process.env.NEXT_PUBLIC_HUB_API_URL;
   if (!hubUrl) return [];
   const res = await fetch(`${hubUrl}/api/sites/status`, {

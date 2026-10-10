@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     STAFF_SESSION_HOURS: int = 12
     STAFF_PENDING_MINUTES: int = 10
     STAFF_COOKIE_SECURE: bool = True
+    # 대리 로그인(직원 → 고객 화면) 토큰 유효 시간
+    IMPERSONATION_MINUTES: int = 30
+    # SSO 발급 (cms 와 같은 형식). 키 파일은 cms(/home/pacms/.*_sso_secret)와 같은 값을 hcms 가 읽을 수 있게 복사해 둔다
+    CREATESITE_SSO_SECRET_FILE: str = "/home/hcms/.secrets/createsite_sso_secret"
+    CREATESITE_SSO_CALLBACK_URL: str = "https://createsite.hankyeul.com/sso/callback"
+    WEALTHREACH_SSO_SECRET_FILE: str = "/home/hcms/.secrets/wealthreach_sso_secret"
+    WEALTHREACH_SSO_CALLBACK_URL: str = "https://wealthreach.hankyeul.com/sso/callback"
+    SSO_TICKET_TTL: int = 120
 
     @property
     def cors_origins(self) -> list[str]:

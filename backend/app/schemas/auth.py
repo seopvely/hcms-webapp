@@ -7,11 +7,6 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class SiteKeyLoginRequest(BaseModel):
-    site_key: str
-    login_id: str
-
-
 class UserResponse(BaseModel):
     seq: int
     login_id: str

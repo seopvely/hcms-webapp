@@ -31,8 +31,8 @@ def _clear_cookie(response: Response, key: str, path: str, httponly: bool = True
     response.delete_cookie(key, path=path, httponly=httponly, secure=settings.STAFF_COOKIE_SECURE, samesite="lax")
 
 
-def _start_active_session(db: Session, request: Request, response: Response, user: CustomAuthUser) -> None:
-    token, csrf, _ = staff_auth.create_session(db, request, user.id, staff_auth.STAGE_ACTIVE)
+def _start_active_session(db: Session, request: Request, response: Response, user: CustomAuthUser, amr: str) -> None:
+    token, csrf, _ = staff_auth.create_session(db, request, user.id, staff_auth.STAGE_ACTIVE, amr=amr)
     user.last_login = datetime.now()
     staff_auth.audit(db, request, "login_success", user_id=user.id, target=(user.email or "").lower())
     db.commit()
@@ -64,7 +64,7 @@ def login_staff(db: Session, request: Request, response: Response, login_id: str
             "mfa_setup_required": not (user.totp_secret and user.totp_confirmed_at),
         }
 
-    _start_active_session(db, request, response, user)
+    _start_active_session(db, request, response, user, amr="pwd")
     return {"kind": "staff", "mfa_required": False}
 
 
@@ -125,7 +125,7 @@ def mfa_verify(body: MfaVerifyRequest, request: Request, response: Response, db:
         staff_auth.audit(db, request, "mfa_setup", user_id=user.id, target=(user.email or "").lower())
     staff_auth.revoke(row)
     _clear_cookie(response, STAFF_PENDING_COOKIE, PENDING_COOKIE_PATH)
-    _start_active_session(db, request, response, user)
+    _start_active_session(db, request, response, user, amr="pwd,otp")
     return {"ok": True}
 
 
