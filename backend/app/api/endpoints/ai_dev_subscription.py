@@ -11,8 +11,6 @@ router = APIRouter(prefix="/ai-dev-subscriptions", tags=["ai-dev-subscriptions"]
 PLAN_LABELS = {
     "starter": "STARTER",
     "business": "BUSINESS",
-    "agency": "AGENCY",
-    "enterprise": "ENTERPRISE",
 }
 
 STATUS_LABELS = {
@@ -34,7 +32,6 @@ def _serialize(sub: AIDevSubscription) -> dict:
         "start_date": sub.start_date.isoformat() if sub.start_date else None,
         "next_charge_date": sub.next_charge_date.isoformat() if sub.next_charge_date else None,
         "is_beta": sub.is_beta,
-        "notes": sub.notes,
         "created_at": sub.created_at.isoformat() if sub.created_at else None,
     }
 

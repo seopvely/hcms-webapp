@@ -30,7 +30,6 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [autoLoginLoading, setAutoLoginLoading] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
-  const defaultSiteKey = process.env.NEXT_PUBLIC_SITE_KEY;
 
   useEffect(() => {
     const key = searchParams.get("key");
@@ -76,10 +75,8 @@ function LoginContent() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setError("");
-      const keyFromQuery = searchParams.get("key");
-      const siteKey = keyFromQuery || defaultSiteKey;
-      const payload = siteKey ? { ...data, site_key: siteKey } : data;
-      const response = await api.post("/auth/login", payload);
+      // 계정(아이디+비밀번호)만으로 로그인한다. site_key 로 회사를 제한하지 않는다.
+      const response = await api.post("/auth/login", data);
       const { access_token, refresh_token, user, is_first_login } = response.data;
 
       if (is_first_login) {

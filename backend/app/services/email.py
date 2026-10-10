@@ -7,6 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.customer import CustomAuthUser
 
 logger = logging.getLogger(__name__)
@@ -72,7 +73,8 @@ def _build_html(title: str, items: list[tuple[str, str]], link_url: str, link_te
     """
 
 
-PACMS_BASE_URL = "https://cms.hankyeul.com"
+# 직원 관리 화면(/managed) base URL — 컷오버 시 .env STAFF_BASE_URL 만 바꾼다
+PACMS_BASE_URL = settings.STAFF_BASE_URL
 
 
 def notify_maintenance_created(db, maintenance_id, company_name, project_title, title, writer_name):

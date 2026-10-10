@@ -1,20 +1,29 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+# cron·alembic 등 cwd 가 달라도 backend/.env 를 읽도록 절대경로로 고정
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "mysql+pymysql://pacms:faQ7Yfh%24Uvr@192.168.0.10:3306/pacmsDB?charset=utf8mb4"
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    # 비밀값은 기본값 없이 .env 에서만 읽는다(없으면 기동 실패)
+    DATABASE_URL: str
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    FRONTEND_URL: str = "http://localhost:8011"
+    FRONTEND_URL: str = "https://hcms.hankyeul.com"
     HOST: str = "0.0.0.0"
     PORT: int = 9011
-    DEBUG: bool = True
+    DEBUG: bool = False
     FIREBASE_CREDENTIALS_PATH: str = ""
     WEBHOOK_API_KEY: str = ""
     PACMS_API_BASE_URL: str = "https://cms.hankyeul.com"
     PACMS_ESTIMATE_WEBHOOK_API_KEY: str = ""
+    # 메일 링크 base URL — 하드코딩 금지. 고객용은 hcms, 직원용은 /managed 컷오버 때 hcms 로 바꾼다
+    PUBLIC_BASE_URL: str = "https://hcms.hankyeul.com"
+    STAFF_BASE_URL: str = "https://cms.hankyeul.com"
 
     @property
     def cors_origins(self) -> list[str]:
@@ -22,7 +31,7 @@ class Settings(BaseSettings):
         return origins
 
     class Config:
-        env_file = ".env"
+        env_file = ENV_FILE
 
 
 settings = Settings()

@@ -1,3 +1,4 @@
+import hmac
 import logging
 import math
 import re
@@ -302,11 +303,13 @@ def verify_estimate_token(
 	# 2. 토큰 검증
 	# Note: approval_token is stored as CharField in Django's Estimate model
 	approval_token = getattr(estimate, 'approval_token', None)
-	if not approval_token or approval_token != token:
+	if not approval_token or not hmac.compare_digest(str(approval_token), token):
 		raise HTTPException(status_code=401, detail="유효하지 않은 링크입니다.")
 
-	# 3. 24시간 만료 체크
+	# 3. 24시간 만료 체크 (발급 시각이 없으면 만료로 처리 — 외부에서 심은 토큰 차단)
 	token_created = getattr(estimate, 'approval_token_created_at', None)
+	if not token_created:
+		raise HTTPException(status_code=401, detail="링크가 만료되었습니다.")
 	if token_created:
 		# PACMS(USE_TZ=False)와 동일하게 naive KST 기준으로 비교
 		now = datetime.now()
@@ -372,10 +375,12 @@ def verify_contract_token(
 		raise HTTPException(status_code=404, detail="계약서를 찾을 수 없습니다.")
 
 	# 2. 토큰 검증
-	if not contract.customer_signature_token or contract.customer_signature_token != token:
+	if not contract.customer_signature_token or not hmac.compare_digest(str(contract.customer_signature_token), token):
 		raise HTTPException(status_code=401, detail="유효하지 않은 링크입니다.")
 
-	# 3. 24시간 만료 체크
+	# 3. 24시간 만료 체크 (발송 시각이 없으면 만료로 처리)
+	if not contract.sent_at:
+		raise HTTPException(status_code=401, detail="링크가 만료되었습니다.")
 	if contract.sent_at:
 		now = datetime.now()
 		sent_at = contract.sent_at

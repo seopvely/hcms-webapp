@@ -1206,7 +1206,7 @@ export interface AIDevSubscription {
   start_date: string;
   next_charge_date: string;
   is_beta: boolean;
-  notes: string | null;
+  notes?: string | null;  // 고객 API 에서 제거됨(내부 메모)
   created_at: string;
 }
 

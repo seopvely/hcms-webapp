@@ -1,5 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+import hmac
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
+
+from app.core.config import settings
 
 from app.core.deps import get_current_user
 from app.db.session import get_db
@@ -58,13 +62,19 @@ def list_my_tokens(
     return tokens
 
 
-@router.post("/send")
+def _verify_internal_key(x_api_key: str = Header(...)):
+    # 고객 토큰으로는 호출 불가. 직원 인증(/api/managed) 도입 전까지 내부 API 키로만 허용
+    if not settings.WEBHOOK_API_KEY or not hmac.compare_digest(x_api_key, settings.WEBHOOK_API_KEY):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return x_api_key
+
+
+@router.post("/send", dependencies=[Depends(_verify_internal_key)])
 def send_push(
     request: PushSendRequest,
-    current_user: Manager = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """푸시 발송 (관리자용)."""
+    """푸시 발송 (내부 전용)."""
     if request.manager_seq:
         count = send_push_to_user(
             db=db,
