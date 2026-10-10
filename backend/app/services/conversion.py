@@ -4,7 +4,7 @@
 - 납부 비고 '… 계약 전환 …' + 견적번호, 포인트 content '계약 포인트 충전' / '초기 유지보수 포인트 충전' / '초기 개발 포인트 충전'
 - 견적 이력 change_reason '계약 철회(CT…) - 사유' + previous_status '5'
 cms 와 다른 점: iCloud requirements.md 파일 쓰기는 하지 않는다(요구사항은 프로젝트 requirements 필드에 이미 저장 — SPEC §6.4),
-영업접수 won 은 철회 때 되돌린다(SPEC §6.4), 유형 15(유지보수구독) 전환은 P4 에서 구현 전까지 막는다.
+영업접수 won 은 철회 때 되돌린다(SPEC §6.4). 유형 13·15 구독 생성은 services/subscriptions.py.
 """
 from datetime import date, datetime, time, timedelta
 
@@ -14,6 +14,7 @@ from sqlalchemy import or_, text, true
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.managed.estimates import amounts
+from app.services import subscriptions
 from app.models.customer import (
     CustomAuthUser,
     Estimate,
@@ -48,8 +49,8 @@ def convert(db: Session, staff: CustomAuthUser, estimate_id: int, sales_lead_id:
         raise HTTPException(status_code=400, detail="이미 프로젝트로 전환된 견적서입니다.")
     if not e.company_id:
         raise HTTPException(status_code=400, detail="업체 정보가 필요합니다. 견적서를 수정해 주세요.")
-    if e.project_type == "15":
-        raise HTTPException(status_code=400, detail="유지보수구독(유형 15) 전환은 아직 cms 에서 처리합니다.")
+    if e.project_type == "15" and not e.maint_subscription_plan:
+        raise HTTPException(status_code=400, detail="유지보수구독(유형 15) 견적에 요금제가 선택되지 않았습니다.")
     if e.project_type == "14":
         raise HTTPException(status_code=400, detail="AI개발팀구축(유형 14)은 판매 종료되었습니다.")
     lead = None
@@ -94,6 +95,11 @@ def convert(db: Session, staff: CustomAuthUser, estimate_id: int, sales_lead_id:
         db.add(PointHistory(company_id=e.company_id, project_id=project.seq, point=e.point, point_type="1", status="2",
                             content=f"{name} 계약 포인트 충전 (견적서: {e.estimate_number})", writer_id=staff.id,
                             created_at=now, updated_at=now, edited_at=now))
+
+    if e.project_type == "13":
+        subscriptions.convert_dev_subscription(db, e, project, staff)
+    if e.project_type == "15":
+        subscriptions.convert_maint_subscription(db, e, project, staff)
 
     # 지불조건 구간별 납부 + 납부내역 (착수금 1 / 중도금 2 / 잔금 6, 결제대기 3·미완료 2)
     total = amounts(e)["total"]
@@ -233,6 +239,12 @@ def withdraw(db: Session, staff: CustomAuthUser, c: EstimateContract, reason: st
         for p in points:
             db.delete(p)
 
+    # 유형 15: 제공 서비스(FK RESTRICT)를 먼저 지우고, 전환 건은 '견적 생성' 상태로 되돌린다
+    db.execute(text("DELETE FROM maint_subscription_service WHERE subscription_id IN (SELECT seq FROM pacms_maintsubscription WHERE source_estimate_id=:e)"), {"e": e.seq})
+    n = db.execute(text("UPDATE maint_renewal SET status='estimated', new_project_id=NULL, updated_at=NOW() WHERE estimate_id=:e AND new_project_id=:p"),
+                   {"e": e.seq, "p": project.seq}).rowcount
+    if n:
+        done.append(f"유지보수 전환 {n}건 '견적 생성'으로 되돌림")
     for label, table in (("개발구독", "pacms_devsubscription"), ("유지보수구독", "pacms_maintsubscription"), ("AI개발팀구축", "pacms_aidevsubscription")):
         n = db.execute(text(f"SELECT COUNT(*) FROM `{table}` WHERE source_estimate_id=:e"), {"e": e.seq}).scalar()
         if n:

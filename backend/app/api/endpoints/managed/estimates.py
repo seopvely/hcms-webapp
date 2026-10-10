@@ -22,6 +22,7 @@ from app.db.session import get_db
 from app.models.company import Company
 from app.models.customer import (
     CustomAuthUser,
+    Domain,
     Estimate,
     EstimateContract,
     EstimateItem,
@@ -42,7 +43,7 @@ CONTRACT_STATUS_LABELS = {"1": "작성중", "2": "검토대기", "3": "발송", 
 PROJECT_TYPES = {
     "1": "웹사이트", "2": "모바일앱", "3": "웹앱", "4": "웹+앱", "5": "도메인", "6": "보안서버", "7": "쇼핑몰",
     "8": "운영", "9": "유지보수", "10": "서버관리", "11": "서버마이그레이션", "12": "호스팅", "13": "개발구독",
-    "14": "AI개발팀구축(판매종료)", "15": "유지보수구독",
+    "14": "AI개발팀구축(판매종료)", "15": "유지보수구독", "16": "FDE",
 }
 SENDABLE = {"1", "2", "4"}
 MANUAL_STATUSES = {"1", "2", "3", "4"}
@@ -200,10 +201,11 @@ def get_estimate(seq: int, db: Session = Depends(get_db)):
               "payment_terms", "delivery_terms", "tax_rate", "discount_type", "discount_rate", "discount_amount",
               "discount_description", "deposit_pct", "progress_pct", "balance_pct", "project_type",
               "contract_period_range", "contract_deposit", "point", "maint_subscription_plan", "free_maint_months",
-              "free_maint_scope", "requirements", "folder_name", "converted_project_id")
+              "free_maint_scope", "requirements", "folder_name", "converted_project_id", "dev_subscription_plan",
+              "maint_hosting_type", "maint_hosting_provider", "maint_domain_id")
     data = {f: getattr(e, f) for f in fields}
     for f in ("written_date", "validity_period", "deposit_due_date", "progress_due_date", "balance_due_date",
-              "contract_date", "contract_termination_date", "created_at"):
+              "contract_date", "contract_termination_date", "created_at", "maint_hosting_start_date", "maint_hosting_end_date"):
         data[f] = _iso(getattr(e, f))
     data["tax_rate"] = float(e.tax_rate) if e.tax_rate is not None else None
     data["discount_rate"] = float(e.discount_rate) if e.discount_rate is not None else None
@@ -278,6 +280,12 @@ class EstimateBody(BaseModel):
     contract_deposit: int | None = None
     point: int | None = None
     maint_subscription_plan: str | None = None
+    dev_subscription_plan: str | None = None
+    maint_hosting_type: str | None = None
+    maint_hosting_provider: str | None = None
+    maint_hosting_start_date: date | None = None
+    maint_hosting_end_date: date | None = None
+    maint_domain_id: int | None = None
     free_maint_months: int | None = None
     free_maint_scope: str | None = None
     discount_type: str | None = None
@@ -291,6 +299,17 @@ class EstimateBody(BaseModel):
 def _apply(db: Session, e: Estimate, data: dict) -> None:
     if "project_type" in data and data["project_type"] == "14":
         raise HTTPException(status_code=400, detail="AI개발팀구축(유형 14)은 판매 종료되었습니다(FDE 로 대체).")
+    from app.services.subscriptions import DEV_PLAN_DEFAULTS
+    from app.utils.maint_plans import PLAN_DEFAULTS as MAINT_PLANS
+    if data.get("maint_subscription_plan") and data["maint_subscription_plan"] not in MAINT_PLANS:
+        raise HTTPException(status_code=400, detail="유지보수구독 요금제가 올바르지 않습니다.")
+    if data.get("dev_subscription_plan") and data["dev_subscription_plan"] not in DEV_PLAN_DEFAULTS:
+        raise HTTPException(status_code=400, detail="개발구독 플랜이 올바르지 않습니다.")
+    if data.get("maint_hosting_type") not in (None, "", "I", "E"):
+        raise HTTPException(status_code=400, detail="호스팅 구분이 올바르지 않습니다.")
+    if data.get("maint_domain_id") and e.company_id and not db.query(Domain.seq).filter(
+            Domain.seq == data["maint_domain_id"], Domain.company_id == (data.get("company_id") or e.company_id)).first():
+        raise HTTPException(status_code=400, detail="이 업체의 도메인이 아닙니다.")
     if "discount_type" in data and data["discount_type"] not in (None, "", "1", "2"):
         raise HTTPException(status_code=400, detail="할인 유형이 올바르지 않습니다.")
     if "estimate_number" in data and data["estimate_number"]:
@@ -305,6 +324,11 @@ def _apply(db: Session, e: Estimate, data: dict) -> None:
         elif isinstance(value, str):
             value = value.strip() or None
         setattr(e, key, value)
+    if str(e.project_type or "") != "15":  # cms apply_maint_estimate_fields — 유형 15 가 아니면 호스팅 필드를 비운다
+        e.maint_hosting_type = e.maint_hosting_provider = e.maint_domain_id = None
+        e.maint_hosting_start_date = e.maint_hosting_end_date = None
+    elif e.maint_hosting_type != "E":
+        e.maint_hosting_provider = None
     if "written_date" in data and e.written_date:
         e.estimate_date = datetime.combine(e.written_date, datetime.min.time())
     e.updated_at = datetime.now()

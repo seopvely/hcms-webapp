@@ -19,7 +19,6 @@ import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffDashboard, useStaffMe } from "@/lib/staff-hooks";
 import { useStaffGet } from "@/lib/staff-ops";
 import { won } from "@/components/managed/billing-ui";
-import { CMS_BASE } from "@/components/managed/staff-nav";
 
 interface StatCard {
   label: string;
@@ -48,7 +47,7 @@ export default function ManagedDashboardPage() {
         { label: "처리중인 요청", value: stats.maintenance_in_progress, sub: `신규 ${stats.maintenance_new}건`, icon: Wrench, href: "/managed/maintenance" },
         { label: "대기중 문의", value: stats.inquiries_waiting, sub: "대기·답변중", icon: MessageSquare, href: "/managed/inquiries" },
         { label: "완료된 작업", value: stats.completed_30d, sub: "최근 30일", icon: CheckCircle2, href: "/managed/maintenance" },
-        { label: "유지보수 전환 대기", value: stats.maint_renewal_pending, sub: "고객 응답 대기", icon: RefreshCw, href: `${CMS_BASE}/managed/maint-renewal/?tab=pending` },
+        { label: "유지보수 전환 대기", value: stats.maint_renewal_pending, sub: "고객 응답 대기", icon: RefreshCw, href: "/managed/maint-renewal" },
       ]
     : [];
 

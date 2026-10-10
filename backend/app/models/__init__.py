@@ -4,6 +4,7 @@ from app.models.push_token import PushToken
 from app.models.free_maint_alert_log import FreeMaintAlertLog
 from app.models.staff_auth import StaffSession, StaffAuditLog
 from app.models.customer_invite import CustomerInvite
+from app.models.fde import FdeEngagement, FdeEngagementAddon, ServicePlan
 from app.models.customer import (
     CustomAuthUser,
     Project,
@@ -40,6 +41,9 @@ __all__ = [
     "StaffSession",
     "StaffAuditLog",
     "CustomerInvite",
+    "ServicePlan",
+    "FdeEngagement",
+    "FdeEngagementAddon",
     "CustomAuthUser",
     "Project",
     "Managelist",

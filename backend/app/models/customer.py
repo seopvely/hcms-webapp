@@ -132,6 +132,8 @@ class Managelist(Base):
     request_type = Column(String(10), nullable=True)  # maint / dev / NULL(미분류)
     request_file = Column(String(100), nullable=True)  # 구버전 단일 첨부
     dev_subscription_id = Column(Integer, ForeignKey("pacms_devsubscription.seq"), nullable=True)
+    maint_subscription_id = Column(Integer, nullable=True)  # pacms_maintsubscription.seq (채우는 경로 없음 — SPEC 05 §9)
+    ai_dev_subscription_id = Column(Integer, nullable=True)
 
     company = relationship("Company")
     project = relationship("Project", backref="managelists")
@@ -655,6 +657,7 @@ class DevSubscription(Base):
     dev_points_per_month = Column(Integer, default=0)
     monthly_price = Column(Integer, default=0)
     notes = Column(Text, nullable=True)
+    source_estimate_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

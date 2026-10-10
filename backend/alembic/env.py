@@ -26,6 +26,9 @@ HCMS_OWNED_TABLES = {
     "staff_session",
     "staff_audit_log",
     "customer_invite",
+    "service_plan",
+    "fde_engagement",
+    "fde_engagement_addon",
 }
 
 

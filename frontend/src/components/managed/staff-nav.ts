@@ -47,7 +47,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
     items: [
       { label: "업체·고객 계정", href: "/managed/accounts" },
       { label: "고객사 이동(대리 로그인)", href: "/managed/customers" },
-      { label: "유지보수 전환", href: cms("/managed/maint-renewal/"), legacy: true },
+      { label: "유지보수 전환", href: "/managed/maint-renewal" },
       { label: "최신소식", href: "/managed/news" },
       { label: "레퍼런스 사이트", href: cms("/managed/reference-sites/"), legacy: true },
     ],
@@ -72,12 +72,14 @@ export const STAFF_NAV: StaffNavGroup[] = [
     ],
   },
   {
-    title: "구독",
+    title: "구독·FDE",
     items: [
-      { label: "개발 구독", href: cms("/managed/dev-subscription/"), legacy: true },
-      { label: "개발 접수", href: cms("/managed/dev-subscription/requests/"), legacy: true },
-      { label: "유지보수 구독", href: cms("/managed/maint-subscription/"), legacy: true },
-      { label: "유지보수 접수", href: cms("/managed/maint-subscription/requests/"), legacy: true },
+      { label: "개발 구독", href: "/managed/subscriptions/dev" },
+      { label: "개발 접수", href: "/managed/subscriptions/dev/requests" },
+      { label: "유지보수 구독", href: "/managed/subscriptions/maint" },
+      { label: "유지보수 접수", href: "/managed/subscriptions/maint/requests" },
+      { label: "FDE 계약", href: "/managed/fde" },
+      { label: "FDE 요금제", href: "/managed/fde/plans" },
     ],
   },
   {

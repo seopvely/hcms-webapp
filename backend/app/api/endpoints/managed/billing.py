@@ -38,7 +38,7 @@ WRITE = require_write("billing")
 
 PROJECT_TYPES = {"1": "웹사이트", "2": "모바일앱", "3": "웹앱", "4": "웹사이트+모바일앱", "5": "도메인", "6": "보안서버", "7": "쇼핑몰",
                  "8": "운영", "9": "유지보수", "10": "서버관리", "11": "서버마이그레이션", "12": "호스팅", "13": "개발구독",
-                 "14": "AI개발팀구축", "15": "유지보수구독"}
+                 "14": "AI개발팀구축", "15": "유지보수구독", "16": "FDE"}
 PAYMENT_METHODS = {"1": "카드", "2": "계좌이체", "3": "휴대폰"}
 PAYMENT_STATUS = {"1": "결제완료", "2": "결제실패", "3": "결제대기"}
 ALARM_TYPES = {"purchase": "매입", "sales": "매출", "outsourcing": "외주비"}
@@ -692,14 +692,15 @@ def create_alarm(body: AlarmBody, request: Request, staff: CustomAuthUser = Depe
 def update_alarm(seq: int, body: AlarmBody, request: Request, staff: CustomAuthUser = Depends(require_staff_admin), db: Session = Depends(get_db)):
     a = _get_alarm(db, seq)
     old = (a.cycle_type, a.cycle_months, a.payment_month, a.start_date)
-    old_next = a.next_payment_date
+    old_next, old_end = a.next_payment_date, a.end_date
     _apply_alarm(a, body)
     if (a.cycle_type, a.cycle_months, a.payment_month, a.start_date) == old and old_next is not None:
         # 주기가 그대로면 등록된 다음 결제일의 연·월은 두고 일자만 바꾼다(cms 와 같음)
         a.next_payment_date = date(old_next.year, old_next.month, bl._clamp(old_next.year, old_next.month, a.payment_day))
     else:
         a.next_payment_date = bl.next_payment_date(a)
-    if a.end_date and a.end_date >= date.today() and a.valid_status == "invalid":
+    # cms 는 종료일이 미래이기만 하면 무효를 풀어 수동 무효화가 사라졌다(SPEC 05 B7) — 종료일을 바꿨을 때만 복원
+    if a.end_date and a.end_date != old_end and a.end_date >= date.today() and a.valid_status == "invalid":
         a.valid_status = "valid"
     a.updated_at = datetime.now()
     _set_recipients(db, seq, body)

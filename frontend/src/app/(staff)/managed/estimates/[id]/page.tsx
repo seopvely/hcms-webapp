@@ -27,7 +27,7 @@ import { useStaffMe } from "@/lib/staff-hooks";
 
 const PROJECT_TYPES: [string, string][] = [
   ["1", "웹사이트"], ["2", "모바일앱"], ["3", "웹앱"], ["4", "웹+앱"], ["5", "도메인"], ["6", "보안서버"], ["7", "쇼핑몰"], ["8", "운영"],
-  ["9", "유지보수"], ["10", "서버관리"], ["11", "서버마이그레이션"], ["12", "호스팅"], ["13", "개발구독"], ["15", "유지보수구독"],
+  ["9", "유지보수"], ["10", "서버관리"], ["11", "서버마이그레이션"], ["12", "호스팅"], ["13", "개발구독"], ["15", "유지보수구독"], ["16", "FDE"],
 ];
 
 function fieldsFor(companies: [string, string][]): FieldSpec[] {
@@ -55,6 +55,12 @@ function fieldsFor(companies: [string, string][]): FieldSpec[] {
     { key: "contract_period_range", label: "계약기간(전환)" },
     { key: "contract_deposit", label: "계약금(전환)", type: "number" },
     { key: "point", label: "월 유지보수 포인트(전환)", type: "number" },
+    { key: "dev_subscription_plan", label: "개발구독 플랜(유형 13)", type: "select", options: [["starter", "STARTER"], ["growth", "GROWTH"], ["scale", "SCALE"]] },
+    { key: "maint_subscription_plan", label: "유지보수구독 요금제(유형 15)", type: "select", options: [["basic", "BASIC"], ["growth", "GROWTH"], ["business", "BUSINESS"]] },
+    { key: "maint_hosting_type", label: "호스팅 구분(유형 15)", type: "select", options: [["I", "한결랩 호스팅"], ["E", "외부 호스팅"]] },
+    { key: "maint_hosting_provider", label: "외부 호스팅 업체(유형 15)" },
+    { key: "maint_hosting_start_date", label: "호스팅 시작일(유형 15)", type: "date" },
+    { key: "maint_hosting_end_date", label: "호스팅 종료일(유형 15)", type: "date" },
     { key: "free_maint_months", label: "무상 유지보수 개월", type: "number" },
     { key: "free_maint_scope", label: "무상 유지보수 범위", wide: true },
     { key: "payment_terms", label: "지불조건", type: "textarea" },
