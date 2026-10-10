@@ -266,3 +266,62 @@ def send_customer_invite(to_email, customer_name, company_name, login_id, token)
         [("회사", esc(company_name or "")), ("아이디", esc(login_id or "")), ("링크 유효기간", "72시간(1회용)")],
         f"{settings.PUBLIC_BASE_URL}/invite#token={token}", "비밀번호 설정하기",
     ))
+
+
+def send_estimate_to_customer_mail(to_email, estimate_id, title, number, total, tax, validity, token,
+                                   manager_name, manager_email):
+    """견적서 고객 발송 — PDF·승인·수정요청·거절 4개 링크(hcms /estimate-auth, 토큰 24시간)."""
+    esc = html.escape
+    base = f"{settings.PUBLIC_BASE_URL}/estimate-auth?token={token}&estimate_id={estimate_id}"
+    buttons = "".join(
+        f'<a href="{base}&action={action}" style="display:inline-block;margin:4px;padding:10px 18px;'
+        f'background:{color};color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">{label}</a>'
+        for action, label, color in (("pdf", "견적서 보기(PDF)", "#4f46e5"), ("approve", "승인", "#16a34a"),
+                                     ("revision", "수정 요청", "#d97706"), ("reject", "거절", "#dc2626"))
+    )
+    body = _build_html(
+        "한결랩 견적서를 보내드립니다",
+        [("견적명", esc(title or "")), ("견적번호", esc(number or "")), ("총액(VAT 포함)", f"{total:,}원"),
+         ("부가세", f"{tax:,}원"), ("유효기간", validity or "-"),
+         ("담당자", esc(f"{manager_name or ''} {manager_email or ''}".strip() or "-"))],
+        f"{base}&action=pdf", "견적서 확인하기",
+    ).replace("</table>", f"</table><div style='text-align:center;padding:12px'>{buttons}</div>"
+              "<p style='text-align:center;color:#999;font-size:12px'>링크는 24시간 동안 유효합니다.</p>", 1)
+    send_email_async([to_email], f"[견적서] {title} - {number}", body)
+
+
+def notify_manager_estimate_action(to_email, estimate_id, title, number, action, actor, reason=""):
+    """고객 승인·거절·수정요청 → 견적 담당 직원에게 메일(cms 는 승인만 보냈다)."""
+    if not to_email:
+        return
+    esc = html.escape
+    label = {"approved": "승인", "rejected": "거절", "revision": "수정요청"}.get(action, action)
+    items = [("견적명", esc(title or "")), ("견적번호", esc(number or "")), ("처리", label), ("고객", esc(actor or ""))]
+    if reason:
+        items.append(("내용", esc(reason)[:1000]))
+    send_email_async([to_email], f"[견적서 {label}] {title} - {number}", _build_html(
+        f"고객이 견적서를 {label}했습니다", items,
+        f"{settings.STAFF_BASE_URL}/managed/estimate/{estimate_id}/", "견적서 확인하기",
+    ))
+
+
+def send_contract_mail(to_email, title, number, token):
+    """계약서 고객 발송 — hcms 공개 서명 페이지 링크(토큰은 # 뒤에 실어 서버 로그·Referer 에 남지 않게, 24시간)."""
+    esc = html.escape
+    send_email_async([to_email], f"[계약서] {title} - {number}", _build_html(
+        "한결랩 계약서를 보내드립니다",
+        [("계약명", esc(title or "")), ("계약번호", esc(number or "")), ("링크 유효기간", "24시간")],
+        f"{settings.PUBLIC_BASE_URL}/contract-sign#token={token}", "계약서 확인 및 서명",
+    ))
+
+
+def notify_manager_contract_signed(to_email, contract_id, title, number, signer):
+    """고객 서명 완료 → 담당 직원 메일(cms 는 알림이 없었다)."""
+    if not to_email:
+        return
+    esc = html.escape
+    send_email_async([to_email], f"[계약서 서명] {title} - {number}", _build_html(
+        "고객이 계약서에 서명했습니다 — 을 서명을 진행해 주세요",
+        [("계약명", esc(title or "")), ("계약번호", esc(number or "")), ("서명자", esc(signer or ""))],
+        f"{settings.STAFF_BASE_URL}/managed/contract/{contract_id}/", "계약서 확인하기",
+    ))

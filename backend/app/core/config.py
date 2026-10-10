@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     WEALTHREACH_SSO_SECRET_FILE: str = "/home/hcms/.secrets/wealthreach_sso_secret"
     WEALTHREACH_SSO_CALLBACK_URL: str = "https://wealthreach.hankyeul.com/sso/callback"
     SSO_TICKET_TTL: int = 120
+    # 계약서 을(한결랩) 정보 — cms EstimateContract 모델 기본값과 같은 값(설정값으로 이동)
+    CONTRACT_PARTY_B_NAME: str = "한결랩"
+    CONTRACT_PARTY_B_CEO: str = "김경섭"
+    CONTRACT_PARTY_B_BUSINESS_NUMBER: str = "328-79-00578"
+    CONTRACT_PARTY_B_ADDRESS: str = "경기도 고양시 일산서구 고양대로 666 101-603"
+    CONTRACT_PARTY_B_EMAIL: str = "kks@hankyeul.com"
     # /managed 쓰기 허용 영역(쉼표 구분: maintenance,points,inquiries,tasks,...).
     # 이관 절차상 cms 쪽 같은 기능의 쓰기를 막는 시점에 켠다. 비어 있으면 해당 화면은 읽기 전용.
     MANAGED_WRITE_AREAS: str = ""

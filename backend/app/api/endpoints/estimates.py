@@ -21,6 +21,8 @@ from app.models.company import Company
 from app.models.manager import Manager as HcmsManager
 from app.core.security import create_access_token, create_refresh_token
 from app.utils.pdf_generator import generate_estimate_pdf, generate_contract_pdf
+from app.services.email import notify_manager_estimate_action
+from app.services.contracts import build_pdf_data as build_contract_pdf_data
 
 logger = logging.getLogger(__name__)
 
@@ -517,30 +519,9 @@ def get_estimate_detail(
 	}
 
 
-@router.get("/{estimate_id}/pdf")
-def download_estimate_pdf(
-	estimate_id: int,
-	current_user: Manager = Depends(get_current_user),
-	db: Session = Depends(get_db),
-):
-	company_id = current_user.company_id
-
-	item = (
-		_visible_estimates(
-			db.query(Estimate)
-			.options(
-				joinedload(Estimate.items),
-				joinedload(Estimate.project),
-				joinedload(Estimate.company),
-			)
-			.filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
-		)
-		.first()
-	)
-
-	if not item:
-		raise HTTPException(status_code=404, detail="Estimate not found")
-
+def build_estimate_pdf_data(db: Session, item: Estimate) -> dict:
+	"""견적서 PDF 데이터(금액 계산은 PACMS Estimate.get_* 와 동일). 고객·직원 PDF 공용."""
+	estimate_id = item.seq
 	contract = (
 		db.query(EstimateContract)
 		.filter(EstimateContract.estimate_id == estimate_id)
@@ -634,6 +615,34 @@ def download_estimate_pdf(
 		"estimate_content": item.estimate_content,
 	}
 
+	return data
+
+
+@router.get("/{estimate_id}/pdf")
+def download_estimate_pdf(
+	estimate_id: int,
+	current_user: Manager = Depends(get_current_user),
+	db: Session = Depends(get_db),
+):
+	company_id = current_user.company_id
+
+	item = (
+		_visible_estimates(
+			db.query(Estimate)
+			.options(
+				joinedload(Estimate.items),
+				joinedload(Estimate.project),
+				joinedload(Estimate.company),
+			)
+			.filter(Estimate.seq == estimate_id, Estimate.company_id == company_id)
+		)
+		.first()
+	)
+
+	if not item:
+		raise HTTPException(status_code=404, detail="Estimate not found")
+
+	data = build_estimate_pdf_data(db, item)
 	pdf_bytes = bytes(generate_estimate_pdf(data))
 
 	return Response(
@@ -676,43 +685,7 @@ def download_contract_pdf(
 		raise HTTPException(status_code=404, detail="아직 공개되지 않은 계약서입니다.")
 
 	# PACMS 계약서 미리보기(contract_preview.html)와 동일하게 견적서의 프로젝트 유형을 사용한다.
-	data = {
-		"project_type": estimate.project_type,
-		"maintenance_point": contract.maintenance_point,
-		"contract_number": contract.contract_number,
-		"contract_title": contract.contract_title,
-		"contract_date": contract.contract_date,
-		"party_a_name": contract.party_a_name,
-		"party_a_ceo": contract.party_a_ceo,
-		"party_a_business_number": contract.party_a_business_number,
-		"party_a_address": contract.party_a_address,
-		"party_a_email": contract.party_a_email,
-		"party_b_name": contract.party_b_name,
-		"party_b_ceo": contract.party_b_ceo,
-		"party_b_business_number": contract.party_b_business_number,
-		"party_b_address": contract.party_b_address,
-		"party_b_email": contract.party_b_email,
-		"project_description": contract.project_description,
-		"service_scope": contract.service_scope,
-		"contract_period": contract.contract_period,
-		"contract_start_date": contract.contract_start_date,
-		"contract_end_date": contract.contract_end_date,
-		"contract_amount": contract.contract_amount,
-		"payment_terms": contract.payment_terms,
-		"special_terms": contract.special_terms,
-		"free_maint_months": contract.free_maint_months,
-		"free_maint_scope": contract.free_maint_scope,
-		# 무상 유지보수 기간 계산 기준 (계약서 종료일, 없으면 견적서 계약종료일)
-		"free_maint_base_date": contract.contract_end_date or estimate.contract_termination_date,
-		"customer_signed_at": contract.customer_signed_at,
-		"customer_signed_name": contract.customer_signed_name,
-		"customer_signed_ip": contract.customer_signed_ip,
-		"customer_signed_hash": contract.customer_signed_hash,
-		"manager_signed_at": contract.manager_signed_at,
-		"manager_signed_name": contract.manager_signed_name,
-		"manager_signed_ip": contract.manager_signed_ip,
-		"manager_signed_hash": contract.manager_signed_hash,
-	}
+	data = build_contract_pdf_data(contract, estimate)
 
 	pdf_bytes = bytes(generate_contract_pdf(data))
 
@@ -721,6 +694,28 @@ def download_contract_pdf(
 		media_type="application/pdf",
 		headers={"Content-Disposition": f"attachment; filename=contract_{estimate_id}.pdf"},
 	)
+
+
+def _check_approval_token(estimate: Estimate, token: str) -> None:
+	"""승인 토큰 검증(cms process_estimate_approval 과 같은 조건): 토큰 일치·발급 24시간·견적 유효기간."""
+	if not estimate.approval_token or not hmac.compare_digest(str(estimate.approval_token), token or ""):
+		raise HTTPException(status_code=400, detail="유효하지 않은 승인 링크입니다.")
+	created = estimate.approval_token_created_at
+	if not created or datetime.now() - created > timedelta(hours=24):
+		raise HTTPException(status_code=400, detail="승인 링크가 만료되었습니다. (24시간 초과)")
+	if estimate.validity_period and estimate.validity_period < datetime.now():
+		raise HTTPException(status_code=400, detail="견적 유효기간이 지났습니다. 담당자에게 문의해 주세요.")
+
+
+def _notify_estimate_manager(db: Session, estimate: Estimate, action: str, actor: str | None, reason: str = "") -> None:
+	"""고객 승인·거절·수정요청을 견적 담당 직원에게 메일로 알린다(실패해도 고객 처리는 유지)."""
+	try:
+		manager = db.query(CustomAuthUser).filter(CustomAuthUser.id == estimate.estimate_manager_id).first()
+		if manager and manager.email:
+			notify_manager_estimate_action(manager.email, estimate.seq, estimate.estimate_title,
+			                               estimate.estimate_number, action, actor or "", reason)
+	except Exception:
+		logger.exception("견적 담당자 알림 실패: estimate=%s", estimate.seq)
 
 
 @router.post("/{estimate_id}/approve")
@@ -756,15 +751,19 @@ def approve_estimate(
 	if not body.token:
 		raise HTTPException(status_code=400, detail="승인 링크가 만료되었습니다. 이메일의 링크를 다시 열어 승인해 주세요.")
 
-	# PACMS 쪽 상태 변경 + 담당자 알림 메일 발송을 먼저 처리한다.
-	# 로컬 상태를 먼저 바꾸면 PACMS가 "이미 승인됨"으로 판단해 알림 메일을 보내지 않는다.
-	webhook_result = call_pacms_approve_webhook(estimate_id, body.token)
+	if "estimates" in settings.managed_write_areas:
+		# hcms 가 견적 쓰기를 맡은 뒤: cms 웹훅 없이 직접 검증·처리(이력 1행 + 담당자 메일)
+		_check_approval_token(estimate, body.token)
+	else:
+		# PACMS 쪽 상태 변경 + 담당자 알림 메일 발송을 먼저 처리한다.
+		# 로컬 상태를 먼저 바꾸면 PACMS가 "이미 승인됨"으로 판단해 알림 메일을 보내지 않는다.
+		webhook_result = call_pacms_approve_webhook(estimate_id, body.token)
 
-	if not webhook_result.get("success"):
-		error_message = webhook_result.get("error") or "승인 처리에 실패했습니다."
-		if error_message != "이미 승인된 견적서입니다.":
-			raise HTTPException(status_code=400, detail=error_message)
-		# PACMS 쪽에서는 이미 처리된 상태 - 정상 완료로 간주하고 로컬 상태만 동기화한다.
+		if not webhook_result.get("success"):
+			error_message = webhook_result.get("error") or "승인 처리에 실패했습니다."
+			if error_message != "이미 승인된 견적서입니다.":
+				raise HTTPException(status_code=400, detail=error_message)
+			# PACMS 쪽에서는 이미 처리된 상태 - 정상 완료로 간주하고 로컬 상태만 동기화한다.
 
 	previous_status = status
 	estimate.estimate_status = 3
@@ -780,6 +779,8 @@ def approve_estimate(
 	)
 	db.add(history)
 	db.commit()
+	if "estimates" in settings.managed_write_areas:
+		_notify_estimate_manager(db, estimate, "approved", current_user.name)
 
 	return {"success": True, "message": "견적서가 승인되었습니다.", "status": "3"}
 
@@ -832,6 +833,7 @@ def reject_estimate(
 	)
 	db.add(history)
 	db.commit()
+	_notify_estimate_manager(db, estimate, "rejected", current_user.name, body.reason or "")
 
 	return {"success": True, "message": "견적서가 거절되었습니다.", "status": "4"}
 
@@ -872,5 +874,7 @@ def request_revision(
 	)
 	db.add(revision)
 	db.commit()
+	_notify_estimate_manager(db, estimate, "revision", revision.requester_name or current_user.name,
+	                         f"{body.title}\n{body.content}")
 
 	return {"success": True, "message": "수정요청이 등록되었습니다."}

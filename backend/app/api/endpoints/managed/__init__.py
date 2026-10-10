@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends
 from app.core.deps import get_current_staff
 from app.api.endpoints.managed.accounts import router as accounts_router
 from app.api.endpoints.managed.comment_templates import router as comment_templates_router
+from app.api.endpoints.managed.contracts import router as contracts_router
+from app.api.endpoints.managed.conversion import router as conversion_router
 from app.api.endpoints.managed.dashboard import router as dashboard_router
+from app.api.endpoints.managed.estimates import router as estimates_router
 from app.api.endpoints.managed.impersonate import router as impersonate_router
 from app.api.endpoints.managed.inquiries import router as inquiries_router
 from app.api.endpoints.managed.lookup import router as lookup_router
@@ -13,6 +16,7 @@ from app.api.endpoints.managed.me import router as me_router
 from app.api.endpoints.managed.news import router as news_router
 from app.api.endpoints.managed.points import router as points_router
 from app.api.endpoints.managed.project_board import router as project_board_router
+from app.api.endpoints.managed.sales import router as sales_router
 from app.api.endpoints.managed.sso import router as sso_router
 from app.api.endpoints.managed.staff_accounts import router as staff_accounts_router
 from app.api.endpoints.managed.tasks import router as tasks_router
@@ -32,3 +36,7 @@ router.include_router(tasks_router)
 router.include_router(accounts_router)
 router.include_router(news_router)
 router.include_router(project_board_router)
+router.include_router(estimates_router)
+router.include_router(sales_router)
+router.include_router(contracts_router)
+router.include_router(conversion_router)

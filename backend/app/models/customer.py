@@ -66,6 +66,7 @@ class Project(Base):
     contract_period_range = Column(String(200), nullable=True)
     project_type = Column(String(50), nullable=True)
     project_status = Column(String(50), nullable=True)
+    sales_lead_id = Column(Integer, nullable=True)
     point = Column(Integer, nullable=True, default=0)
     maintenance_request_enabled = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=True)
@@ -76,6 +77,10 @@ class Project(Base):
     free_maint_scope = Column(Text, nullable=True)
     free_maint_start_date = Column(Date, nullable=True)
     free_maint_end_date = Column(Date, nullable=True)
+    contract_remarks = Column(Text, nullable=True)
+    requirements = Column(Text, nullable=True)
+    manager_select_contract_seq_id = Column(BigInteger, nullable=True)
+    is_opened = Column(Boolean, nullable=False, default=False)
 
     company = relationship("Company", backref="projects")
 
@@ -246,6 +251,32 @@ class Estimate(Base):
     payment_terms = Column(Text, nullable=True)
     delivery_terms = Column(Text, nullable=True)
     estimate_manager_id = Column(Integer, nullable=True)
+    written_date = Column(Date, nullable=True)
+    deposit_pct = Column(Integer, nullable=True)
+    deposit_due_date = Column(Date, nullable=True)
+    progress_pct = Column(Integer, nullable=True)
+    progress_due_date = Column(Date, nullable=True)
+    balance_pct = Column(Integer, nullable=True)
+    balance_due_date = Column(Date, nullable=True)
+    contract_date = Column(DateTime, nullable=True)
+    contract_termination_date = Column(DateTime, nullable=True)
+    contract_period_range = Column(String(100), nullable=True)
+    contract_deposit = Column(Integer, nullable=True)
+    point = Column(Integer, nullable=True)
+    converted_project_id = Column(Integer, nullable=True)
+    dev_subscription_plan = Column(String(20), nullable=True)
+    ai_dev_subscription_plan = Column(String(20), nullable=True)
+    maint_subscription_plan = Column(String(20), nullable=True)
+    free_maint_months = Column(Integer, nullable=True)
+    free_maint_scope = Column(Text, nullable=True)
+    requirements = Column(Text, nullable=True)
+    ai_contract_data = Column(Text, nullable=True)
+    folder_name = Column(String(200), nullable=True)
+    maint_hosting_type = Column(String(1), nullable=True)
+    maint_hosting_provider = Column(String(200), nullable=True)
+    maint_hosting_start_date = Column(Date, nullable=True)
+    maint_hosting_end_date = Column(Date, nullable=True)
+    maint_domain_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -267,6 +298,7 @@ class EstimateItem(Base):
     unit = Column(String(50), nullable=True)
     unit_price = Column(Integer, nullable=True, default=0)
     is_separate = Column(Boolean, nullable=False, default=False)  # 금액 별도 표시 (합계 제외)
+    remarks = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -314,6 +346,8 @@ class Payment(Base):
     payment_type = Column(Integer, nullable=True)
     payment_method = Column(Integer, nullable=True)
     payment_status = Column(Integer, nullable=True, default=1)
+    production_price = Column(Integer, nullable=True)
+    history_remarks = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -720,3 +754,87 @@ class RecentActivity(Base):
     company_id = Column(Integer, nullable=False)
     writer_id = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False)
+
+
+class SalesLead(Base):
+    """영업접수 (Django 소유). 문자열 NOT NULL 컬럼은 빈 문자열로 채운다."""
+    __tablename__ = "sales_lead"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(200), nullable=False, default="")
+    source = Column(String(20), nullable=False, default="other")
+    status = Column(String(20), nullable=False, default="new")
+    priority = Column(String(10), nullable=False, default="medium")
+    company_id = Column(Integer, nullable=True)
+    client_company = Column(String(200), nullable=False, default="")
+    client_name = Column(String(100), nullable=False, default="")
+    client_phone = Column(String(50), nullable=False, default="")
+    client_email = Column(String(254), nullable=False, default="")
+    client_position = Column(String(100), nullable=False, default="")
+    description = Column(Text, nullable=False, default="")
+    expected_amount = Column(Integer, nullable=False, default=0)
+    expected_close_date = Column(Date, nullable=True)
+    notes = Column(Text, nullable=False, default="")
+    is_draft = Column(Boolean, nullable=False, default=False)
+    estimate_id = Column(Integer, nullable=True)
+    inquiry_id = Column(Integer, nullable=True)
+    manager_id = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+
+class SalesLeadActivity(Base):
+    __tablename__ = "sales_lead_activity"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    sales_lead_id = Column(Integer, nullable=False)
+    activity_type = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False, default="")
+    old_status = Column(String(20), nullable=False, default="")
+    new_status = Column(String(20), nullable=False, default="")
+    created_by_id = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+
+
+class SalesLeadActivityAttachment(Base):
+    __tablename__ = "sales_lead_activity_attachment"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    activity_id = Column(Integer, nullable=False)
+    file = Column(String(100), nullable=False)
+    filename = Column(String(255), nullable=False)
+    uploaded_at = Column(DateTime, nullable=False)
+
+
+class EstimateContractHistory(Base):
+    """계약서 이력 (Django 소유). action: created/updated/sent/resent/viewed/signed/manager_signed/cancelled."""
+    __tablename__ = "estimate_contract_history"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    contract_id = Column(Integer, nullable=False)
+    action = Column(String(20), nullable=False)
+    action_by_id = Column(BigInteger, nullable=True)
+    action_by_name = Column(String(100), nullable=True)
+    description = Column(Text, nullable=True)
+    ip_address = Column(String(39), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+
+
+class PaymentHistory(Base):
+    """납부내역 (Django 소유)."""
+    __tablename__ = "payment_history"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, nullable=True)
+    project_id = Column(Integer, nullable=True)
+    payment_id = Column(Integer, nullable=True)
+    payment_amount = Column(Integer, nullable=True)
+    deposit_amount = Column(Integer, nullable=True)
+    deposit_date = Column(DateTime, nullable=True)
+    progress_amount = Column(Integer, nullable=True)
+    progress_date = Column(DateTime, nullable=True)
+    balance_amount = Column(Integer, nullable=True)
+    balance_date = Column(DateTime, nullable=True)
+    payment_tf = Column(String(1), nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)

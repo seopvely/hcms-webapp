@@ -55,11 +55,10 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "영업·견적",
     items: [
-      { label: "영업접수", href: cms("/managed/sales/"), legacy: true },
-      { label: "견적서", href: cms("/managed/estimate-new/"), legacy: true },
-      { label: "견적발행", href: cms("/managed/estimate/"), legacy: true },
-      { label: "계약서", href: cms("/managed/contract/"), legacy: true },
-      { label: "견적 대시보드", href: cms("/managed/estimate/dashboard/"), legacy: true },
+      { label: "영업접수", href: "/managed/sales" },
+      { label: "견적서", href: "/managed/estimates" },
+      { label: "계약서", href: "/managed/contracts" },
+      { label: "견적 대시보드", href: "/managed/estimates/dashboard" },
     ],
   },
   {
