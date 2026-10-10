@@ -5,6 +5,7 @@ import { ExternalLink, LogOut, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigationStore } from "@/store/navigation-store";
 import { STAFF_NAV } from "@/components/managed/staff-nav";
+import { useStaffMe } from "@/lib/staff-hooks";
 
 interface StaffSidebarProps {
   name: string;
@@ -15,6 +16,8 @@ interface StaffSidebarProps {
 export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen } = useNavigationStore();
+  const { data: me } = useStaffMe();
+  const nav = STAFF_NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.adminOnly || me?.is_admin) })).filter((g) => g.items.length);
   // 가장 구체적으로 일치하는 메뉴 하나만 활성 표시
   const activeHref = STAFF_NAV.flatMap((g) => g.items)
     .filter((i) => !i.legacy && (pathname === i.href || pathname.startsWith(i.href + "/")))
@@ -46,7 +49,7 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3 space-y-4">
-          {STAFF_NAV.map((group) => (
+          {nav.map((group) => (
             <div key={group.title}>
               <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{group.title}</p>
               <div className="space-y-0.5">

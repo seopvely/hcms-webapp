@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import get_current_staff
 from app.api.endpoints.managed.accounts import router as accounts_router
+from app.api.endpoints.managed.billing import router as billing_router
 from app.api.endpoints.managed.comment_templates import router as comment_templates_router
 from app.api.endpoints.managed.contracts import router as contracts_router
 from app.api.endpoints.managed.conversion import router as conversion_router
@@ -46,3 +47,4 @@ router.include_router(conversion_router)
 router.include_router(projects_router)
 router.include_router(domains_router)
 router.include_router(outsourcing_router)
+router.include_router(billing_router)

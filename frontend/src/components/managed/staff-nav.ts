@@ -7,6 +7,7 @@ export interface StaffNavItem {
   href: string;
   legacy?: boolean; // true = cms 에서 열기
   newTab?: boolean; // hcms 경로지만 새 탭(SSO 등)
+  adminOnly?: boolean; // 관리자에게만 표시(재무 D12)
 }
 
 export interface StaffNavGroup {
@@ -63,11 +64,11 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "과금",
     items: [
-      { label: "납부리스트", href: cms("/managed/prepayment"), legacy: true },
-      { label: "납부내역", href: cms("/managed/paymenthistory"), legacy: true },
-      { label: "결제일알람", href: cms("/managed/payment-alarm/"), legacy: true },
-      { label: "월별수익", href: cms("/managed/monthly-revenue/"), legacy: true },
-      { label: "매출·매입계획", href: cms("/managed/sales-plan/"), legacy: true },
+      { label: "납부리스트", href: "/managed/billing/payments", adminOnly: true },
+      { label: "납부내역", href: "/managed/billing/history", adminOnly: true },
+      { label: "결제일알람", href: "/managed/billing/alarms", adminOnly: true },
+      { label: "월별수익", href: "/managed/billing/revenue", adminOnly: true },
+      { label: "매출·매입계획", href: "/managed/billing/sales-plan", adminOnly: true },
     ],
   },
   {
@@ -91,7 +92,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "설정·외부",
     items: [
-      { label: "직원 계정", href: "/managed/staff" },
+      { label: "직원 계정", href: "/managed/staff", adminOnly: true },
       { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },
       { label: "WealthReach 관리자", href: "/managed/sso/wealthreach", newTab: true },
     ],

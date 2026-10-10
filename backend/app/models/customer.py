@@ -368,13 +368,16 @@ class Payment(Base):
     project_type = Column(String(50), nullable=True)
     company_id = Column(Integer, ForeignKey("company.seq"), nullable=True)
     project_id = Column(Integer, ForeignKey("project.seq"), nullable=True)
-    payment_date = Column(Date, nullable=True)
+    payment_date = Column(DateTime, nullable=True)
     payment_amount = Column(Integer, nullable=True, default=0)
     payment_type = Column(Integer, nullable=True)
     payment_method = Column(Integer, nullable=True)
     payment_status = Column(Integer, nullable=True, default=1)
     production_price = Column(Integer, nullable=True)
     history_remarks = Column(Text, nullable=True)
+    invoice_tf = Column(String(1), nullable=True)
+    payment_alarm_id = Column(Integer, nullable=True)
+    extra_items = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
 
@@ -862,6 +865,10 @@ class PaymentHistory(Base):
     progress_date = Column(DateTime, nullable=True)
     balance_amount = Column(Integer, nullable=True)
     balance_date = Column(DateTime, nullable=True)
+    tax_invoice_date = Column(DateTime, nullable=True)
+    progress_tax_invoice_date = Column(DateTime, nullable=True)
+    balance_tax_invoice_date = Column(DateTime, nullable=True)
+    target_month = Column(String(7), nullable=True)
     payment_tf = Column(String(1), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
@@ -1036,4 +1043,63 @@ class PaymentAlarm(Base):
     project_id = Column(Integer, nullable=True)
     outsourcing_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class PaymentAlarmHistory(Base):
+    __tablename__ = "payment_alarm_history"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    payment_alarm_id = Column(Integer, nullable=False)
+    sent_at = Column(DateTime, nullable=False)
+    status = Column(String(20), nullable=False)
+    payment_date = Column(Date, nullable=False)
+    recipient_count = Column(Integer, nullable=False, default=0)
+    recipients = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+
+
+class PlanBudget(Base):
+    """매출·매입 목표 (Django 소유). (year, month, kind, category) unique."""
+    __tablename__ = "plan_budget"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    kind = Column(String(10), nullable=False)
+    category = Column(String(50), nullable=False, default="")
+    amount = Column(BigInteger, nullable=False)
+    memo = Column(String(200), nullable=False, default="")
+    updated_by_id = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class PurchaseTaxInvoice(Base):
+    """매입 세금계산서 (Django 소유) — 매입 실적의 원천."""
+    __tablename__ = "managed_purchasetaxinvoice"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    issue_date = Column(Date, nullable=False)
+    supplier_name = Column(String(100), nullable=False)
+    supplier_no = Column(String(20), nullable=False, default="")
+    item = Column(String(200), nullable=False, default="")
+    supply_amount = Column(BigInteger, nullable=False)
+    tax_amount = Column(BigInteger, nullable=False, default=0)
+    expense_category = Column(String(30), nullable=False, default="")
+    is_deleted = Column(Boolean, nullable=False, default=False)
+    source_outsourcing_id = Column(Integer, nullable=True)
+    source_payment_alarm_id = Column(Integer, nullable=True)
+
+
+class TithePurchaseCheck(Base):
+    __tablename__ = "tithe_purchase_check"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    payment_alarm_id = Column(Integer, nullable=False)
+    checked = Column(Boolean, nullable=False, default=True)
+    checked_by_id = Column(BigInteger, nullable=True)
     updated_at = Column(DateTime, nullable=False)

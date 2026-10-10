@@ -27,6 +27,17 @@ def get_agent_emails(db: Session) -> list[str]:
     return [agent.email for agent in agents if agent.email and "@" in agent.email]
 
 
+def send_email_sync(to_emails: list[str], subject: str, html_body: str) -> None:
+    """발송 결과를 호출자가 기록해야 할 때(테스트 발송 등) — 실패 시 예외."""
+    msg = MIMEMultipart("alternative")
+    msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
+    msg["To"] = ", ".join(to_emails)
+    msg["Subject"] = subject
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+        server.sendmail(FROM_EMAIL, to_emails, msg.as_string())
+
+
 def _send_email(to_emails: list[str], subject: str, html_body: str):
     if not to_emails:
         return
