@@ -23,6 +23,8 @@ target_metadata = Base.metadata
 HCMS_OWNED_TABLES = {
     "push_token",
     "free_maint_alert_log",
+    "staff_session",
+    "staff_audit_log",
 }
 
 

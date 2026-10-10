@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import api from "@/lib/axios";
+import { safeStaffNext } from "@/lib/staff-api";
 import { requestAndRegisterPushToken } from "@/hooks/use-push-notifications";
 
 const loginSchema = z.object({
@@ -27,7 +28,8 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  // 2단계 인증 실패·만료로 돌아온 경우 사유를 보여준다
+  const [error, setError] = useState(() => searchParams.get("reason") || "");
   const [autoLoginLoading, setAutoLoginLoading] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
 
@@ -76,7 +78,19 @@ function LoginContent() {
     try {
       setError("");
       // 계정(아이디+비밀번호)만으로 로그인한다. site_key 로 회사를 제한하지 않는다.
-      const response = await api.post("/auth/login", data);
+      const response = await api.post("/auth/login", data, { withCredentials: true });
+
+      // 직원(이메일 아이디): 세션은 httpOnly 쿠키로 받는다. 2단계 인증 대상이면 코드 입력으로.
+      if (response.data.kind === "staff") {
+        const next = safeStaffNext(searchParams.get("next"));
+        if (response.data.mfa_required) {
+          router.push(`/login/2fa?next=${encodeURIComponent(next)}`);
+        } else {
+          router.push(next);
+        }
+        return;
+      }
+
       const { access_token, refresh_token, user, is_first_login } = response.data;
 
       if (is_first_login) {
@@ -144,7 +158,7 @@ function LoginContent() {
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   {...register("login_id")}
-                  placeholder="아이디를 입력하세요"
+                  placeholder="아이디 (직원은 이메일)"
                   className="pl-10 h-12 rounded-xl"
                 />
               </div>

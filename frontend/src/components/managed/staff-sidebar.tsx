@@ -1,0 +1,104 @@
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ExternalLink, LogOut, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useNavigationStore } from "@/store/navigation-store";
+import { STAFF_NAV } from "@/components/managed/staff-nav";
+
+interface StaffSidebarProps {
+  name: string;
+  email: string | null;
+  onLogout: () => void;
+}
+
+export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
+  const pathname = usePathname();
+  const { sidebarOpen, setSidebarOpen } = useNavigationStore();
+
+  return (
+    <>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "fixed top-0 left-0 z-50 flex h-full w-64 flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white transition-transform duration-300 ease-in-out lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between px-5 pb-5 pt-[calc(1.25rem+env(safe-area-inset-top))] border-b border-white/10">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">HCMS</h1>
+            <p className="text-xs text-slate-400">직원 관리</p>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded-lg hover:bg-white/10">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-3 space-y-4">
+          {STAFF_NAV.map((group) => (
+            <div key={group.title}>
+              <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{group.title}</p>
+              <div className="space-y-0.5">
+                {group.items.map((item) =>
+                  item.legacy ? (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-2 px-4 py-2 rounded-xl text-sm text-slate-300 hover:bg-white/10 hover:text-white"
+                      title="cms 에서 열기"
+                    >
+                      {item.label}
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    </a>
+                  ) : (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        "flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                        pathname === item.href
+                          ? "bg-white/15 text-white border-l-4 border-blue-400 pl-3"
+                          : "text-slate-300 hover:bg-white/10 hover:text-white"
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                )}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-9 w-9 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-300 text-sm font-bold">
+              {name.charAt(0) || "직"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{name}</p>
+              <p className="text-xs text-slate-400 truncate">{email || ""}</p>
+            </div>
+          </div>
+          <button
+            onClick={onLogout}
+            className="flex items-center gap-2 w-full px-4 py-2 rounded-xl text-sm text-slate-300 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+          >
+            <LogOut className="h-4 w-4" />
+            로그아웃
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}

@@ -1,9 +1,11 @@
 import re
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.api.endpoints.staff_auth import login_staff
 from app.core.deps import get_current_user
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, decode_customer_token
 from app.db.session import get_db
 from app.models.company import Company
 from app.models.manager import Manager
@@ -23,8 +25,12 @@ from app.services.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+@router.post("/login")
+def login(request: LoginRequest, http_request: Request, response: Response, db: Session = Depends(get_db)):
+    """통합 로그인. 아이디에 '@' 가 있으면 직원(이메일), 없으면 고객(login_id)."""
+    if "@" in request.login_id:
+        return login_staff(db, http_request, response, request.login_id, request.password)
+
     company_id = None
     if request.site_key:
         company = db.query(Company).filter(Company.site_key == request.site_key).first()
@@ -57,12 +63,31 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         company_id=manager.company_id,
     )
 
-    return LoginResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user=user,
-        is_first_login=bool(manager.is_first_login),
-    )
+    return {
+        "kind": "customer",
+        **LoginResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user=user,
+            is_first_login=bool(manager.is_first_login),
+        ).model_dump(),
+    }
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh")
+def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
+    """고객 refresh 토큰으로 새 access 토큰을 발급한다(잠긴 계정은 거부)."""
+    payload = decode_customer_token(request.refresh_token, "refresh")
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    manager = db.query(Manager).filter(Manager.seq == int(payload["sub"])).first()
+    if manager is None or manager.login_permit_tf == "2":
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return {"access_token": create_access_token({"sub": str(manager.seq), "login_id": manager.login_id})}
 
 
 @router.post("/change-password")

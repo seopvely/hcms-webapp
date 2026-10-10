@@ -18,6 +18,7 @@ from app.db.session import Base
 
 # Read-only mapping of Django's customauthuser table
 class CustomAuthUser(Base):
+    """직원(에이전트) 계정 — Django(pacms) 소유 테이블. 구조 변경은 Django 마이그레이션으로만."""
     __tablename__ = "pacms_customauthuser"
 
     id = Column(Integer, primary_key=True)
@@ -27,6 +28,15 @@ class CustomAuthUser(Base):
     group = Column(String(100), nullable=True)
     type = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
+    password = Column(String(128), nullable=False)
+    is_superuser = Column(Integer, nullable=False, default=0)
+    previlege = Column(String(1), nullable=True)
+    last_login = Column(DateTime, nullable=True)
+    # TOTP 2단계 인증 — cms(member/twofactor.py)와 같은 컬럼·알고리즘을 공유한다
+    two_factor_enabled = Column(Boolean, nullable=False, default=False)
+    totp_secret = Column(String(64), nullable=True)
+    totp_confirmed_at = Column(DateTime, nullable=True)
+    totp_last_step = Column(BigInteger, nullable=True)
 
 
 # M2M junction table for News <-> Company

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # 메일 링크 base URL — 하드코딩 금지. 고객용은 hcms, 직원용은 /managed 컷오버 때 hcms 로 바꾼다
     PUBLIC_BASE_URL: str = "https://hcms.hankyeul.com"
     STAFF_BASE_URL: str = "https://cms.hankyeul.com"
+    # 직원 세션(httpOnly 쿠키). 개발 환경(http)에서만 STAFF_COOKIE_SECURE=False
+    STAFF_SESSION_HOURS: int = 12
+    STAFF_PENDING_MINUTES: int = 10
+    STAFF_COOKIE_SECURE: bool = True
 
     @property
     def cors_origins(self) -> list[str]:
