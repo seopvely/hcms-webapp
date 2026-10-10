@@ -33,13 +33,12 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "프로젝트",
     items: [
-      { label: "프로젝트관리", href: cms("/managed/projectmanage"), legacy: true },
-      { label: "진행중 프로젝트", href: cms("/managed/processlist"), legacy: true },
-      { label: "계약 달력", href: cms("/managed/projectmanage/calendar/"), legacy: true },
-      { label: "도메인", href: cms("/managed/domain"), legacy: true },
+      { label: "프로젝트관리", href: "/managed/projects" },
+      { label: "계약 달력", href: "/managed/projects/calendar" },
+      { label: "도메인", href: "/managed/domains" },
       { label: "프로젝트구축진행", href: "/managed/project-board" },
-      { label: "외주관리", href: cms("/managed/outsourcing/"), legacy: true },
-      { label: "외주 달력", href: cms("/managed/outsourcing/calendar/"), legacy: true },
+      { label: "외주관리", href: "/managed/outsourcing" },
+      { label: "외주 달력", href: "/managed/outsourcing/calendar" },
     ],
   },
   {

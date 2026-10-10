@@ -1,5 +1,7 @@
 from sqlalchemy import (
     Column,
+    Numeric,
+    Time,
     Integer,
     BigInteger,
     String,
@@ -80,7 +82,32 @@ class Project(Base):
     contract_remarks = Column(Text, nullable=True)
     requirements = Column(Text, nullable=True)
     manager_select_contract_seq_id = Column(BigInteger, nullable=True)
+    manager_select_planning_seq_id = Column(BigInteger, nullable=True)
+    manager_select_design_seq_id = Column(BigInteger, nullable=True)
+    manager_select_frontend_seq_id = Column(BigInteger, nullable=True)
+    manager_select_backend_seq_id = Column(BigInteger, nullable=True)
+    manager_select_maintenance_seq_id = Column(BigInteger, nullable=True)
     is_opened = Column(Boolean, nullable=False, default=False)
+    opened_at = Column(DateTime, nullable=True)
+    opened_by_id = Column(BigInteger, nullable=True)
+    related_documents1 = Column(String(100), nullable=True)
+    related_documents_name1 = Column(String(100), nullable=True)
+    related_documents2 = Column(String(100), nullable=True)
+    related_documents_name2 = Column(String(100), nullable=True)
+    related_documents3 = Column(String(100), nullable=True)
+    related_documents_name3 = Column(String(100), nullable=True)
+    related_documents4 = Column(String(100), nullable=True)
+    related_documents_name4 = Column(String(100), nullable=True)
+    related_documents5 = Column(String(100), nullable=True)
+    related_documents_name5 = Column(String(100), nullable=True)
+    related_documents6 = Column(String(100), nullable=True)
+    related_documents_name6 = Column(String(100), nullable=True)
+    related_documents7 = Column(String(100), nullable=True)
+    related_documents_name7 = Column(String(100), nullable=True)
+    related_documents8 = Column(String(100), nullable=True)
+    related_documents_name8 = Column(String(100), nullable=True)
+    related_documents9 = Column(String(100), nullable=True)
+    related_documents_name9 = Column(String(100), nullable=True)
 
     company = relationship("Company", backref="projects")
 
@@ -838,3 +865,175 @@ class PaymentHistory(Base):
     payment_tf = Column(String(1), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+
+
+class ContractHistory(Base):
+    """프로젝트 계약 연장 이력 (Django 소유)."""
+    __tablename__ = "contract_history"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False)
+    extension_number = Column(Integer, nullable=False)
+    contract_date = Column(DateTime, nullable=False)
+    contract_termination_date = Column(DateTime, nullable=False)
+    contract_period_range = Column(String(200), nullable=True)
+    point = Column(Integer, nullable=True)
+    contract_deposit = Column(Integer, nullable=True)
+    memo = Column(Text, nullable=True)
+    free_maint_months = Column(Integer, nullable=True)
+    free_maint_scope = Column(Text, nullable=True)
+    free_maint_start_date = Column(Date, nullable=True)
+    free_maint_end_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+
+
+class Domain(Base):
+    """도메인 (Django 소유). URL 은 domain_urls(JSON) 우선, 비면 레거시 5칸."""
+    __tablename__ = "domain"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    company_id = Column(Integer, nullable=True)
+    domain_url = Column(String(200), nullable=True)
+    domain_url_second = Column(String(200), nullable=True)
+    domain_url_third = Column(String(200), nullable=True)
+    domain_url_fourth = Column(String(200), nullable=True)
+    domain_url_fifth = Column(String(200), nullable=True)
+    domain_urls = Column(Text, nullable=True)
+    domain_start_date = Column(DateTime, nullable=True)
+    domain_end_date = Column(DateTime, nullable=True)
+    domain_status = Column(String(1), nullable=True)
+    domain_remarks = Column(Text, nullable=True)
+    domain_ssl_tf = Column(String(1), nullable=True)
+    domain_ssl_start_date = Column(DateTime, nullable=True)
+    domain_ssl_end_date = Column(DateTime, nullable=True)
+    domain_ssl_status = Column(String(1), nullable=True)
+    domain_ssl_remarks = Column(Text, nullable=True)
+    hosting_type = Column(String(1), nullable=True)
+    hosting_provider = Column(String(200), nullable=True)
+    hosting_start_date = Column(DateTime, nullable=True)
+    hosting_end_date = Column(DateTime, nullable=True)
+    hosting_status = Column(String(1), nullable=True)
+    hosting_remarks = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+    def all_urls(self) -> list[str]:
+        import json
+        urls = []
+        if self.domain_urls:
+            try:
+                parsed = json.loads(self.domain_urls)
+                urls = [u for u in parsed if u and u != "None"] if isinstance(parsed, list) else []
+            except ValueError:
+                urls = []
+        if not urls:
+            urls = [u for u in (self.domain_url, self.domain_url_second, self.domain_url_third,
+                                self.domain_url_fourth, self.domain_url_fifth) if u and u != "None"]
+        return urls
+
+
+class DomainExtensionHistory(Base):
+    __tablename__ = "domain_extension_history"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    domain_id = Column(Integer, nullable=False)
+    extension_type = Column(String(1), nullable=False)
+    previous_end_date = Column(DateTime, nullable=True)
+    new_end_date = Column(DateTime, nullable=True)
+    extension_period = Column(Integer, nullable=True)
+    remarks = Column(Text, nullable=True)
+    created_by_id = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+
+
+class ProjectDomain(Base):
+    __tablename__ = "project_domain"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, nullable=False)
+    domain_id = Column(Integer, nullable=False)
+    domain_url = Column(String(200), nullable=True)
+    is_primary = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+
+
+class OutsourcingVendor(Base):
+    __tablename__ = "outsourcing_vendor"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    ceoname = Column(String(100), nullable=True)
+    business_number = Column(String(50), nullable=True)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(254), nullable=True)
+    tax_email = Column(String(254), nullable=True)
+    address = Column(String(255), nullable=True)
+    specialization = Column(String(255), nullable=True)
+    notes = Column(Text, nullable=True)
+    business_registration_file = Column(String(100), nullable=True)
+    bank_account_file = Column(String(100), nullable=True)
+    bank_account_info = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class Outsourcing(Base):
+    __tablename__ = "outsourcing"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    vendor_id = Column(Integer, nullable=False)
+    project_id = Column(Integer, nullable=True)
+    work_type = Column(String(20), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    description = Column(Text, nullable=False, default="")
+    amount = Column(Numeric(12, 0), nullable=True)
+    status = Column(String(20), nullable=False, default="active")
+    manager_id = Column(BigInteger, nullable=True)
+    manager_name = Column(String(50), nullable=False, default="")
+    is_paid = Column(Boolean, nullable=False, default=False)
+    paid_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class OutsourcingPayment(Base):
+    __tablename__ = "outsourcing_payment"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    outsourcing_id = Column(Integer, nullable=False)
+    amount = Column(Numeric(12, 0), nullable=False)
+    paid_date = Column(Date, nullable=False)
+    expected_paid_date = Column(Date, nullable=True)
+    memo = Column(String(200), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
+
+
+class PaymentAlarm(Base):
+    """결제일 알람 (Django 소유). 발송은 cms cron(check_alarms.py) — P6 에서 이관."""
+    __tablename__ = "payment_alarm"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=False, default="")
+    amount = Column(Numeric(12, 0), nullable=True)
+    payment_type = Column(String(15), nullable=False, default="purchase")
+    payment_sub_type = Column(String(1), nullable=True)
+    cycle_type = Column(String(20), nullable=False, default="")
+    cycle_months = Column(Integer, nullable=True)
+    payment_day = Column(Integer, nullable=False)
+    payment_month = Column(Integer, nullable=True)
+    notify_days_before = Column(Integer, nullable=False, default=3)
+    alarm_time = Column(Time, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    next_payment_date = Column(Date, nullable=True)
+    valid_status = Column(String(10), nullable=False, default="valid")
+    send_to_all_agents = Column(Boolean, nullable=False, default=True)
+    last_sent_at = Column(DateTime, nullable=True)
+    project_id = Column(Integer, nullable=True)
+    outsourcing_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)
