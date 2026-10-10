@@ -1,4 +1,4 @@
-"""직원 대시보드 — 업무 카드만(SPEC 05 §1). 수익·미수금 카드는 정의(D11)·권한(D12) 확정 후 추가."""
+"""직원 대시보드 — 업무 카드(SPEC 05 §1). 재무 카드는 관리자 전용 /managed/billing/summary."""
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends

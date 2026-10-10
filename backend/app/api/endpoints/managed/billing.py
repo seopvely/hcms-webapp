@@ -112,6 +112,15 @@ def option_remaining(payment_id: int, db: Session = Depends(get_db)):
     return {"remaining": remaining, "payment_type": s(p.payment_type)}
 
 
+@router.get("/summary")
+def summary(db: Session = Depends(get_db)):
+    """직원 대시보드 재무 카드(관리자): 이번 달 매출·매입·외주(부가세 포함) + 미수금."""
+    today = date.today()
+    rec, exc = bl.receivables(db, today)
+    return dict(_this_month_totals(db, today), receivable_vat=sum(i["amount_vat"] for i in rec), receivable_count=len(rec),
+                receivable_excluded_vat=sum(i["amount_vat"] for i in exc))
+
+
 # ── 납부리스트 (payment) ─────────────────────────────────────────────────
 
 def _payment_row(p: Payment, companies, projects, ctx, alarms) -> dict:
@@ -168,7 +177,7 @@ def get_payment(seq: int, db: Session = Depends(get_db)):
         row["monthly_info"] = {"contract_date": _iso(project.contract_date), "end_date": _iso(project.contract_termination_date),
                                "months": months, "monthly_amount": round(row["base_amount"] / months) if months > 0 else row["base_amount"],
                                "schedule": bl.monthly_summary(p, project, ctx)["months"]}
-    row["histories"] = [_history_row(h, {}, {}, {}) for h in sorted(ctx.histories.get(p.seq, []), key=lambda h: h.created_at or datetime.min, reverse=True)]
+    row["histories"] = [_history_row(h, {}, {}, {p.seq: p}) for h in sorted(ctx.histories.get(p.seq, []), key=lambda h: h.created_at or datetime.min, reverse=True)]
     return row
 
 
