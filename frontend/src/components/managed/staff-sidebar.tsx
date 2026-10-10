@@ -15,6 +15,10 @@ interface StaffSidebarProps {
 export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
   const pathname = usePathname();
   const { sidebarOpen, setSidebarOpen } = useNavigationStore();
+  // 가장 구체적으로 일치하는 메뉴 하나만 활성 표시
+  const activeHref = STAFF_NAV.flatMap((g) => g.items)
+    .filter((i) => !i.legacy && (pathname === i.href || pathname.startsWith(i.href + "/")))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
     <>
@@ -66,7 +70,7 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
                         "flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                        pathname === item.href || (item.href !== "/managed" && pathname.startsWith(item.href + "/"))
+                        item.href === activeHref
                           ? "bg-white/15 text-white border-l-4 border-blue-400 pl-3"
                           : "text-slate-300 hover:bg-white/10 hover:text-white"
                       )}

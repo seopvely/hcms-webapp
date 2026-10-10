@@ -226,3 +226,19 @@ def notify_maint_renewal_response(db, renewal_id, company_name, project_title, d
         items,
         f"{PACMS_BASE_URL}/managed/maint-renewal/{renewal_id}/", "전환 건 확인하기",
     ))
+
+
+def notify_customer_maintenance_reply(to_email, customer_name, maintenance_id, title, status_display,
+                                      writer_name, points):
+    """직원 처리 댓글 → 요청 고객에게 메일 (cms add_managelist_comment 와 같은 시점). 링크는 hcms 고객 화면."""
+    if not to_email:
+        return
+    esc = html.escape
+    items = [("요청", esc(title or "")), ("상태", status_display), ("처리자", esc(writer_name or ""))]
+    if points:
+        items.append(("책정 포인트", f"{points}P"))
+    send_email_async([to_email], f"[유지보수 {status_display}] {title}", _build_html(
+        f"{esc(customer_name or '고객')}님, 유지보수 요청에 처리 내역이 등록되었습니다",
+        items,
+        f"{settings.PUBLIC_BASE_URL}/maintenance/{maintenance_id}", "처리 내역 확인하기",
+    ))

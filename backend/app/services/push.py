@@ -79,3 +79,22 @@ def send_push_to_all(db: Session, title: str, body: str, data: dict | None = Non
 
     token_strings = [pt.token for pt in all_tokens]
     return send_push_notification(title, body, token_strings, data)
+
+
+def send_push_to_company(db: Session, company_id: int | None, title: str, body: str, data: dict | None = None) -> int:
+    """회사의 로그인 허용 고객 담당자 전원에게 푸시 (cms 웹훅 수신 처리와 같은 대상 규칙)."""
+    if not company_id:
+        return 0
+    from app.models.manager import Manager
+
+    manager_seqs = [
+        m.seq for m in db.query(Manager.seq).filter(Manager.company_id == company_id, Manager.login_permit_tf == "1")
+    ]
+    if not manager_seqs:
+        return 0
+    tokens = [
+        t.token for t in db.query(PushToken).filter(PushToken.manager_seq.in_(manager_seqs), PushToken.is_active == True)  # noqa: E712
+    ]
+    if not tokens:
+        return 0
+    return send_push_notification(title, body, tokens, data)

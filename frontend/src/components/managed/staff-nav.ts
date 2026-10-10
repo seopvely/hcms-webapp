@@ -21,13 +21,13 @@ export const STAFF_NAV: StaffNavGroup[] = [
   {
     title: "유지보수",
     items: [
-      { label: "유지보수 요청", href: cms("/managed/managelist"), legacy: true },
-      { label: "유지보수 일정", href: cms("/managed/maintenance-schedule/"), legacy: true },
+      { label: "유지보수 요청", href: "/managed/maintenance" },
+      { label: "유지보수 일정", href: "/managed/maintenance/schedule" },
       { label: "건별작업", href: cms("/managed/inditask"), legacy: true },
       { label: "고객문의", href: cms("/managed/oneperone"), legacy: true },
-      { label: "포인트 장부", href: cms("/managed/pointdeduct"), legacy: true },
-      { label: "처리내역 검색", href: cms("/managed/history"), legacy: true },
-      { label: "포인트 안내", href: cms("/managed/point-guide/"), legacy: true },
+      { label: "포인트 장부", href: "/managed/points" },
+      { label: "처리내역 검색", href: "/managed/maintenance/comments" },
+      { label: "포인트 안내", href: "/managed/points/guide" },
     ],
   },
   {

@@ -14,6 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from app.db.session import Base
+from datetime import datetime
 
 
 # Read-only mapping of Django's customauthuser table
@@ -96,6 +97,8 @@ class Managelist(Base):
     updated_at = Column(DateTime, nullable=True)
     points_used = Column(Integer, nullable=True, default=0)
     is_free_maint = Column(Boolean, nullable=False, default=False)  # 무상 유지보수 기간 요청
+    request_type = Column(String(10), nullable=True)  # maint / dev / NULL(미분류)
+    request_file = Column(String(100), nullable=True)  # 구버전 단일 첨부
     dev_subscription_id = Column(Integer, ForeignKey("pacms_devsubscription.seq"), nullable=True)
 
     company = relationship("Company")
@@ -335,6 +338,12 @@ class PointHistory(Base):
     service_type = Column(String(50), nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+    writer_id = Column(BigInteger, nullable=True)  # pacms_customauthuser.id
+    contract_date = Column(Date, nullable=True)
+    contract_termination_date = Column(Date, nullable=True)
+    edit_reason = Column(Text, nullable=True)
+    edited_at = Column(DateTime, nullable=False, default=datetime.now)  # NOT NULL, DB 기본값 없음(Django auto_now)
+    edited_by_id = Column(BigInteger, nullable=True)
 
     company = relationship("Company")
     project = relationship("Project")
@@ -662,3 +671,38 @@ class MaintSubscriptionService(Base):
     order_no = Column("order", Integer, nullable=False, default=0)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+
+
+class ManagelistDeleteLog(Base):
+    """유지보수 요청 삭제 로그 (Django 소유)."""
+    __tablename__ = "managelist_delete_log"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    original_seq = Column(Integer, nullable=False)
+    company_name = Column(String(100), nullable=False)
+    project_title = Column(String(200), nullable=True)
+    title = Column(String(200), nullable=False)
+    contents = Column(Text, nullable=True)
+    writer_name = Column(String(100), nullable=True)
+    status = Column(String(10), nullable=False)
+    points_used = Column(Integer, nullable=False, default=0)
+    deleted_by_id = Column(BigInteger, nullable=True)
+    deleted_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, nullable=True)
+
+
+class ManagelistCommentTemplate(Base):
+    """처리내역 템플릿 (Django 소유)."""
+    __tablename__ = "managelist_comment_template"
+
+    seq = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    content = Column(Text, nullable=False)
+    worker_type = Column(String(1), nullable=True)
+    usage_count = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_default = Column(Boolean, nullable=False, default=False)
+    sort_order = Column(Integer, nullable=False, default=0)
+    created_by_id = Column(BigInteger, nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)

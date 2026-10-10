@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     WEALTHREACH_SSO_SECRET_FILE: str = "/home/hcms/.secrets/wealthreach_sso_secret"
     WEALTHREACH_SSO_CALLBACK_URL: str = "https://wealthreach.hankyeul.com/sso/callback"
     SSO_TICKET_TTL: int = 120
+    # /managed 쓰기 허용 영역(쉼표 구분: maintenance,points,inquiries,tasks,...).
+    # 이관 절차상 cms 쪽 같은 기능의 쓰기를 막는 시점에 켠다. 비어 있으면 해당 화면은 읽기 전용.
+    MANAGED_WRITE_AREAS: str = ""
+
+    @property
+    def managed_write_areas(self) -> set[str]:
+        return {a.strip() for a in self.MANAGED_WRITE_AREAS.split(",") if a.strip()}
 
     @property
     def cors_origins(self) -> list[str]:

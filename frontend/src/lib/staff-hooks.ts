@@ -8,6 +8,7 @@ export interface StaffMe {
   email: string | null;
   is_admin: boolean;
   two_factor_enabled: boolean;
+  write_areas: string[];
 }
 
 export const fetchStaffMe = async (): Promise<StaffMe> => {
