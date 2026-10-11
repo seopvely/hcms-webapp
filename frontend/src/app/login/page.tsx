@@ -126,7 +126,7 @@ function LoginContent() {
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   {...register("login_id")}
-                  placeholder="아이디 (직원은 이메일)"
+                  placeholder="아이디를 입력하세요"
                   className="pl-10 h-12 rounded-xl"
                 />
               </div>
