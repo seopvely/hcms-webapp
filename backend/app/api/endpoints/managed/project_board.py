@@ -114,7 +114,7 @@ def _post_detail(b: ProjectBoard) -> dict:
         "seq": b.seq, "parent_id": b.parent_id, "title": b.title, "content": sanitize_html(b.content),
         "writer_name": _writer(b), "is_staff": b.writer_type == "1", "writer_id": b.writer_id,
         "status": b.status, "status_label": STATUS_LABELS.get(b.status or "", "-"), "is_notice": bool(b.is_notice),
-        "created_at": _iso(b.created_at), "categories": [c.name for c in b.categories],
+        "created_at": _iso(b.created_at), "categories": [c.name for c in b.categories], "category_ids": [c.seq for c in b.categories],
         "attachments": _files(b.board_attachments, "post"),
         "comments": [comment(c) for c in b.comments],
     }
@@ -218,6 +218,95 @@ def create_post(
     db.commit()
     background.add_task(_notify, b.seq, "reply" if parent_id else "post")
     return {"seq": b.seq}
+
+
+class PostUpdate(BaseModel):
+    title: str
+    content: str
+    category_ids: list[int] = []
+    is_notice: bool = False
+
+
+@router.patch("/{seq}", dependencies=[WRITE])
+def update_post(seq: int, body: PostUpdate, request: Request, staff: CustomAuthUser = Depends(get_current_staff),
+                db: Session = Depends(get_db)):
+    """글 수정 — 작성한 직원만(cms 와 같은 권한)."""
+    b = db.query(ProjectBoard).filter(ProjectBoard.seq == seq).with_for_update().first()
+    if b is None:
+        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
+    if b.writer_type != "1" or b.writer_id != staff.id:
+        raise HTTPException(status_code=403, detail="작성자만 수정할 수 있습니다.")
+    if not body.title.strip() or not html_to_text(body.content):
+        raise HTTPException(status_code=400, detail="제목과 내용을 입력하세요.")
+    b.title = body.title.strip()[:200]
+    b.content = sanitize_html(body.content)
+    if not b.parent_id:
+        b.is_notice = body.is_notice
+        b.categories = db.query(ProjectBoardCategory).filter(
+            ProjectBoardCategory.seq.in_(body.category_ids or [0]), ProjectBoardCategory.project_id == b.project_id).all()
+    b.updated_at = datetime.now()
+    staff_auth.audit(db, request, "board_update", user_id=staff.id, target=f"board:{seq}")
+    db.commit()
+    return {"ok": True}
+
+
+# ── 카테고리(프로젝트별) ──
+
+class CategoryBody(BaseModel):
+    project_id: int | None = None
+    name: str | None = None
+    description: str | None = None
+    color: str | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+@router.get("/categories/{project_id}/all")
+def all_categories(project_id: int, db: Session = Depends(get_db)):
+    """관리용 — 숨긴 카테고리 포함."""
+    rows = (db.query(ProjectBoardCategory).filter(ProjectBoardCategory.project_id == project_id)
+            .order_by(ProjectBoardCategory.sort_order, ProjectBoardCategory.seq).all())
+    return {"items": [{"id": c.seq, "name": c.name, "description": c.description, "color": c.color,
+                       "sort_order": c.sort_order or 0, "is_active": bool(c.is_active)} for c in rows],
+            "write_enabled": write_enabled("project_board")}
+
+
+@router.post("/categories", dependencies=[WRITE])
+def create_category(body: CategoryBody, request: Request, staff: CustomAuthUser = Depends(get_current_staff),
+                    db: Session = Depends(get_db)):
+    if not body.project_id or not db.query(Project.seq).filter(Project.seq == body.project_id).first():
+        raise HTTPException(status_code=400, detail="프로젝트를 확인하세요.")
+    if not (body.name or "").strip():
+        raise HTTPException(status_code=400, detail="카테고리 이름을 입력하세요.")
+    last = db.query(ProjectBoardCategory.sort_order).filter(ProjectBoardCategory.project_id == body.project_id) \
+        .order_by(ProjectBoardCategory.sort_order.desc()).first()
+    now = datetime.now()
+    c = ProjectBoardCategory(project_id=body.project_id, name=body.name.strip()[:100], description=(body.description or "")[:255] or None,
+                             color=body.color or None, sort_order=body.sort_order if body.sort_order is not None else ((last[0] or 0) + 1 if last else 1),
+                             is_active=True, created_at=now, updated_at=now)
+    db.add(c)
+    db.flush()
+    staff_auth.audit(db, request, "board_category_create", user_id=staff.id, target=f"board_category:{c.seq}")
+    db.commit()
+    return {"id": c.seq}
+
+
+@router.patch("/categories/{cid}", dependencies=[WRITE])
+def update_category(cid: int, body: CategoryBody, request: Request, staff: CustomAuthUser = Depends(get_current_staff),
+                    db: Session = Depends(get_db)):
+    """이름·설명·색·순서·사용 여부. 삭제 대신 숨김(is_active=false) — 글에 붙은 연결을 보존한다."""
+    c = db.query(ProjectBoardCategory).filter(ProjectBoardCategory.seq == cid).first()
+    if c is None:
+        raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다.")
+    data = body.model_dump(exclude_unset=True, exclude={"project_id"})
+    if "name" in data and not (data["name"] or "").strip():
+        raise HTTPException(status_code=400, detail="카테고리 이름을 입력하세요.")
+    for k, v in data.items():
+        setattr(c, k, v.strip() if isinstance(v, str) else v)
+    c.updated_at = datetime.now()
+    staff_auth.audit(db, request, "board_category_update", user_id=staff.id, target=f"board_category:{cid}", detail=",".join(sorted(data)))
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/{seq}/comments", dependencies=[WRITE])

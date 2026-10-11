@@ -121,3 +121,10 @@ def find_free_ended_projects(db: Session, company_id: int, today: Optional[date]
         .all()
     )
     return [p for p in candidates if free_maint_state(p, today)["state"] == "free_ended"]
+
+
+def has_maintenance_access(db: Session, company_id: int) -> bool:
+    """유지보수 고객: 포인트 계약기간 중이거나 무상 유지보수 기간 중인 프로젝트가 있다(cms has_maintenance_access)."""
+    return db.query(Project.seq).filter(
+        Project.company_id == company_id, or_(contract_active_q(), free_maint_q())
+    ).first() is not None

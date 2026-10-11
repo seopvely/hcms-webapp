@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Coins, CornerDownRight, Paperclip, Pencil, Reply, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Coins, CornerDownRight, Paperclip, Pencil, Reply, Trash2, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { SalesActivityPanel } from "@/components/managed/sales-activity-panel";
 import { useNavigationStore } from "@/store/navigation-store";
 import staffApi from "@/lib/staff-api";
 import {
@@ -170,6 +171,9 @@ export default function StaffMaintenanceDetailPage() {
             </Link>
           </Button>
           <div className="flex-1" />
+          <Button size="sm" variant="outline" className="rounded-xl" asChild>
+            <Link href={`/managed/todos/new?managelist=${seq}`}><ListTodo className="mr-1 h-4 w-4" /> 할일 등록</Link>
+          </Button>
           {canWrite && data.status === "1" && (
             <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEditOpen(true)}>
               <Pencil className="mr-1 h-4 w-4" /> 수정
@@ -259,6 +263,8 @@ export default function StaffMaintenanceDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        <SalesActivityPanel companyId={data.company_id} />
       </div>
 
       <StepUpDialog

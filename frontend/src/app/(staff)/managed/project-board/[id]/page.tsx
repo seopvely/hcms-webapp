@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Paperclip, Trash2 } from "lucide-react";
+import { ArrowLeft, Paperclip, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,6 +49,7 @@ function PostView({ seq }: { seq: number }) {
   const { data, isLoading } = useStaffBoardPost(seq);
   const mutate = useBoardMutation();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     setPageTitle("프로젝트구축진행");
@@ -91,6 +92,11 @@ function PostView({ seq }: { seq: number }) {
             </select>
           )}
           {isRoot && !canWrite && <Badge className={BOARD_STATUS_COLORS[p.status ?? ""] ?? "bg-muted"}>{p.status_label}</Badge>}
+          {isRoot && canWrite && p.is_staff && p.writer_id === me?.id && (
+            <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs" onClick={() => setEditing(true)}>
+              <Pencil className="h-3 w-3" />
+            </Button>
+          )}
           {canManage(p) && (
             <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs text-red-600" onClick={() => setDeleteTarget(`/${p.seq}/delete`)}>
               <Trash2 className="h-3 w-3" />
@@ -130,7 +136,24 @@ function PostView({ seq }: { seq: number }) {
           <Link href="/managed/project-board"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link>
         </Button>
         <p className="text-sm text-muted-foreground">{data.company_name} · {data.project_title}</p>
-        {renderPost(data, true)}
+        {editing ? (
+          <EditPost
+            post={data}
+            projectId={data.project_id}
+            onCancel={() => setEditing(false)}
+            onSave={async (body) => {
+              try {
+                await mutate.mutateAsync({ method: "patch", url: `/${seq}`, body });
+                toast("success", "수정했습니다.");
+                setEditing(false);
+              } catch (err) {
+                toast("error", apiErrorDetail(err, "수정에 실패했습니다."));
+              }
+            }}
+          />
+        ) : (
+          renderPost(data, true)
+        )}
         {data.replies.map((r) => renderPost(r, false))}
         {canWrite && (
           <ReplyBox
@@ -147,6 +170,41 @@ function PostView({ seq }: { seq: number }) {
       </div>
       <AppAlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} title="삭제" description="삭제하면 되돌릴 수 없습니다(답글·댓글·첨부 포함)." confirmText="삭제" variant="destructive" onConfirm={confirmDelete} />
     </PageTransition>
+  );
+}
+
+type PostEdit = { title: string; content: string; category_ids: number[]; is_notice: boolean };
+
+// 직원 본인 글 수정(제목·본문·카테고리·공지). 첨부 변경은 삭제 후 다시 등록.
+function EditPost({ post, projectId, onCancel, onSave }: { post: BoardPost; projectId: number; onCancel: () => void; onSave: (b: PostEdit) => Promise<void> }) {
+  const { data: categories } = useBoardCategories(projectId);
+  const [title, setTitle] = useState(post.title ?? "");
+  const [content, setContent] = useState(post.content);
+  const [cats, setCats] = useState<number[]>(post.category_ids ?? []);
+  const [notice, setNotice] = useState(post.is_notice);
+  const [saving, setSaving] = useState(false);
+  return (
+    <Card className="rounded-2xl">
+      <CardContent className="space-y-4 pt-5 pb-5">
+        {!!categories?.items.length && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {categories.items.map((c) => (
+              <label key={c.id} className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1">
+                <Checkbox checked={cats.includes(c.id)} onCheckedChange={() => setCats((x) => (x.includes(c.id) ? x.filter((i) => i !== c.id) : [...x, c.id]))} /> {c.name}
+              </label>
+            ))}
+          </div>
+        )}
+        <Field label="제목 *"><Input className="rounded-xl" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+        <SimpleEditor value={content} onChange={setContent} />
+        <label className="flex items-center gap-2 text-sm"><Checkbox checked={notice} onCheckedChange={(v) => setNotice(v === true)} /> 공지</label>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" className="rounded-xl" onClick={onCancel}>취소</Button>
+          <Button className="rounded-xl" disabled={saving || !title.trim()}
+            onClick={async () => { setSaving(true); await onSave({ title, content, category_ids: cats, is_notice: notice }); setSaving(false); }}>저장</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

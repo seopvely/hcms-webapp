@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import News, news_companies
 from app.utils.html_sanitize import sanitize_html
+from app.utils.free_maint import has_maintenance_access
 
 router = APIRouter(prefix="/news", tags=["news"])
 
@@ -51,6 +52,9 @@ def list_news(
 
     if category:
         query = query.filter(News.category == category)
+    # 유지보수 계약이 없는 고객에게는 '유지보수' 소식을 숨긴다(cms 고객포털과 같은 규칙, SPEC 03 §8 R15)
+    if not has_maintenance_access(db, company_id):
+        query = query.filter(or_(News.category.is_(None), News.category != "maintenance"))
 
     total = query.count()
     total_pages = math.ceil(total / per_page) if total > 0 else 1
@@ -123,6 +127,8 @@ def get_news_detail(
         .filter(News.seq == news_id)
         .first()
     )
+    if item and item.category == "maintenance" and not has_maintenance_access(db, company_id):
+        raise HTTPException(status_code=404, detail="News not found")
 
     # Increment views
     item.views = (item.views or 0) + 1

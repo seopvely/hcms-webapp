@@ -103,7 +103,7 @@ const nextConfig: NextConfig = {
       { source: "/managed/inditask_update/:id(\\d+)", destination: "/managed/tasks/:id", permanent: false },
       { source: "/managed/point-guide/download/:file", destination: "/managed/points/guide", permanent: false },
       { source: "/managed/custom_update/:id(\\d+)/:company(\\d+)", destination: "/managed/accounts/:company", permanent: false },
-      { source: "/managed/supplier_register", destination: "/managed/accounts", permanent: false },
+      { source: "/managed/supplier_register", destination: "/managed/accounts", permanent: false }, // 목록의 "업체 등록"
       { source: "/managed/news/register", destination: "/managed/news/new", permanent: false },
       { source: "/managed/news/detail/:id(\\d+)", destination: "/managed/news/:id", permanent: false },
       { source: "/managed/news/update/:id(\\d+)", destination: "/managed/news/:id", permanent: false },

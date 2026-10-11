@@ -16,6 +16,7 @@ import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { TASK_STATUSES } from "@/components/managed/task-options";
+import { SalesActivityPanel } from "@/components/managed/sales-activity-panel";
 import { useNavigationStore } from "@/store/navigation-store";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { useStaffTask, useTaskMutation } from "@/lib/staff-support";
@@ -129,6 +130,7 @@ export default function StaffTaskDetailPage() {
             </CardContent>
           </Card>
         )}
+        <SalesActivityPanel companyId={data.company_id} />
       </div>
       <StepUpDialog open={deleteOpen} onOpenChange={setDeleteOpen} title="건별작업 삭제" description="코멘트와 함께 삭제됩니다. 본인 비밀번호를 입력하세요." confirmText="삭제" pending={mutate.isPending} onConfirm={remove} />
     </PageTransition>

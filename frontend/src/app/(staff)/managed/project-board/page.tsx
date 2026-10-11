@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FolderKanban, Plus } from "lucide-react";
+import { FolderKanban, Plus, Tags } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,12 +15,14 @@ import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useBoardProjects, useStaffBoard } from "@/lib/staff-content";
+import { BoardCategoryManager } from "@/components/managed/board-category-manager";
 
 export default function StaffBoardPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const [params, setParams] = useState<{ project_id?: number; status?: string; page: number }>({ page: 1 });
   const { data, isLoading } = useStaffBoard(params);
   const { data: projects } = useBoardProjects();
+  const [managingCats, setManagingCats] = useState(false);
   useEffect(() => {
     setPageTitle("프로젝트구축진행");
   }, [setPageTitle]);
@@ -42,11 +44,14 @@ export default function StaffBoardPage() {
                 <option value="">전체</option><option value="1">진행중</option><option value="2">완료</option><option value="3">보류</option>
               </select>
             </Field>
-            {data?.write_enabled && (
-              <div className="flex items-end">
+            <div className="flex items-end gap-2">
+              {data?.write_enabled && (
                 <Button className="rounded-xl" asChild><Link href="/managed/project-board/new"><Plus className="mr-1 h-4 w-4" /> 글쓰기</Link></Button>
-              </div>
-            )}
+              )}
+              {params.project_id && (
+                <Button variant="outline" className="rounded-xl" onClick={() => setManagingCats(true)}><Tags className="mr-1 h-4 w-4" /> 카테고리</Button>
+              )}
+            </div>
           </CardContent>
         </Card>
         {isLoading ? (
@@ -75,6 +80,7 @@ export default function StaffBoardPage() {
           </>
         )}
       </div>
+      {managingCats && params.project_id && <BoardCategoryManager projectId={params.project_id} onClose={() => setManagingCats(false)} />}
     </PageTransition>
   );
 }

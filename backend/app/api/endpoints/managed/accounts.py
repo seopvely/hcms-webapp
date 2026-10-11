@@ -95,6 +95,25 @@ class CompanyUpdate(BaseModel):
     post_number: str | None = None
 
 
+@router.post("", dependencies=[WRITE])
+def create_company(body: CompanyUpdate, request: Request,
+                   staff: CustomAuthUser = Depends(get_current_staff), db: Session = Depends(get_db)):
+    """업체 신규 등록(cms supplier_register). 고객 계정은 등록 후 상세 화면에서 추가·초대한다."""
+    data = {k: (v.strip() if isinstance(v, str) else v) for k, v in body.model_dump(exclude_unset=True).items()}
+    if not data.get("name"):
+        raise HTTPException(status_code=400, detail="업체명을 입력하세요.")
+    dup = db.query(Company.seq).filter(Company.name == data["name"]).first()
+    if dup:
+        raise HTTPException(status_code=400, detail=f"같은 이름의 업체가 있습니다(#{dup[0]}).")
+    now = datetime.now()
+    c = Company(created_at=now, updated_at=now, **{**data, "ceo_email": data.get("ceo_email") or ""})  # ceo_email DB NOT NULL
+    db.add(c)
+    db.flush()
+    staff_auth.audit(db, request, "company_create", user_id=staff.id, target=f"company:{c.seq}")
+    db.commit()
+    return {"seq": c.seq}
+
+
 @router.patch("/{company_id}", dependencies=[WRITE])
 def update_company(company_id: int, body: CompanyUpdate, request: Request,
                    staff: CustomAuthUser = Depends(get_current_staff), db: Session = Depends(get_db)):

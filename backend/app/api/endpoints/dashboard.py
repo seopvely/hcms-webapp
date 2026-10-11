@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, and_
+from sqlalchemy import func, case, and_, or_
 from datetime import datetime, timedelta
 
 from app.api.endpoints.estimates import CUSTOMER_VISIBLE_ESTIMATE_STATUSES
@@ -15,6 +15,7 @@ from app.utils.free_maint import (
     find_free_ended_projects,
     find_free_maint_projects,
     free_maint_state,
+    has_maintenance_access,
 )
 from app.models.customer import (
     Managelist,
@@ -67,7 +68,11 @@ def get_dashboard(
         .filter(News.is_published == True, news_companies.c.news_id == None)
     )
     news_ids = news_with_company.union(news_no_company).subquery()
-    news_count = db.query(func.count()).select_from(news_ids).scalar() or 0
+    news_q = db.query(News).filter(News.seq.in_(db.query(news_ids)))
+    has_maint_news = has_maintenance_access(db, company_id)
+    if not has_maint_news:  # 유지보수 소식은 유지보수 고객에게만(news 목록과 같은 규칙)
+        news_q = news_q.filter(or_(News.category.is_(None), News.category != "maintenance"))
+    news_count = news_q.count()
 
     # 견적 목록과 동일하게 작성중(사내 작업 단계) 견적서는 집계에서 제외한다.
     estimate_count = (
@@ -157,7 +162,10 @@ def get_dashboard(
         .outerjoin(news_companies, news_companies.c.news_id == News.seq)
         .filter(News.is_published == True, news_companies.c.news_id == None)
     )
-    latest_news_items = visible_news_with_company.union(visible_news_no_company).order_by(News.created_at.desc()).limit(5).all()
+    latest_news_q = visible_news_with_company.union(visible_news_no_company)
+    if not has_maint_news:
+        latest_news_q = latest_news_q.filter(or_(News.category.is_(None), News.category != "maintenance"))
+    latest_news_items = latest_news_q.order_by(News.created_at.desc()).limit(5).all()
     latest_news = [{"id": n.seq, "title": n.title, "category": n.category, "created_at": n.created_at.isoformat() if n.created_at else None} for n in latest_news_items]
 
     monthly_payment_result = db.query(

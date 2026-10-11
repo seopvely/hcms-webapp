@@ -132,6 +132,7 @@ export interface BoardPost {
   is_notice: boolean;
   created_at: string | null;
   categories: string[];
+  category_ids: number[];
   attachments: BoardFile[];
   comments: BoardComment[];
 }
@@ -185,8 +186,27 @@ export function useBoardCategories(projectId?: number) {
 export function useBoardMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ url, body }: { url: string; body: FormData | object }) =>
-      (await staffApi.post(`/managed/project-board${url}`, body, body instanceof FormData ? multipart : undefined)).data,
+    mutationFn: async ({ url, body, method = "post" }: { url: string; body: FormData | object; method?: "post" | "patch" }) =>
+      (await staffApi[method](`/managed/project-board${url}`, body, body instanceof FormData ? multipart : undefined)).data,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["staff", "board"] }),
+  });
+}
+
+export interface BoardCategory {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+/** 관리용 카테고리 목록(숨김 포함) */
+export function useBoardCategoriesAll(projectId?: number) {
+  return useQuery({
+    queryKey: ["staff", "board", "categories-all", projectId],
+    queryFn: async (): Promise<{ items: BoardCategory[]; write_enabled: boolean }> =>
+      (await staffApi.get(`/managed/project-board/categories/${projectId}/all`)).data,
+    enabled: !!projectId,
   });
 }

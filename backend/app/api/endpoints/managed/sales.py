@@ -100,6 +100,31 @@ def list_leads(
     }
 
 
+@router.get("/company/{company_id}/activities")
+def company_activities(company_id: int, db: Session = Depends(get_db)):
+    """업체의 프로젝트에 연결된 영업접수별 활동 이력(cms _company_project_activities — 유지보수·건별작업 상세 패널)."""
+    projects = (db.query(Project).filter(Project.company_id == company_id, Project.sales_lead_id.isnot(None))
+                .order_by(Project.created_at.desc()).all())
+    by_lead: dict[int, list] = {}
+    for p in projects:
+        by_lead.setdefault(p.sales_lead_id, []).append({"seq": p.seq, "title": p.title})
+    if not by_lead:
+        return {"items": []}
+    leads = {l.seq: l for l in db.query(SalesLead).filter(SalesLead.seq.in_(by_lead))}
+    staff = {u.id: (u.name or u.username) for u in db.query(CustomAuthUser)}
+    acts: dict[int, list] = {}
+    for a in (db.query(SalesLeadActivity).filter(SalesLeadActivity.sales_lead_id.in_(by_lead))
+              .order_by(SalesLeadActivity.created_at.desc()).limit(200)):
+        acts.setdefault(a.sales_lead_id, []).append({
+            "id": a.seq, "type": a.activity_type, "type_label": ACTIVITY.get(a.activity_type, a.activity_type),
+            "content": a.content, "created_by": staff.get(a.created_by_id), "created_at": _iso(a.created_at)})
+    return {"items": [{
+        "lead": {"seq": lid, "title": leads[lid].title if lid in leads else None,
+                 "status_label": STATUS.get(leads[lid].status, leads[lid].status) if lid in leads else None},
+        "projects": projs, "activities": acts.get(lid, []),
+    } for lid, projs in by_lead.items()]}
+
+
 @router.get("/activities/search")
 def search_activities(q: str, activity_type: str | None = None, db: Session = Depends(get_db)):
     query = db.query(SalesLeadActivity, SalesLead).join(SalesLead, SalesLeadActivity.sales_lead_id == SalesLead.seq).filter(
