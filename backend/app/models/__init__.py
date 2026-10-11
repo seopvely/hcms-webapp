@@ -6,6 +6,7 @@ from app.models.staff_auth import StaffSession, StaffAuditLog
 from app.models.customer_invite import CustomerInvite
 from app.models.fde import FdeEngagement, FdeEngagementAddon, ServicePlan
 from app.models.jobs import JobClaim, JobRun, NotificationEvent
+from app.models.reference import ReferenceSite, ReferenceSiteCategory, WebhookConfig, WebhookEventLog
 from app.models.customer import (
     CustomAuthUser,
     Project,
@@ -35,6 +36,7 @@ from app.models.customer import (
 )
 
 __all__ = [
+    "ReferenceSite", "ReferenceSiteCategory", "WebhookConfig", "WebhookEventLog",
     "Company",
     "Manager",
     "PushToken",

@@ -96,6 +96,7 @@ const nextConfig: NextConfig = {
       { source: "/managed/monthly-revenue", destination: "/managed/billing/revenue", permanent: false },
       { source: "/managed/sales-plan", destination: "/managed/billing/sales-plan", permanent: false },
       { source: "/managed/suppliermanage/:id", destination: "/managed/accounts/:id", permanent: false },
+      { source: "/managed/reference-sites/:rest+", destination: "/managed/reference-sites", permanent: false },
       // 부록A 보완(SPEC 감사 #44~47): 수정·하위 화면 옛 경로
       { source: "/managed/managelist_update/:id(\\d+)", destination: "/managed/maintenance/:id", permanent: false },
       { source: "/managed/history_detail/:id(\\d+)", destination: "/managed/maintenance/:id", permanent: false },

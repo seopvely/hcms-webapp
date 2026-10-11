@@ -27,6 +27,8 @@ from app.api.endpoints.managed.outsourcing import router as outsourcing_router
 from app.api.endpoints.managed.points import router as points_router
 from app.api.endpoints.managed.project_board import router as project_board_router
 from app.api.endpoints.managed.projects import router as projects_router
+from app.api.endpoints.managed.reference_sites import router as reference_sites_router
+from app.api.endpoints.managed.settings import router as settings_router
 from app.api.endpoints.managed.sales import router as sales_router
 from app.api.endpoints.managed.sso import router as sso_router
 from app.api.endpoints.managed.staff_accounts import router as staff_accounts_router
@@ -36,6 +38,8 @@ from app.api.endpoints.managed.todos import router as todos_router
 
 router = APIRouter(prefix="/managed", tags=["managed"], dependencies=[Depends(get_current_staff)])
 router.include_router(me_router)
+router.include_router(reference_sites_router)
+router.include_router(settings_router)
 router.include_router(dashboard_router)
 router.include_router(impersonate_router)
 router.include_router(sso_router)

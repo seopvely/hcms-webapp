@@ -49,7 +49,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
       { label: "고객사 이동(대리 로그인)", href: "/managed/customers" },
       { label: "유지보수 전환", href: "/managed/maint-renewal" },
       { label: "최신소식", href: "/managed/news" },
-      { label: "레퍼런스 사이트", href: cms("/managed/reference-sites/"), legacy: true },
+      { label: "레퍼런스 사이트", href: "/managed/reference-sites" },
     ],
   },
   {
@@ -97,6 +97,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
       { label: "직원 계정", href: "/managed/staff", adminOnly: true },
       { label: "처리내역 템플릿", href: "/managed/settings/comment-templates" },
       { label: "AI 프롬프트", href: "/managed/settings/ai-prompts" },
+      { label: "연동(웹훅) 설정", href: "/managed/settings/webhooks", adminOnly: true },
       { label: "이관 상태·배치", href: "/managed/settings/jobs", adminOnly: true },
       { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },
       { label: "WealthReach 관리자", href: "/managed/sso/wealthreach", newTab: true },
