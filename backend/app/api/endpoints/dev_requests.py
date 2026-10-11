@@ -22,6 +22,7 @@ from app.models.customer import (
     PointHistory,
 )
 from app.utils.html_sanitize import sanitize_html
+from app.utils.media import resolve_media_path
 
 router = APIRouter(prefix="/dev-requests", tags=["dev-requests"])
 
@@ -343,13 +344,6 @@ async def create_dev_request_comment(
 
 # ─── 파일 다운로드 엔드포인트 ───────────────────────────────────────────────
 
-MEDIA_ROOT = "/home/pacms/media"
-
-
-def _build_file_path(relative_path: str) -> str:
-    if relative_path.startswith("/"):
-        return relative_path
-    return os.path.join(MEDIA_ROOT, relative_path)
 
 
 @router.get("/attachments/{attachment_id}/download")
@@ -378,8 +372,8 @@ def download_request_attachment(
     if not managelist:
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
 
-    file_path = _build_file_path(attachment.file)
-    if not os.path.exists(file_path):
+    file_path = resolve_media_path(attachment.file)
+    if not file_path:
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
 
     filename = attachment.filename or os.path.basename(file_path)
@@ -413,8 +407,8 @@ def download_comment_attachment(
     if not comment:
         raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
 
-    file_path = _build_file_path(attachment.file)
-    if not os.path.exists(file_path):
+    file_path = resolve_media_path(attachment.file)
+    if not file_path:
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
 
     filename = attachment.filename or os.path.basename(file_path)
@@ -443,8 +437,8 @@ def download_comment_legacy_file(
     if not comment.attachment:
         raise HTTPException(status_code=404, detail="첨부파일이 없습니다.")
 
-    file_path = _build_file_path(comment.attachment)
-    if not os.path.exists(file_path):
+    file_path = resolve_media_path(comment.attachment)
+    if not file_path:
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
 
     filename = os.path.basename(file_path)

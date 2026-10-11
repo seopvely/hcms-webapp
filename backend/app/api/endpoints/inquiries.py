@@ -22,6 +22,7 @@ from app.models.customer import (
     InquiryAttachment,
 )
 from app.utils.html_sanitize import sanitize_html
+from app.utils.media import resolve_media_path
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 
@@ -36,7 +37,6 @@ INQUIRY_TYPE_LABELS = {
 }
 INQUIRY_STATUS_LABELS = {1: "대기중", 2: "진행중", 3: "답변완료"}
 UPLOAD_DIR = "/home/pacms/media/upload_file"
-MEDIA_ROOT = "/home/pacms/media"
 
 ALLOWED_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
@@ -214,9 +214,9 @@ def download_inquiry_attachment(
         raise HTTPException(status_code=404, detail="Attachment not found")
 
     # Construct full file path
-    full_path = os.path.join(MEDIA_ROOT, attachment.file)
+    full_path = resolve_media_path(attachment.file)
 
-    if not os.path.exists(full_path):
+    if not full_path:
         raise HTTPException(status_code=404, detail="File not found on disk")
 
     # Guess content type

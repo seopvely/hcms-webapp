@@ -32,6 +32,7 @@ from app.models.customer import (
     MaintRenewal,
     news_companies,
 )
+from app.services.points import cycle_used_points, subscription_cycle
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -181,12 +182,7 @@ def get_dashboard(
         # 6개월 주기 초기화 — 현재 주기 기준 (point-usage 와 동일)
         cycle = get_point_cycle(active_project)
         total_points = cycle["total_points"]
-        used_points_result = (
-            db.query(func.sum(func.abs(PointHistory.point)))
-            .filter(PointHistory.project_id == active_project.seq, PointHistory.point_type == 2, PointHistory.status == 2, PointHistory.created_at >= cycle["query_start"], PointHistory.created_at < cycle["query_end"])
-            .scalar()
-        )
-        used_points = int(used_points_result or 0)
+        used_points = cycle_used_points(db, cycle, active_project.seq)
         remaining_points = total_points - used_points
     else:
         total_points = used_points = remaining_points = 0
@@ -255,14 +251,11 @@ def get_dashboard(
     maint_sub_points_remaining = 0
 
     if maint_sub and maint_monthly_points > 0:
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        used_this_month = db.query(func.sum(func.abs(PointHistory.point))).filter(
-            PointHistory.company_id == company_id, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.point_category == "1",
-            PointHistory.created_at >= month_start,
-        ).scalar() or 0
-        maint_sub_points_used = int(used_this_month)
-        maint_sub_points_remaining = max(0, maint_monthly_points - maint_sub_points_used)
+        # 구독 충전 주기(6개월) 기준 — 충전 job 과 같은 기간(SPEC A7/D10)
+        sub_cycle = subscription_cycle(maint_sub, now.date())
+        if sub_cycle:
+            maint_sub_points_used = cycle_used_points(db, sub_cycle, company_id=company_id, maintenance_only=True)
+            maint_sub_points_remaining = max(0, sub_cycle["total_points"] - maint_sub_points_used)
 
     MAINT_PLAN_LABELS = {"basic": "BASIC", "growth": "GROWTH", "business": "BUSINESS"}
 

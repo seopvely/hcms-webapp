@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import MaintSubscription, PointHistory
 from app.utils.maint_plans import PLAN_LABELS, hosting_label, plan_services, service_text
+from app.services.points import cycle_used_points, subscription_cycle
 
 router = APIRouter(prefix="/maint-subscription", tags=["maint-subscription"])
 
@@ -32,17 +33,11 @@ def get_my_maint_subscription(
     if not sub:
         return {"has_subscription": False, "subscription": None, "services": [], "benefits": [], "recent_usage": []}
 
-    # 이번 달 사용 크레딧 — 대시보드 구독 카드와 같은 기준(유지보수 카테고리, 실행 완료)
-    now = datetime.now()
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # 현재 충전 주기(6개월) 사용 크레딧 — 충전 job·대시보드 카드와 같은 기준(SPEC A7/D10: 주기 내 사용, 이월 없음)
     monthly_points = sub.maintenance_points_per_month or 0
-    points_used = int(
-        db.query(func.sum(func.abs(PointHistory.point))).filter(
-            PointHistory.company_id == company_id, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.point_category == "1",
-            PointHistory.created_at >= month_start,
-        ).scalar() or 0
-    )
+    cycle = subscription_cycle(sub)
+    cycle_points = cycle["total_points"] if cycle else 0
+    points_used = cycle_used_points(db, cycle, company_id=company_id, maintenance_only=True) if cycle else 0
 
     recent = (
         db.query(PointHistory)
@@ -67,8 +62,11 @@ def get_my_maint_subscription(
             "start_date": sub.start_date.isoformat() if sub.start_date else None,
             "next_charge_date": sub.next_charge_date.isoformat() if sub.next_charge_date else None,
             "monthly_points": monthly_points,
+            "cycle_points": cycle_points,
+            "cycle_start": cycle["start"].isoformat() if cycle else None,
+            "cycle_end": cycle["end"].isoformat() if cycle else None,
             "points_used": points_used,
-            "points_remaining": max(0, monthly_points - points_used),
+            "points_remaining": max(0, cycle_points - points_used),
             "end_date": sub.end_date.isoformat() if sub.end_date else None,
             "hosting_type": sub.hosting_type,
             "hosting_provider": sub.hosting_provider,
@@ -84,7 +82,8 @@ def get_my_maint_subscription(
                 "status_label": SERVICE_STATUS_LABELS.get(svc.status, svc.status),
                 "start_date": svc.start_date.isoformat() if svc.start_date else None,
                 "end_date": svc.end_date.isoformat() if svc.end_date else None,
-                "memo": svc.memo,
+                # 메모는 직원용 — 외부 호스팅의 업체 안내만 고객에게 보인다(SPEC 12 L9)
+                "memo": svc.memo if svc.service_code == "external_hosting" else None,
             }
             for svc in sub.services
         ],

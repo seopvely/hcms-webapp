@@ -18,11 +18,11 @@ from app.models.customer import Inditask, InditaskComment
 from app.models.company import Company
 from app.services.email import notify_task_created
 from app.utils.html_sanitize import sanitize_html
+from app.utils.media import resolve_media_path
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 UPLOAD_DIR = "/home/pacms/media/upload_file"
-MEDIA_ROOT = "/home/pacms/media"
 ALLOWED_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
     "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx",
@@ -204,8 +204,8 @@ def download_task_file(
     task = db.query(Inditask).filter(Inditask.seq == task_id, Inditask.company_id == company_id).first()
     if not task or not task.inditask_file:
         raise HTTPException(status_code=404, detail="File not found")
-    full_path = os.path.join(MEDIA_ROOT, task.inditask_file)
-    if not os.path.exists(full_path):
+    full_path = resolve_media_path(task.inditask_file)
+    if not full_path:
         raise HTTPException(status_code=404, detail="File not found on disk")
     filename = task.inditask_file_name or os.path.basename(task.inditask_file)
     content_type, _ = mimetypes.guess_type(filename)
@@ -257,9 +257,9 @@ def get_task_detail(
     attachments = []
     if item.inditask_file:
         original_name = item.inditask_file_name or os.path.basename(item.inditask_file)
-        file_full_path = os.path.join(MEDIA_ROOT, item.inditask_file)
+        file_full_path = resolve_media_path(item.inditask_file)
         file_size = ""
-        if os.path.exists(file_full_path):
+        if file_full_path:
             size_bytes = os.path.getsize(file_full_path)
             if size_bytes < 1024:
                 file_size = f"{size_bytes} B"
@@ -289,9 +289,9 @@ def get_task_detail(
     )
     for ft in related_file_tasks:
         original_name = ft.inditask_file_name or os.path.basename(ft.inditask_file)
-        file_full_path = os.path.join(MEDIA_ROOT, ft.inditask_file)
+        file_full_path = resolve_media_path(ft.inditask_file)
         file_size = ""
-        if os.path.exists(file_full_path):
+        if file_full_path:
             size_bytes = os.path.getsize(file_full_path)
             if size_bytes < 1024:
                 file_size = f"{size_bytes} B"

@@ -13,6 +13,7 @@ from app.models.manager import Manager
 from app.models.customer import Project, PointHistory, Managelist, ManagelistComment, DevSubscription, MaintSubscription
 from app.utils.point_cycle import get_point_cycle
 from app.utils.free_maint import as_date, contract_active_q, free_maint_q, free_maint_state
+from app.services.points import cycle_used_points
 
 HAS_DATEUTIL = False
 try:
@@ -313,10 +314,7 @@ def get_point_usage(
     for project in active_projects:
         proj_cycle = get_point_cycle(project)
         proj_total = proj_cycle["total_points"]
-        proj_used = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
-            PointHistory.project_id == project.seq, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.created_at >= proj_cycle["query_start"], PointHistory.created_at < proj_cycle["query_end"]
-        ).scalar() or 0)
+        proj_used = cycle_used_points(db, proj_cycle, project.seq)
         response["projects_with_balance"].append({
             "id": project.seq, "title": project.title,
             "monthly_point": project.point, "remaining_points": proj_total - proj_used, "total_points": proj_total
@@ -343,17 +341,10 @@ def get_point_usage(
         cycle_start, cycle_end = cycle["query_start"], cycle["query_end"]
         total_points = cycle["total_points"]
 
-        used_points = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
-            PointHistory.project_id == current_project.seq, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.created_at >= cycle_start, PointHistory.created_at < cycle_end
-        ).scalar() or 0)
+        used_points = cycle_used_points(db, cycle, current_project.seq)
         remaining_points = total_points - used_points
 
-        used_maintenance = int(db.query(func.sum(func.abs(PointHistory.point))).filter(
-            PointHistory.project_id == current_project.seq, PointHistory.point_type == 2,
-            PointHistory.status == 2, PointHistory.created_at >= cycle_start, PointHistory.created_at < cycle_end,
-            or_(PointHistory.point_category == "1", PointHistory.point_category.is_(None))
-        ).scalar() or 0)
+        used_maintenance = cycle_used_points(db, cycle, current_project.seq, maintenance_only=True)
         maintenance_summary = {"total": total_points, "used": used_maintenance, "remaining": max(0, total_points - used_maintenance)}
 
         response["current_project"] = {

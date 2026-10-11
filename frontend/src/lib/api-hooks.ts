@@ -1208,6 +1208,9 @@ export interface MaintSubscriptionInfo {
     start_date: string | null;
     next_charge_date: string | null;
     monthly_points: number;
+    cycle_points: number;
+    cycle_start: string | null;
+    cycle_end: string | null;
     points_used: number;
     points_remaining: number;
     end_date: string | null;

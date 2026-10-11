@@ -27,12 +27,13 @@ from app.models.customer import (
     PointHistory,
 )
 from app.utils.html_sanitize import sanitize_html
+from app.services.points import calculate_remaining_points
+from app.utils.media import resolve_media_path
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
 STATUS_LABELS = {1: "접수", 2: "알림", 3: "처리중", 4: "완료"}
 UPLOAD_DIR = "/home/pacms/media/upload_file"
-MEDIA_ROOT = "/home/pacms/media"
 
 ALLOWED_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
@@ -45,42 +46,6 @@ ALLOWED_EXTENSIONS = {
 def month_diff(d1: date, d2: date) -> int:
     """Calculate the number of complete months between two dates."""
     return (d2.year - d1.year) * 12 + (d2.month - d1.month)
-
-
-def calculate_remaining_points(project: Project, db: Session, company_id: int) -> int:
-    """
-    현재 6개월 주기의 잔여 포인트 (주기 계산은 app.utils.point_cycle — point-usage/대시보드와 동일).
-    - 계약 기간 밖이면 0
-    - 잔여 = 주기 개월수 × 월 포인트 - 현재 주기 사용 포인트 (0 미만이면 0)
-    """
-    if not project.point or project.point <= 0:
-        return 0
-
-    cycle = get_point_cycle(project)
-    if not cycle:
-        return 0
-
-    today = datetime.now().date()
-    contract_start = project.contract_date.date() if isinstance(project.contract_date, datetime) else project.contract_date
-    contract_end = project.contract_termination_date.date() if isinstance(project.contract_termination_date, datetime) else project.contract_termination_date
-    if today < contract_start or today > contract_end:
-        return 0
-
-    # Only count PointHistory with point_type=2 (사용), status=2 (실행)
-    used_points_in_cycle = (
-        db.query(func.sum(PointHistory.point))
-        .filter(
-            PointHistory.project_id == project.seq,
-            PointHistory.company_id == company_id,
-            PointHistory.point_type == 2,  # 사용
-            PointHistory.status == 2,       # 실행
-            PointHistory.created_at >= cycle["query_start"],
-            PointHistory.created_at < cycle["query_end"],
-        )
-        .scalar()
-    ) or 0
-
-    return max(0, cycle["total_points"] - abs(used_points_in_cycle))
 
 
 def get_request_permit(project: Project, db: Session, company_id: int) -> dict:
@@ -471,9 +436,9 @@ def download_maintenance_attachment(
         raise HTTPException(status_code=404, detail="Attachment not found")
 
     # Construct full file path
-    full_path = os.path.join(MEDIA_ROOT, attachment.file)
+    full_path = resolve_media_path(attachment.file)
 
-    if not os.path.exists(full_path):
+    if not full_path:
         raise HTTPException(status_code=404, detail="File not found on disk")
 
     # Guess content type
@@ -518,9 +483,9 @@ def download_comment_attachment(
         raise HTTPException(status_code=404, detail="Attachment not found")
 
     # Construct full file path
-    full_path = os.path.join(MEDIA_ROOT, attachment.file)
+    full_path = resolve_media_path(attachment.file)
 
-    if not os.path.exists(full_path):
+    if not full_path:
         raise HTTPException(status_code=404, detail="File not found on disk")
 
     # Guess content type
@@ -567,9 +532,9 @@ def download_comment_legacy_file(
         raise HTTPException(status_code=404, detail="No attachment for this comment")
 
     # Construct full file path
-    full_path = os.path.join(MEDIA_ROOT, comment.attachment)
+    full_path = resolve_media_path(comment.attachment)
 
-    if not os.path.exists(full_path):
+    if not full_path:
         raise HTTPException(status_code=404, detail="File not found on disk")
 
     # Extract filename from path

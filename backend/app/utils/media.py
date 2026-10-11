@@ -15,7 +15,9 @@ from fastapi.responses import FileResponse
 
 MEDIA_ROOT = "/home/pacms/media"
 PACMS_ROOT = "/home/pacms"
-_ALLOWED_ROOTS = [os.path.realpath(MEDIA_ROOT), os.path.realpath(PACMS_ROOT)]
+# /home/pacms 전체가 아니라 파일 디렉터리만(소스·설정·venv 는 내려주지 않는다)
+_PACMS_FILE_DIRS = ("bank_files", "business_files", "inquiry_files", "related_documents", "images", "portrait")
+_ALLOWED_ROOTS = [os.path.realpath(MEDIA_ROOT)] + [os.path.realpath(os.path.join(PACMS_ROOT, d)) for d in _PACMS_FILE_DIRS]
 
 
 def _inside_allowed(path: str) -> bool:

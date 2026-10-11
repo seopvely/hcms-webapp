@@ -31,13 +31,13 @@ from app.models.customer import (
     project_board_categories,
 )
 from app.utils.html_sanitize import sanitize_html
+from app.utils.media import resolve_media_path
 
 router = APIRouter(prefix="/project-board", tags=["project-board"])
 
 STATUS_LABELS = {"1": "진행중", "2": "완료", "3": "보류"}
 UPLOAD_DIR = "/home/pacms/media/project_board_files"
 COMMENT_UPLOAD_DIR = "/home/pacms/media/project_board_comment_files"
-MEDIA_ROOT = "/home/pacms/media"
 
 ALLOWED_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
@@ -588,8 +588,8 @@ async def update_project_board(
                 .first()
             )
             if att:
-                full_path = os.path.join(MEDIA_ROOT, att.file)
-                if os.path.exists(full_path):
+                full_path = resolve_media_path(att.file)
+                if full_path:
                     os.remove(full_path)
                 db.delete(att)
 
@@ -641,8 +641,8 @@ def delete_project_board(
         .all()
     )
     for att in attachments:
-        full_path = os.path.join(MEDIA_ROOT, att.file)
-        if os.path.exists(full_path):
+        full_path = resolve_media_path(att.file)
+        if full_path:
             os.remove(full_path)
 
     db.delete(board)
@@ -861,8 +861,8 @@ def delete_board_comment(
 
     # 댓글 첨부파일 삭제
     for att in comment.comment_attachments:
-        full_path = os.path.join(MEDIA_ROOT, att.file)
-        if os.path.exists(full_path):
+        full_path = resolve_media_path(att.file)
+        if full_path:
             os.remove(full_path)
 
     db.delete(comment)
@@ -893,8 +893,8 @@ def download_board_attachment(
     if not attachment:
         raise HTTPException(status_code=404, detail="첨부파일을 찾을 수 없습니다.")
 
-    full_path = os.path.join(MEDIA_ROOT, attachment.file)
-    if not os.path.exists(full_path):
+    full_path = resolve_media_path(attachment.file)
+    if not full_path:
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
 
     content_type, _ = mimetypes.guess_type(attachment.filename)
@@ -929,8 +929,8 @@ def download_comment_attachment(
     if not attachment:
         raise HTTPException(status_code=404, detail="첨부파일을 찾을 수 없습니다.")
 
-    full_path = os.path.join(MEDIA_ROOT, attachment.file)
-    if not os.path.exists(full_path):
+    full_path = resolve_media_path(attachment.file)
+    if not full_path:
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
 
     content_type, _ = mimetypes.guess_type(attachment.filename)

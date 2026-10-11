@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.endpoints.maintenance import calculate_remaining_points
+from app.services.points import calculate_remaining_points
 from app.api.endpoints.managed.common import (
     POINT_STATUS_LABELS,
     POINT_TYPE_LABELS,

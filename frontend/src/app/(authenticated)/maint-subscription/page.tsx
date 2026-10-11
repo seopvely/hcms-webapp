@@ -32,8 +32,8 @@ export default function MaintSubscriptionPage() {
 
   const sub = data?.subscription;
   const remainingPercent =
-    sub && sub.monthly_points > 0
-      ? Math.max(0, Math.round((sub.points_remaining / sub.monthly_points) * 100))
+    sub && sub.cycle_points > 0
+      ? Math.max(0, Math.round((sub.points_remaining / sub.cycle_points) * 100))
       : 0;
 
   return (
@@ -110,10 +110,11 @@ export default function MaintSubscriptionPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <p className="text-xs text-muted-foreground">월 지급</p>
+                      <p className="text-xs text-muted-foreground">이번 주기 지급</p>
                       <p className="text-lg font-bold">
-                        <AnimatedCounter value={sub.monthly_points} suffix=" P" />
+                        <AnimatedCounter value={sub.cycle_points} suffix=" P" />
                       </p>
+                      <p className="text-[11px] text-muted-foreground">월 {sub.monthly_points}P</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">사용</p>
