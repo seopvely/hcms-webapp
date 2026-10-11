@@ -50,7 +50,7 @@ export default function StaffInquiriesPage() {
                       </p>
                     </div>
                     {i.customer_replied_last && <Badge className="bg-red-100 text-red-700">고객 답글</Badge>}
-                    <Badge className={STATUS_COLORS[i.status ?? ""] ?? "bg-muted"}>{i.status_label}</Badge>
+                    <Badge className={`min-w-16 justify-center ${STATUS_COLORS[i.status ?? ""] ?? "bg-muted"}`}>{i.status_label}</Badge>
                   </Link>
                 ))}
               </CardContent>

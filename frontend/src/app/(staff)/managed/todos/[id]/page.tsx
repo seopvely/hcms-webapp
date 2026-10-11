@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -29,13 +30,14 @@ export default function TodoDetailPage() {
   const isNew = id === "new";
   const search = useSearchParams();
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["todos", "detail", id], isNew ? null : `/todos/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["todos", "detail", id], isNew ? null : `/todos/${id}`);
   const ml = search.get("managelist");
   const it = search.get("inditask");
   const { data: prefill, isLoading: preLoading } = useStaffGet<Dict>(["todos", "prefill", ml, it], isNew && (ml || it) ? "/todos/prefill" : null, { managelist: ml, inditask: it });
   useEffect(() => {
     setPageTitle(isNew ? "할일 등록" : "할일");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   if (isNew && (ml || it) && preLoading) return <DetailSkeleton />;
   const init = isNew ? { ...(prefill ?? {}), tags_text: (prefill?.tags as string) ?? "" } : data!;

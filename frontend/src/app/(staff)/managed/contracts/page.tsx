@@ -49,7 +49,7 @@ export default function StaffContractsPage() {
                     <p className="truncate text-xs text-muted-foreground">{c.contract_number} · {c.party_a_name} · 발송 {fmtDate(c.sent_at)} · 고객서명 {fmtDate(c.customer_signed_at)}</p>
                   </div>
                   <span className="text-sm">{(c.contract_amount ?? 0).toLocaleString()}원</span>
-                  <Badge className={CONTRACT_STATUS_COLORS[c.status] ?? "bg-muted"}>{c.status_label}</Badge>
+                  <Badge className={`min-w-16 justify-center ${CONTRACT_STATUS_COLORS[c.status] ?? "bg-muted"}`}>{c.status_label}</Badge>
                 </Link>
               ))}
             </CardContent></Card>

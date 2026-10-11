@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -30,10 +31,11 @@ export default function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["meetings", "detail", id], isNew ? null : `/meetings/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["meetings", "detail", id], isNew ? null : `/meetings/${id}`);
   useEffect(() => {
     setPageTitle(isNew ? "미팅 등록" : "미팅약속");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition><Editor key={id} id={id} data={isNew ? null : data!} /></PageTransition>;
 }

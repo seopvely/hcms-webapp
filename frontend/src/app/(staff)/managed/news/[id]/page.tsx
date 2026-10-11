@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -25,10 +26,12 @@ export default function StaffNewsDetailPage() {
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data: me } = useStaffMe();
-  const { data, isLoading } = useStaffNewsDetail(isNew ? null : Number(id));
+  const { data, isLoading, error } = useStaffNewsDetail(isNew ? null : Number(id));
   useEffect(() => {
     setPageTitle(isNew ? "소식 등록" : "최신소식");
   }, [setPageTitle, isNew]);
+
+  if (!isNew && error) return <LoadFailed error={error} />;
 
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   const canWrite = isNew ? !!me?.write_areas.includes("news") : !!data?.write_enabled;

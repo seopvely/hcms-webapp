@@ -1,4 +1,5 @@
 "use client";
+import { FilterCard } from "@/components/managed/filter-card";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FolderKanban, Plus, Tags } from "lucide-react";
@@ -31,8 +32,7 @@ export default function StaffBoardPage() {
     <PageTransition>
       <div className="space-y-4">
         {data && !data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/project-board/`} />}
-        <Card className="rounded-2xl">
-          <CardContent className="grid gap-3 pt-5 pb-5 sm:grid-cols-3">
+        <FilterCard className="grid gap-3 sm:grid-cols-3">
             <Field label="프로젝트">
               <select className={selectClass} value={params.project_id ?? ""} onChange={(e) => setParams({ ...params, page: 1, project_id: e.target.value ? Number(e.target.value) : undefined })}>
                 <option value="">전체</option>
@@ -52,8 +52,7 @@ export default function StaffBoardPage() {
                 <Button variant="outline" className="rounded-xl" onClick={() => setManagingCats(true)}><Tags className="mr-1 h-4 w-4" /> 카테고리</Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </FilterCard>
         {isLoading ? (
           <TableSkeleton />
         ) : !data?.items.length ? (
@@ -71,7 +70,7 @@ export default function StaffBoardPage() {
                         {b.company_name} · {b.project_title} · {b.writer_name}{b.is_staff ? "(직원)" : "(고객)"} · {fmtDate(b.created_at)} · 답글 {b.reply_count} · 댓글 {b.comment_count}
                       </p>
                     </div>
-                    <Badge className={BOARD_STATUS_COLORS[b.status ?? ""] ?? "bg-muted"}>{b.status_label}</Badge>
+                    <Badge className={`min-w-16 justify-center ${BOARD_STATUS_COLORS[b.status ?? ""] ?? "bg-muted"}`}>{b.status_label}</Badge>
                   </Link>
                 ))}
               </CardContent>

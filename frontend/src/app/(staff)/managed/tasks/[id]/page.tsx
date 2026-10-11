@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -27,7 +28,7 @@ export default function StaffTaskDetailPage() {
   const router = useRouter();
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { toast } = useToast();
-  const { data, isLoading } = useStaffTask(seq);
+  const { data, isLoading, error } = useStaffTask(seq);
   const mutate = useTaskMutation();
   const [content, setContent] = useState("");
   const [editorKey, setEditorKey] = useState(0);
@@ -37,6 +38,8 @@ export default function StaffTaskDetailPage() {
   useEffect(() => {
     setPageTitle("건별작업 상세");
   }, [setPageTitle]);
+
+  if (error) return <LoadFailed error={error} />;
 
   if (isLoading || !data) return <DetailSkeleton />;
 

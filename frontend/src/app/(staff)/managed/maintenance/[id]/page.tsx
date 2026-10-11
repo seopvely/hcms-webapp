@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -59,7 +60,7 @@ export default function StaffMaintenanceDetailPage() {
   const router = useRouter();
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { toast } = useToast();
-  const { data, isLoading } = useStaffMaintenanceDetail(seq);
+  const { data, isLoading, error } = useStaffMaintenanceDetail(seq);
   const action = useMaintenanceAction();
   const execute = useExecutePoints();
   const [stepUp, setStepUp] = useState<StepUp | null>(null);
@@ -79,6 +80,8 @@ export default function StaffMaintenanceDetailPage() {
     }
     return children;
   }, [data]);
+
+  if (error) return <LoadFailed error={error} />;
 
   if (isLoading || !data) return <DetailSkeleton />;
   const canWrite = data.write_enabled;

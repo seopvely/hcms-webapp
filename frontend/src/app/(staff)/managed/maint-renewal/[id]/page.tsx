@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -24,10 +25,11 @@ type Plan = { label: string; points: number; hosting_price: number; maint_price:
 export default function MaintRenewalDetailPage() {
   const { id } = useParams<{ id: string }>();
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["maint-renewal", "detail", id], `/maint-renewal/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["maint-renewal", "detail", id], `/maint-renewal/${id}`);
   useEffect(() => {
     setPageTitle("유지보수 전환");
   }, [setPageTitle]);
+  if (error) return <LoadFailed error={error} />;
   if (isLoading || !data) return <DetailSkeleton />;
   return <PageTransition><Detail key={String(data.status)} id={id} data={data} /></PageTransition>;
 }

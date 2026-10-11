@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -44,10 +45,11 @@ export default function StaffLeadPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffLead(isNew ? null : Number(id));
+  const { data, isLoading, error } = useStaffLead(isNew ? null : Number(id));
   useEffect(() => {
     setPageTitle(isNew ? "영업접수 등록" : "영업접수");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return isNew ? <LeadForm lead={null} onDone={() => undefined} /> : <LeadView lead={data!} />;
 }

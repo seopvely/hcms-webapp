@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -27,10 +28,11 @@ export default function SubscriptionDetailPage() {
   const { kind, id } = useParams<{ kind: string; id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["subscriptions", kind, "detail", id], isNew ? null : `/subscriptions/${kind}/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["subscriptions", kind, "detail", id], isNew ? null : `/subscriptions/${kind}/${id}`);
   useEffect(() => {
     setPageTitle(isNew ? "개발 구독 등록" : kind === "dev" ? "개발 구독" : "유지보수 구독");
   }, [setPageTitle, isNew, kind]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition>{isNew ? <DevCreate /> : <Detail kind={kind} id={id} data={data!} />}</PageTransition>;
 }

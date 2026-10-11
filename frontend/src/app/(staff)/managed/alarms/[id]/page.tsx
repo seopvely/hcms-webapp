@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -26,10 +27,11 @@ export default function AlarmDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["alarms", "detail", id], isNew ? null : `/alarms/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["alarms", "detail", id], isNew ? null : `/alarms/${id}`);
   useEffect(() => {
     setPageTitle(isNew ? "알람 등록" : "알람");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition><Editor key={id} id={id} data={isNew ? null : data!} /></PageTransition>;
 }

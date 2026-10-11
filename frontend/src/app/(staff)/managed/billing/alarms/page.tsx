@@ -82,7 +82,7 @@ export default function AlarmsPage() {
                     <p className="truncate text-sm font-semibold">{a.title as string}</p>
                     <p className="truncate text-xs text-muted-foreground">{(a.cycle_label as string) || "주기없음"} {a.payment_day as number}일 · 다음 결제일 {fmtDate(a.next_payment_date as string)} · {a.notify_days_before as number}일 전 알림</p>
                   </div>
-                  <span className="text-sm">{won(a.amount)}</span>
+                  <span className="w-32 shrink-0 text-right text-sm tabular-nums">{won(a.amount)}</span>
                   {Boolean(a.is_paid) && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">입금완료</span>}
                   <span className={`rounded-full px-2 py-0.5 text-xs ${a.valid_status === "valid" ? "bg-blue-100 text-blue-700" : "bg-muted"}`}>{a.valid_status === "valid" ? "유효" : "무효"}</span>
                 </Link>

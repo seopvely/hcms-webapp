@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -24,7 +25,7 @@ export default function StaffInquiryDetailPage() {
   const seq = Number(id);
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { toast } = useToast();
-  const { data, isLoading } = useStaffInquiry(seq);
+  const { data, isLoading, error } = useStaffInquiry(seq);
   const answer = useAnswerInquiry(seq);
   const [content, setContent] = useState("");
   const [editorKey, setEditorKey] = useState(0);
@@ -34,6 +35,8 @@ export default function StaffInquiryDetailPage() {
   useEffect(() => {
     setPageTitle("고객문의 상세");
   }, [setPageTitle]);
+
+  if (error) return <LoadFailed error={error} />;
 
   if (isLoading || !data) return <DetailSkeleton />;
 

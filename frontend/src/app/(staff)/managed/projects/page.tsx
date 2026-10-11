@@ -54,7 +54,7 @@ export default function StaffProjectsPage() {
                     <p className="truncate text-xs text-muted-foreground">{p.company_name as string} · {p.project_type_label as string} · {fmtDate(p.contract_date as string)} ~ {fmtDate(p.contract_termination_date as string)}{(p.extension_count as number) > 0 && ` · 연장 ${p.extension_count}회`}{(p.point as number) > 0 && ` · 월 ${p.point}P`}</p>
                   </div>
                   {Boolean(p.is_opened) && <Badge variant="outline">오픈</Badge>}
-                  <Badge className={PHASE_COLORS[p.phase as string] ?? "bg-muted"}>{p.phase_label as string}</Badge>
+                  <Badge className={`min-w-16 justify-center ${PHASE_COLORS[p.phase as string] ?? "bg-muted"}`}>{p.phase_label as string}</Badge>
                 </Link>
               ))}
             </CardContent></Card>

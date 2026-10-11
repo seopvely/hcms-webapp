@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -107,12 +108,13 @@ function ContractView({ seq }: { seq: number }) {
   const router = useRouter();
   const { toast } = useToast();
   const { data: me } = useStaffMe();
-  const { data, isLoading } = useStaffContract(seq);
+  const { data, isLoading, error } = useStaffContract(seq);
   const mutate = useSalesMutation();
   const [editing, setEditing] = useState(false);
   const [sendMode, setSendMode] = useState<"send" | "resend" | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  if (error) return <LoadFailed error={error} />;
   if (isLoading || !data) return <DetailSkeleton />;
   if (editing) return <ContractForm initial={data} estimateId={null} seq={seq} onDone={() => setEditing(false)} />;
   const canWrite = data.write_enabled;

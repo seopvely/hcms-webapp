@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -38,10 +39,11 @@ export default function FdeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["fde", "detail", id], isNew ? null : `/fde/engagements/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["fde", "detail", id], isNew ? null : `/fde/engagements/${id}`);
   useEffect(() => {
     setPageTitle(isNew ? "FDE 계약 등록" : "FDE 계약");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition><Editor key={id} id={id} data={isNew ? null : data!} /></PageTransition>;
 }

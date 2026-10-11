@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,7 +28,7 @@ export default function StaffAccountDetailPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { toast } = useToast();
   const { data: me } = useStaffMe();
-  const { data, isLoading } = useAccount(seq);
+  const { data, isLoading, error } = useAccount(seq);
   const mutate = useAccountMutation();
   const [companyEdit, setCompanyEdit] = useState(false);
   const [managerEdit, setManagerEdit] = useState<CustomerManager | "new" | null>(null);
@@ -35,6 +36,8 @@ export default function StaffAccountDetailPage() {
   useEffect(() => {
     setPageTitle("업체·고객 계정");
   }, [setPageTitle]);
+
+  if (error) return <LoadFailed error={error} />;
 
   if (isLoading || !data) return <DetailSkeleton />;
   const canWrite = data.write_enabled;

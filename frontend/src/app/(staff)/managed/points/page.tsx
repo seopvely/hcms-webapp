@@ -1,4 +1,5 @@
 "use client";
+import { FilterCard } from "@/components/managed/filter-card";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Coins, Plus } from "lucide-react";
@@ -76,8 +77,7 @@ export default function StaffPointsPage() {
           </div>
         </div>
 
-        <Card className="rounded-2xl">
-          <CardContent className="grid gap-3 pt-5 pb-5 sm:grid-cols-3">
+        <FilterCard className="grid gap-3 sm:grid-cols-3">
             <Field label="업체">
               <select className={selectClass} value={params.company_id ?? ""} onChange={(e) => set({ company_id: e.target.value ? Number(e.target.value) : undefined, project_id: undefined })}>
                 <option value="">전체</option>
@@ -98,8 +98,7 @@ export default function StaffPointsPage() {
                 <option value="3">책정</option>
               </select>
             </Field>
-          </CardContent>
-        </Card>
+          </FilterCard>
 
         {isLoading ? (
           <TableSkeleton />
@@ -111,7 +110,7 @@ export default function StaffPointsPage() {
               <CardContent className="divide-y p-0">
                 {data.items.map((r) => (
                   <div key={r.seq} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                    <Badge className={TYPE_COLORS[r.point_type ?? ""] ?? "bg-muted"}>{r.point_type_label}/{r.status_label}</Badge>
+                    <Badge className={`min-w-16 justify-center ${TYPE_COLORS[r.point_type ?? ""] ?? "bg-muted"}`}>{r.point_type_label}/{r.status_label}</Badge>
                     <div className="min-w-0 flex-1">
                       <p className="truncate">
                         {r.managelist_id ? <Link className="hover:underline" href={`/managed/maintenance/${r.managelist_id}`}>{r.content}</Link> : r.content}

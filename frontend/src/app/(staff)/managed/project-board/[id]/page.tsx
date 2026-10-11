@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -46,7 +47,7 @@ function PostView({ seq }: { seq: number }) {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { toast } = useToast();
   const { data: me } = useStaffMe();
-  const { data, isLoading } = useStaffBoardPost(seq);
+  const { data, isLoading, error } = useStaffBoardPost(seq);
   const mutate = useBoardMutation();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -54,6 +55,8 @@ function PostView({ seq }: { seq: number }) {
   useEffect(() => {
     setPageTitle("프로젝트구축진행");
   }, [setPageTitle]);
+
+  if (error) return <LoadFailed error={error} />;
 
   if (isLoading || !data) return <DetailSkeleton />;
   const canWrite = data.write_enabled;
@@ -91,7 +94,7 @@ function PostView({ seq }: { seq: number }) {
               <option value="1">진행중</option><option value="2">완료</option><option value="3">보류</option>
             </select>
           )}
-          {isRoot && !canWrite && <Badge className={BOARD_STATUS_COLORS[p.status ?? ""] ?? "bg-muted"}>{p.status_label}</Badge>}
+          {isRoot && !canWrite && <Badge className={`min-w-16 justify-center ${BOARD_STATUS_COLORS[p.status ?? ""] ?? "bg-muted"}`}>{p.status_label}</Badge>}
           {isRoot && canWrite && p.is_staff && p.writer_id === me?.id && (
             <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs" onClick={() => setEditing(true)}>
               <Pencil className="h-3 w-3" />

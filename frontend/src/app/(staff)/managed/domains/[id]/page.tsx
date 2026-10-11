@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -25,10 +26,11 @@ export default function StaffDomainPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["domains", "detail", id], isNew ? null : `/domains/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["domains", "detail", id], isNew ? null : `/domains/${id}`);
   useEffect(() => {
     setPageTitle(isNew ? "도메인 등록" : "도메인");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <DomainEditor key={id} id={id} data={isNew ? null : data!} />;
 }

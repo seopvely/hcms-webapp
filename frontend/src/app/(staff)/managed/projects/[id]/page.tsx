@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -55,10 +56,11 @@ export default function StaffProjectPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffGet<Dict>(["projects", "detail", id], isNew ? null : `/projects/${id}`);
+  const { data, isLoading, error } = useStaffGet<Dict>(["projects", "detail", id], isNew ? null : `/projects/${id}`);
   useEffect(() => {
     setPageTitle(isNew ? "프로젝트 등록" : "프로젝트");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return isNew ? <ProjectForm project={null} onDone={() => undefined} /> : <ProjectView p={data!} />;
 }

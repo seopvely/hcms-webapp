@@ -1,4 +1,5 @@
 "use client";
+import { FilterCard } from "@/components/managed/filter-card";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Coins, Plus, Search, Wrench } from "lucide-react";
@@ -42,8 +43,7 @@ export default function StaffMaintenanceListPage() {
       <div className="space-y-4">
         {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/managelist`} />}
 
-        <Card className="rounded-2xl">
-          <CardContent className="grid gap-3 pt-5 pb-5 sm:grid-cols-2 lg:grid-cols-4">
+        <FilterCard className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="업체">
               <select className={selectClass} value={params.company_id ?? ""} onChange={(e) => set({ company_id: num(e.target.value), project_id: undefined })}>
                 <option value="">전체</option>
@@ -94,8 +94,7 @@ export default function StaffMaintenanceListPage() {
                 <Search className="h-4 w-4" />
               </Button>
             </form>
-          </CardContent>
-        </Card>
+          </FilterCard>
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-xl" onClick={() => setPendingOpen(true)}>

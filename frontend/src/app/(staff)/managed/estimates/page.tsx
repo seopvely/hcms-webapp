@@ -1,4 +1,5 @@
 "use client";
+import { FilterCard } from "@/components/managed/filter-card";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BarChart3, FileText, Plus, Search } from "lucide-react";
@@ -30,8 +31,7 @@ export default function StaffEstimatesPage() {
     <PageTransition>
       <div className="space-y-4">
         {data && !data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/estimate/`} />}
-        <Card className="rounded-2xl">
-          <CardContent className="flex flex-wrap items-end gap-3 pt-5 pb-5">
+        <FilterCard className="flex flex-wrap items-end gap-3">
             <Field label="상태" className="w-40">
               <select className={selectClass} value={params.status ?? ""} onChange={(e) => setParams({ ...params, page: 1, status: e.target.value || undefined })}>
                 <option value="">전체</option>
@@ -44,8 +44,7 @@ export default function StaffEstimatesPage() {
             </form>
             <Button variant="outline" className="rounded-xl" asChild><Link href="/managed/estimates/dashboard"><BarChart3 className="mr-1 h-4 w-4" /> 대시보드</Link></Button>
             {data?.write_enabled && <Button className="rounded-xl" asChild><Link href="/managed/estimates/new"><Plus className="mr-1 h-4 w-4" /> 새 견적</Link></Button>}
-          </CardContent>
-        </Card>
+          </FilterCard>
         {isLoading ? <TableSkeleton /> : !data?.items.length ? <EmptyState icon={FileText} title="견적서가 없습니다" /> : (
           <>
             <Card className="rounded-2xl">
@@ -56,9 +55,9 @@ export default function StaffEstimatesPage() {
                       <p className="truncate text-sm font-semibold">{e.title}</p>
                       <p className="truncate text-xs text-muted-foreground">{e.estimate_number} · {e.company_name} · {e.manager_name || "-"} · 작성 {fmtDate(e.written_date)}</p>
                     </div>
-                    <span className="text-sm font-medium">{e.total.toLocaleString()}원</span>
+                    <span className="w-32 shrink-0 text-right text-sm tabular-nums font-medium">{e.total.toLocaleString()}원</span>
                     {e.withdrawn && <Badge className="bg-orange-100 text-orange-700">계약철회</Badge>}
-                    <Badge className={ESTIMATE_STATUS_COLORS[e.status] ?? "bg-muted"}>{e.status_label}</Badge>
+                    <Badge className={`min-w-16 justify-center ${ESTIMATE_STATUS_COLORS[e.status] ?? "bg-muted"}`}>{e.status_label}</Badge>
                   </Link>
                 ))}
               </CardContent>

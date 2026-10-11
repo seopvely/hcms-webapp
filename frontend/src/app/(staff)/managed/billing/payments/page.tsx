@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { fmtDate } from "@/components/managed/field";
+import { fmtDate, meta } from "@/components/managed/field";
 import { Pager } from "@/components/managed/pager";
 import { BillingShell, STATUS_COLOR, useBillingWritable, won } from "@/components/managed/billing-ui";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -54,9 +54,9 @@ export default function PaymentsPage() {
                 <Link key={p.seq as number} href={`/managed/billing/payments/${p.seq}`} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-muted/40">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{(p.company as string) || "-"} · {(p.project as string) || "프로젝트 없음"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{(p.payment_type_label as string) || "-"} · {(p.project_type_label as string) || "-"} · 결제일 {fmtDate(p.payment_date as string)}{p.payment_alarm_title ? ` · 알람 ${p.payment_alarm_title}` : ""}</p>
+                    <p className="truncate text-xs text-muted-foreground">{meta(p.payment_type_label as string, p.project_type_label as string, p.payment_date ? `결제일 ${fmtDate(p.payment_date as string)}` : null, p.payment_alarm_title ? `알람 ${p.payment_alarm_title}` : null)}</p>
                   </div>
-                  <span className="text-sm">{won(p.payment_amount ?? p.production_price)}</span>
+                  <span className="w-32 shrink-0 text-right text-sm tabular-nums">{won(p.payment_amount ?? p.production_price)}</span>
                   <span className={`max-w-[18rem] truncate rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[p.status_color as string] ?? "bg-muted"}`} title={p.status_text as string}>{p.status_text as string}</span>
                 </Link>
               ))}

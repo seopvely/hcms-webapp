@@ -55,7 +55,7 @@ export default function PaymentHistoryPage() {
                         {params.type === "purchase" && (h.has_purchase_invoice ? " · 매입계산서 연결" : "")}
                       </p>
                     </div>
-                    <span className="text-sm">{won(total)}</span>
+                    <span className="w-32 shrink-0 text-right text-sm tabular-nums">{won(total)}</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs ${h.payment_tf === "1" ? "bg-blue-100 text-blue-700" : "bg-muted"}`}>{h.payment_tf === "1" ? "입금확인" : "미확인"}</span>
                     <span className="w-20 text-right text-xs text-muted-foreground">{fmtDate(h.created_at as string)}</span>
                   </Link>

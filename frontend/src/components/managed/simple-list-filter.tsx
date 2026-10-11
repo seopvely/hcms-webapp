@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { FilterCard } from "@/components/managed/filter-card";
 import { Input } from "@/components/ui/input";
 import { Field, selectClass } from "@/components/managed/field";
 import { useLookupCompanies } from "@/lib/staff-maintenance";
@@ -22,8 +22,7 @@ export function SimpleListFilter({
   const { data: companies } = useLookupCompanies();
   const [keyword, setKeyword] = useState(value.q ?? "");
   return (
-    <Card className="rounded-2xl">
-      <CardContent className="grid gap-3 pt-5 pb-5 sm:grid-cols-2 lg:grid-cols-4">
+    <FilterCard className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="업체">
           <select className={selectClass} value={value.company_id ?? ""} onChange={(e) => onChange({ company_id: e.target.value ? Number(e.target.value) : undefined })}>
             <option value="">전체</option>
@@ -43,7 +42,6 @@ export function SimpleListFilter({
           </Field>
           <Button type="submit" className="rounded-xl"><Search className="h-4 w-4" /></Button>
         </form>
-      </CardContent>
-    </Card>
+    </FilterCard>
   );
 }

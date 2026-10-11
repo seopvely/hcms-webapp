@@ -1,7 +1,8 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, LogOut, Search, X } from "lucide-react";
+import { ChevronDown, ExternalLink, LogOut, Search, X } from "lucide-react";
 import { openCommandPalette } from "@/components/managed/command-palette";
 import { cn } from "@/lib/utils";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -23,6 +24,27 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
   const activeHref = STAFF_NAV.flatMap((g) => g.items)
     .filter((i) => !i.legacy && (pathname === i.href || pathname.startsWith(i.href + "/")))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const activeGroup = nav.find((g) => g.items.some((i) => i.href === activeHref))?.title;
+
+  // 접어 둔 그룹(브라우저에 기억). 지금 보고 있는 화면의 그룹은 항상 펼친다.
+  // (사이드바는 직원 정보를 받은 뒤 클라이언트에서만 그려지므로 초기값을 바로 읽어도 된다)
+  const [collapsed, setCollapsed] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hcms_staff_nav_collapsed") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const toggle = (title: string) =>
+    setCollapsed((c) => {
+      const next = c.includes(title) ? c.filter((t) => t !== title) : [...c, title];
+      try {
+        localStorage.setItem("hcms_staff_nav_collapsed", JSON.stringify(next));
+      } catch {
+        // 저장소를 쓸 수 없는 환경
+      }
+      return next;
+    });
 
   return (
     <>
@@ -60,11 +82,24 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-4">
-          {nav.map((group) => (
+        <nav className="flex-1 overflow-y-auto p-3 space-y-2">
+          {nav.map((group) => {
+            const isOpen = group.items.length === 1 || group.title === activeGroup || !collapsed.includes(group.title);
+            return (
             <div key={group.title}>
-              <p className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{group.title}</p>
-              <div className="space-y-0.5">
+              {group.items.length > 1 ? (
+                <button
+                  onClick={() => toggle(group.title)}
+                  className="flex w-full items-center px-4 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300"
+                  aria-expanded={isOpen}
+                >
+                  {group.title}
+                  <ChevronDown className={cn("ml-auto h-3.5 w-3.5 transition-transform", !isOpen && "-rotate-90")} />
+                </button>
+              ) : (
+                <p className="px-4 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{group.title}</p>
+              )}
+              <div className={cn("space-y-0.5", !isOpen && "hidden")}>
                 {group.items.map((item) =>
                   item.legacy || item.newTab ? (
                     <a
@@ -72,7 +107,7 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
                       href={item.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between gap-2 px-4 py-2 rounded-xl text-sm text-slate-300 hover:bg-white/10 hover:text-white"
+                      className="flex items-center justify-between gap-2 px-4 py-1.5 rounded-xl text-sm text-slate-300 hover:bg-white/10 hover:text-white"
                       title={item.legacy ? "cms 에서 열기" : "새 탭에서 열기"}
                     >
                       {item.label}
@@ -84,7 +119,7 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
-                        "flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                        "flex items-center px-4 py-1.5 rounded-xl text-sm font-medium transition-all",
                         item.href === activeHref
                           ? "bg-white/15 text-white border-l-4 border-blue-400 pl-3"
                           : "text-slate-300 hover:bg-white/10 hover:text-white"
@@ -96,7 +131,8 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-white/10">

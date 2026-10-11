@@ -1,4 +1,5 @@
 "use client";
+import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -74,10 +75,11 @@ export default function StaffEstimatePage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const { data, isLoading } = useStaffEstimate(isNew ? null : Number(id));
+  const { data, isLoading, error } = useStaffEstimate(isNew ? null : Number(id));
   useEffect(() => {
     setPageTitle(isNew ? "새 견적" : "견적서");
   }, [setPageTitle, isNew]);
+  if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return isNew ? <EstimateForm detail={null} onDone={() => undefined} /> : <EstimateView detail={data!} />;
 }

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { fmtDate } from "@/components/managed/field";
+import { meta, fmtDate } from "@/components/managed/field";
 import { Pager } from "@/components/managed/pager";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
@@ -49,9 +49,9 @@ export default function StaffSalesPage() {
                 <Link key={l.seq} href={`/managed/sales/${l.seq}`} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-muted/40">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{l.title || "(제목 없음)"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{l.client_company} · {l.client_name} · {l.source_label} · 담당 {l.manager_name || "-"} · {fmtDate(l.created_at)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{meta(l.client_company, l.client_name, l.source_label, l.manager_name && `담당 ${l.manager_name}`, fmtDate(l.created_at))}</p>
                   </div>
-                  {l.expected_amount > 0 && <span className="text-sm">{l.expected_amount.toLocaleString()}원</span>}
+                  <span className="w-32 shrink-0 text-right text-sm tabular-nums">{l.expected_amount > 0 ? `${l.expected_amount.toLocaleString()}원` : ""}</span>
                   {l.priority === "high" && <Badge className="bg-red-100 text-red-700">높음</Badge>}
                   <Badge variant="outline">{l.status_label}</Badge>
                 </Link>
