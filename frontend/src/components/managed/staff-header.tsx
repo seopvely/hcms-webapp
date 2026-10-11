@@ -42,7 +42,7 @@ export function StaffHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex items-center gap-3 border-b border-border/50 bg-background/85 px-4 py-2.5 backdrop-blur-md lg:px-6",
+        "sticky top-0 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border/50 bg-background/85 px-4 py-2.5 backdrop-blur-md lg:px-6",
         "pt-[calc(0.625rem+env(safe-area-inset-top))]",
       )}
     >
@@ -67,8 +67,14 @@ export function StaffHeader() {
         )}
         <h1 className="truncate text-lg font-semibold leading-tight">{pageTitle}</h1>
       </div>
-      {/* 버튼이 많으면 좁은 화면에서는 가로로 스크롤(제목을 밀어내지 않게 최대 폭 제한) */}
-      <div id={PAGE_ACTIONS_ID} className="flex max-w-[60vw] shrink-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] sm:max-w-none [&::-webkit-scrollbar]:hidden" />
+      {/* 좁은 화면에서 버튼이 2개 이상이면 둘째 줄로 내리고(제목을 지키려고) 넘치면 가로 스크롤 */}
+      <div
+        id={PAGE_ACTIONS_ID}
+        className={cn(
+          "flex max-w-[60vw] shrink-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] empty:hidden sm:max-w-none [&::-webkit-scrollbar]:hidden",
+          "max-sm:[&:has(>:nth-child(2))]:order-last max-sm:[&:has(>:nth-child(2))]:max-w-full max-sm:[&:has(>:nth-child(2))]:basis-full",
+        )}
+      />
       <button onClick={openCommandPalette} className="rounded-xl p-2 hover:bg-accent" aria-label="메뉴 검색" title="메뉴 검색 (⌘K)">
         <Search className="h-5 w-5" />
       </button>
