@@ -336,3 +336,18 @@ def notify_manager_contract_signed(to_email, contract_id, title, number, signer)
         [("계약명", esc(title or "")), ("계약번호", esc(number or "")), ("서명자", esc(signer or ""))],
         f"{settings.STAFF_BASE_URL}/managed/contract/{contract_id}/", "계약서 확인하기",
     ))
+
+
+def notify_staff_contract_event(to_emails, contract_id, title, number, label, actor, detail=""):
+    """을 서명·계약 철회 → 계약·견적 담당 직원 메일(처리한 본인은 받는 쪽에서 뺀다)."""
+    to_emails = [e for e in to_emails if e]
+    if not to_emails:
+        return
+    esc = html.escape
+    items = [("계약명", esc(title or "")), ("계약번호", esc(number or "")), ("처리", label), ("처리자", esc(actor or ""))]
+    if detail:
+        items.append(("내용", esc(detail)[:1000]))
+    send_email_async(to_emails, f"[계약서 {label}] {title} - {number}", _build_html(
+        f"계약서가 {label} 처리되었습니다", items,
+        f"{settings.STAFF_BASE_URL}/managed/contract/{contract_id}/", "계약서 확인하기",
+    ))

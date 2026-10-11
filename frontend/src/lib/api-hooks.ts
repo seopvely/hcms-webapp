@@ -1194,48 +1194,6 @@ export function useCreateDevRequestComment(devRequestId: number) {
   });
 }
 
-// ============ AI Dev Subscription ============
-
-export interface AIDevSubscription {
-  seq: number;
-  plan_type: string;
-  plan_label: string;
-  status: string;
-  status_label: string;
-  build_fee: number;
-  monthly_price: number;
-  start_date: string;
-  next_charge_date: string;
-  is_beta: boolean;
-  notes?: string | null;  // 고객 API 에서 제거됨(내부 메모)
-  created_at: string;
-}
-
-async function fetchAIDevSubscriptions(): Promise<AIDevSubscription[]> {
-  const { data } = await api.get("/ai-dev-subscriptions");
-  return data;
-}
-
-async function fetchAIDevSubscription(seq: number): Promise<AIDevSubscription> {
-  const { data } = await api.get(`/ai-dev-subscriptions/${seq}`);
-  return data;
-}
-
-export function useAIDevSubscriptions() {
-  return useQuery({
-    queryKey: ["ai-dev-subscriptions", "list"],
-    queryFn: fetchAIDevSubscriptions,
-  });
-}
-
-export function useAIDevSubscription(seq: number) {
-  return useQuery({
-    queryKey: ["ai-dev-subscriptions", "detail", seq],
-    queryFn: () => fetchAIDevSubscription(seq),
-    enabled: !!seq,
-  });
-}
-
 // ============ 통합 플랜(유지보수 구독) ============
 
 export interface MaintSubscriptionInfo {

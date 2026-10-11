@@ -1,6 +1,6 @@
 """계약전환·철회 (/api/managed/estimates/{id}/convert, /api/managed/contracts/{id}/withdraw*).
 쓰기 영역 'conversion' — cms 의 전환·철회 버튼을 막는 시점에 켠다(두 구현이 동시에 살아 있지 않게)."""
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from app.models.customer import CustomAuthUser, EstimateContract, SalesLead
 from app.services import contracts as contract_svc
 from app.services import conversion as svc
 from app.services import staff_auth
+from app.services.email import notify_staff_contract_event
 
 router = APIRouter(tags=["managed-conversion"])
 WRITE = require_write("conversion")
@@ -56,7 +57,8 @@ class WithdrawBody(BaseModel):
 
 
 @router.post("/contracts/{seq}/withdraw", dependencies=[WRITE])
-def withdraw(seq: int, body: WithdrawBody, request: Request, staff: CustomAuthUser = Depends(get_current_staff),
+def withdraw(seq: int, body: WithdrawBody, request: Request, background: BackgroundTasks,
+             staff: CustomAuthUser = Depends(get_current_staff),
              db: Session = Depends(get_db)):
     verify_step_up(staff, body.password)
     if body.project_action not in ("stop", "delete"):
@@ -68,4 +70,6 @@ def withdraw(seq: int, body: WithdrawBody, request: Request, staff: CustomAuthUs
     contract_svc.history(db, c, "cancelled", result["description"], request, staff.id, staff.name or staff.username)
     staff_auth.audit(db, request, "contract_withdraw", user_id=staff.id, target=f"contract:{seq}", detail=", ".join(result["done"])[:500])
     db.commit()
+    background.add_task(notify_staff_contract_event, contract_svc.owner_emails(db, c, staff.id), c.seq, c.contract_title,
+                        c.contract_number, "철회", staff.name or staff.username, (body.reason or "").strip())
     return result

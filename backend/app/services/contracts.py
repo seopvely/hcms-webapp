@@ -145,6 +145,20 @@ def _keep_archived_pdfs(session: Session) -> None:
     session.info.pop("contract_pdf_files", None)
 
 
+def owner_emails(db: Session, c: EstimateContract, exclude_id: int | None = None) -> list[str]:
+    """계약서를 만든·발송한 직원과 연결 견적 담당자의 메일(처리한 직원 제외)."""
+    from app.models.customer import CustomAuthUser
+    ids = {c.created_by_id, c.sent_by_id}
+    if c.estimate_id:
+        e = db.query(Estimate.estimate_manager_id).filter(Estimate.seq == c.estimate_id).first()
+        ids.add(e[0] if e else None)
+    ids = {i for i in ids if i and i != exclude_id}
+    if not ids:
+        return []
+    return sorted({u.email for u in db.query(CustomAuthUser).filter(CustomAuthUser.id.in_(ids), CustomAuthUser.is_active == True)  # noqa: E712
+                   if u.email})
+
+
 def sign_hash(c: EstimateContract, signer: str, signed_at: datetime, ip: str | None, suffix: str = "") -> str:
     data = f"{c.contract_number}|{signer}|{signed_at.isoformat()}|{ip}{suffix}|{body_hash(c)}"
     return hashlib.sha256(data.encode("utf-8")).hexdigest()

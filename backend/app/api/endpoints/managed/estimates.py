@@ -49,6 +49,8 @@ PROJECT_TYPES = {
 }
 SENDABLE = {"1", "2", "4"}
 MANUAL_STATUSES = {"1", "2", "3", "4"}
+# 수동 상태 변경 허용 전이(SPEC 04 §3: 1→2→3/4, 계약전환 5 는 전환·철회 기능으로만)
+MANUAL_TRANSITIONS = {"1": {"2"}, "2": {"1", "3", "4"}, "3": {"2", "4"}, "4": {"1", "2"}}
 NUMBER_RE = re.compile(r"^EST-(\d{8})-(\d{4})$")
 
 
@@ -532,6 +534,8 @@ def change_status(seq: int, body: StatusBody, background: BackgroundTasks,
         raise HTTPException(status_code=400, detail="계약전환된 견적서는 계약 철회로만 되돌릴 수 있습니다.")
     if body.status == _st(e):
         return {"ok": True}
+    if body.status not in MANUAL_TRANSITIONS.get(_st(e), set()):
+        raise HTTPException(status_code=400, detail=f"{STATUS_LABELS.get(_st(e))} → {STATUS_LABELS.get(body.status)} 로는 바꿀 수 없습니다.")
     previous = _st(e)
     _history(db, e, body.status, staff.id, (body.reason or "").strip())
     e.estimate_status = body.status

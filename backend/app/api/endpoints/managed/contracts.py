@@ -23,7 +23,7 @@ from app.models.customer import CustomAuthUser, Estimate, EstimateContract, Esti
 from app.models.manager import Manager
 from app.services import contracts as svc
 from app.services import staff_auth
-from app.services.email import send_contract_mail
+from app.services.email import notify_staff_contract_event, send_contract_mail
 from app.services.staff_auth import client_ip
 
 router = APIRouter(prefix="/contracts", tags=["managed-contracts"])
@@ -311,7 +311,8 @@ def resend_contract(seq: int, body: SendBody, request: Request, background: Back
 
 
 @router.post("/{seq}/manager-sign", dependencies=[WRITE])
-def manager_sign(seq: int, request: Request, staff: CustomAuthUser = Depends(get_current_staff), db: Session = Depends(get_db)):
+def manager_sign(seq: int, request: Request, background: BackgroundTasks, staff: CustomAuthUser = Depends(get_current_staff),
+                 db: Session = Depends(get_db)):
     c = _get(db, seq, lock=True)
     if svc.status_of(c) != "4":
         raise HTTPException(status_code=400, detail="고객 서명이 완료된 계약서만 을 서명할 수 있습니다.")
@@ -331,6 +332,8 @@ def manager_sign(seq: int, request: Request, staff: CustomAuthUser = Depends(get
     svc.history(db, c, "manager_signed", f"을 서명 완료: {name} (타임스탬프 인증: {c.manager_signed_hash[:16]}...)",
                 request, staff.id, name)
     db.commit()
+    background.add_task(notify_staff_contract_event, svc.owner_emails(db, c, staff.id), c.seq, c.contract_title,
+                        c.contract_number, "을 서명(체결)", name)
     return {"ok": True}
 
 

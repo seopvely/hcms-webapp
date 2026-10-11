@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/api-hooks";
+import { BETA_MONTHS, DEV_PLAN_PRICES, won } from "@/lib/dev-plans";
 
 function serviceInquiryUrl(service: string, plan: string) {
   return `/inquiries/create?service=${encodeURIComponent(service)}&plan=${encodeURIComponent(plan)}`;
@@ -48,8 +49,8 @@ const DEV_TASKS = [
 const DEV_SUB_PLANS = [
   {
     name: "STARTER",
-    price: "390,000",
-    betaPrice: "270,000",
+    price: won(DEV_PLAN_PRICES.STARTER.price),
+    betaPrice: won(DEV_PLAN_PRICES.STARTER.betaPrice),
     maint: "15점/월",
     dev: null,
     sla: "영업일 24시간 내",
@@ -66,8 +67,8 @@ const DEV_SUB_PLANS = [
   },
   {
     name: "GROWTH",
-    price: "890,000",
-    betaPrice: "620,000",
+    price: won(DEV_PLAN_PRICES.GROWTH.price),
+    betaPrice: won(DEV_PLAN_PRICES.GROWTH.betaPrice),
     maint: "20점/월",
     dev: "15점/월",
     sla: "영업일 12시간 내",
@@ -84,8 +85,8 @@ const DEV_SUB_PLANS = [
   },
   {
     name: "SCALE",
-    price: "1,790,000",
-    betaPrice: "1,250,000",
+    price: won(DEV_PLAN_PRICES.SCALE.price),
+    betaPrice: won(DEV_PLAN_PRICES.SCALE.betaPrice),
     maint: "30점/월",
     dev: "40점/월",
     sla: "영업일 4시간 내",
@@ -351,7 +352,7 @@ export default function ServicesPage() {
                     베타 요금 — 선착순 3개 기업
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    지금 신청하시면 <strong>첫 3개월간 30% 할인된 베타 요금</strong>으로 시작합니다. 베타 종료 후 정상 요금 자동 전환, 원치 않으면 언제든 해지 가능합니다.
+                    지금 신청하시면 <strong>첫 {BETA_MONTHS}개월간 30% 할인된 베타 요금</strong>으로 시작합니다. 베타 종료 후 정상 요금 자동 전환, 원치 않으면 언제든 해지 가능합니다.
                   </p>
                 </div>
               </div>
@@ -378,7 +379,7 @@ export default function ServicesPage() {
                         <span className="text-sm text-muted-foreground">원/월</span>
                       </div>
                       <p className="text-xs text-amber-600 font-medium mt-0.5">
-                        → 베타 {plan.betaPrice}원 (첫 3개월)
+                        → 베타 {plan.betaPrice}원 (첫 {BETA_MONTHS}개월)
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">{plan.description}</p>
@@ -467,7 +468,7 @@ export default function ServicesPage() {
                     <td className="px-4 py-3 text-center">3만 원/점</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 text-muted-foreground">베타가 (첫 3개월)</td>
+                    <td className="px-4 py-3 text-muted-foreground">베타가 (첫 {BETA_MONTHS}개월)</td>
                     <td className="px-4 py-3 text-center text-amber-600 font-medium">27만 원</td>
                     <td className="px-4 py-3 text-center text-amber-600 font-medium">62만 원</td>
                     <td className="px-4 py-3 text-center text-amber-600 font-medium">125만 원</td>

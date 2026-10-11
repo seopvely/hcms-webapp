@@ -100,13 +100,16 @@ def convert(db: Session, staff: CustomAuthUser, estimate_id: int, sales_lead_id:
         subscriptions.convert_dev_subscription(db, e, project, staff)
     if e.project_type == "15":
         subscriptions.convert_maint_subscription(db, e, project, staff)
+    fde = _link_fde_engagement(db, e, project) if e.project_type == "16" else None
 
     # 지불조건 구간별 납부 + 납부내역 (착수금 1 / 중도금 2 / 잔금 6, 결제대기 3·미완료 2)
     total = amounts(e)["total"]
     sections = [(e.deposit_pct, e.deposit_due_date, "1", "착수금", "deposit_amount"),
                 (e.progress_pct, e.progress_due_date, "2", "중도금", "progress_amount"),
                 (e.balance_pct, e.balance_due_date, "6", "잔금", "balance_amount")]
-    if any(s[0] for s in sections):
+    if fde is not None and fde[1] == "monthly_prepaid":
+        pass  # FDE 상주는 월 선결제 — 청구는 FDE 계약 화면의 청구 생성으로(이중 청구 방지, SPEC 05 §7.5)
+    elif any(s[0] for s in sections):
         for pct, due, ptype, label, field in sections:
             if not pct:
                 continue
@@ -141,6 +144,27 @@ def convert(db: Session, staff: CustomAuthUser, estimate_id: int, sales_lead_id:
     db.add(EstimateStatusHistory(estimate_id=e.seq, previous_status=previous_status, new_status="5", changed_by_id=staff.id,
                                  change_reason=reason, created_at=now))
     return project
+
+
+def _link_fde_engagement(db: Session, e: Estimate, project: Project):
+    """FDE(유형 16) 견적 전환: 이 견적을 원천으로 등록된 FDE 계약에 프로젝트를 연결하고 진행으로 바꾼다.
+
+    견적에는 FDE 요금제 칸이 없어(pacms 마이그레이션 인계) 계약은 FDE 화면에서 '원천 견적'으로 먼저 등록한다.
+    돌려주는 값: (계약, billing_kind) 또는 None(연결할 계약 없음 — 일반 납부 생성).
+    """
+    from app.models.fde import FdeEngagement, ServicePlan
+    eng = (db.query(FdeEngagement).filter(FdeEngagement.source_estimate_id == e.seq, FdeEngagement.project_id.is_(None))
+           .order_by(FdeEngagement.id.desc()).with_for_update().first())
+    if eng is None:
+        return None
+    eng.project_id = project.seq
+    if eng.status in ("consulting", "quoted"):
+        eng.status = "active"
+    if not eng.start_date and e.contract_date:
+        eng.start_date = _date(e.contract_date)
+    eng.updated_at = datetime.now()
+    plan = db.query(ServicePlan.billing_kind).filter(ServicePlan.plan_id == eng.plan_id).first()
+    return eng, plan[0] if plan else None
 
 
 def _conversion_payments(db: Session, e: Estimate, project_id: int):
@@ -250,6 +274,12 @@ def withdraw(db: Session, staff: CustomAuthUser, c: EstimateContract, reason: st
         if n:
             db.execute(text(f"DELETE FROM `{table}` WHERE source_estimate_id=:e"), {"e": e.seq})
             done.append(f"{label} {n}건 회수")
+
+    # 유형 16: 전환 때 연결한 FDE 계약을 견적 단계로 되돌린다(청구가 있으면 화면에서 따로 정리)
+    n = db.execute(text("UPDATE fde_engagement SET project_id=NULL, status='quoted', updated_at=NOW() "
+                        "WHERE source_estimate_id=:e AND project_id=:p"), {"e": e.seq, "p": project.seq}).rowcount
+    if n:
+        done.append(f"FDE 계약 {n}건 연결 해제('견적')")
 
     e.converted_project_id = None
     e.project_id = None

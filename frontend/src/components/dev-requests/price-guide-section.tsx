@@ -5,6 +5,7 @@ import { Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BETA_MONTHS, DEV_PLAN_PRICES, won } from "@/lib/dev-plans";
 
 export function DevPriceGuideSection() {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,10 +43,10 @@ export function DevPriceGuideSection() {
                   <Card className="py-4 border-slate-200 bg-slate-50 dark:bg-slate-900/30 dark:border-slate-700">
                     <CardContent className="px-4 py-0">
                       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">STARTER</p>
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">월 390,000원</p>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">월 {won(DEV_PLAN_PRICES.STARTER.price)}원</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">유지보수 15점/월</p>
                       <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">개발 포인트 미포함</p>
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">베타: 270,000원/월</p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">베타: {won(DEV_PLAN_PRICES.STARTER.betaPrice)}원/월</p>
                     </CardContent>
                   </Card>
                   <Card className="py-4 border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-700">
@@ -54,19 +55,19 @@ export function DevPriceGuideSection() {
                         <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">GROWTH</p>
                         <Badge className="h-4 px-1.5 text-[10px] bg-blue-500 text-white border-0">인기</Badge>
                       </div>
-                      <p className="text-sm font-bold text-blue-700 dark:text-blue-200">월 890,000원</p>
+                      <p className="text-sm font-bold text-blue-700 dark:text-blue-200">월 {won(DEV_PLAN_PRICES.GROWTH.price)}원</p>
                       <p className="text-xs text-blue-600/80 dark:text-blue-400 mt-0.5">유지보수 20점 + 개발 15점/월</p>
                       <p className="text-xs text-blue-500/70 dark:text-blue-500 mt-0.5">응답: 영업일 12시간 내</p>
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">베타: 620,000원/월</p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">베타: {won(DEV_PLAN_PRICES.GROWTH.betaPrice)}원/월</p>
                     </CardContent>
                   </Card>
                   <Card className="py-4 border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800">
                     <CardContent className="px-4 py-0">
                       <p className="text-xs font-semibold text-purple-500 dark:text-purple-400 mb-1">SCALE</p>
-                      <p className="text-sm font-bold text-purple-700 dark:text-purple-200">월 1,790,000원</p>
+                      <p className="text-sm font-bold text-purple-700 dark:text-purple-200">월 {won(DEV_PLAN_PRICES.SCALE.price)}원</p>
                       <p className="text-xs text-purple-600/80 dark:text-purple-400 mt-0.5">유지보수 30점 + 개발 40점/월</p>
                       <p className="text-xs text-purple-500/70 dark:text-purple-500 mt-0.5">응답: 영업일 4시간 내</p>
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">베타: 1,250,000원/월</p>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">베타: {won(DEV_PLAN_PRICES.SCALE.betaPrice)}원/월</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -75,7 +76,7 @@ export function DevPriceGuideSection() {
                 <Card className="py-4 border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800">
                   <CardContent className="px-4 py-0">
                     <p className="text-sm font-semibold text-green-700 dark:text-green-300">
-                      선착순 3개 기업 — 첫 3개월 30% 할인
+                      선착순 3개 기업 — 첫 {BETA_MONTHS}개월 30% 할인
                     </p>
                     <p className="text-xs text-green-600/80 dark:text-green-400 mt-0.5">
                       베타 종료 후 정상 요금 자동 전환 · 언제든 해지 가능

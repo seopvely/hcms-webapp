@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   // cms(/managed) 옛 경로 → hcms 새 경로. 메일·북마크 링크 호환(SPEC 부록A). 정적 export(앱) 빌드에서는 무시된다.
   async redirects() {
     return [
+      // AI 개발팀 구독 고객 화면 폐기(SPEC 05 §7.7 — FDE 로 대체)
+      { source: "/ai-dev-subscription/:path*", destination: "/dashboard", permanent: false },
       { source: "/managed/main", destination: "/managed", permanent: false },
       { source: "/managed/managelist", destination: "/managed/maintenance", permanent: false },
       { source: "/managed/managelist_detail/:id", destination: "/managed/maintenance/:id", permanent: false },
@@ -94,6 +96,34 @@ const nextConfig: NextConfig = {
       { source: "/managed/monthly-revenue", destination: "/managed/billing/revenue", permanent: false },
       { source: "/managed/sales-plan", destination: "/managed/billing/sales-plan", permanent: false },
       { source: "/managed/suppliermanage/:id", destination: "/managed/accounts/:id", permanent: false },
+      // 부록A 보완(SPEC 감사 #44~47): 수정·하위 화면 옛 경로
+      { source: "/managed/managelist_update/:id(\\d+)", destination: "/managed/maintenance/:id", permanent: false },
+      { source: "/managed/history_detail/:id(\\d+)", destination: "/managed/maintenance/:id", permanent: false },
+      { source: "/managed/oneperone_detail/:id(\\d+)", destination: "/managed/inquiries/:id", permanent: false },
+      { source: "/managed/inditask_update/:id(\\d+)", destination: "/managed/tasks/:id", permanent: false },
+      { source: "/managed/point-guide/download/:file", destination: "/managed/points/guide", permanent: false },
+      { source: "/managed/custom_update/:id(\\d+)/:company(\\d+)", destination: "/managed/accounts/:company", permanent: false },
+      { source: "/managed/supplier_register", destination: "/managed/accounts", permanent: false },
+      { source: "/managed/news/register", destination: "/managed/news/new", permanent: false },
+      { source: "/managed/news/detail/:id(\\d+)", destination: "/managed/news/:id", permanent: false },
+      { source: "/managed/news/update/:id(\\d+)", destination: "/managed/news/:id", permanent: false },
+      { source: "/managed/project-board/register", destination: "/managed/project-board/new", permanent: false },
+      { source: "/managed/project-board/update/:id(\\d+)", destination: "/managed/project-board/:id", permanent: false },
+      { source: "/managed/project-board/:id(\\d+)/reply", destination: "/managed/project-board/:id", permanent: false },
+      { source: "/managed/sales/register", destination: "/managed/sales/new", permanent: false },
+      { source: "/managed/sales/:id(\\d+)/update", destination: "/managed/sales/:id", permanent: false },
+      { source: "/managed/estimate/create", destination: "/managed/estimates", permanent: false },
+      { source: "/managed/estimate/:id(\\d+)/edit", destination: "/managed/estimates/:id", permanent: false },
+      { source: "/managed/estimate/:id(\\d+)/pdf", destination: "/managed/estimates/:id", permanent: false },
+      { source: "/managed/contract/register", destination: "/managed/contracts/new", permanent: false },
+      { source: "/managed/contract/create/:estimate(\\d+)", destination: "/managed/contracts/new?estimate=:estimate", permanent: false },
+      { source: "/managed/contract/:id(\\d+)/edit", destination: "/managed/contracts/:id", permanent: false },
+      { source: "/managed/contract/:id(\\d+)/preview", destination: "/managed/contracts/:id", permanent: false },
+      // 고객 메일의 옛 견적 토큰 링크 → 문서 토큰 화면(토큰 24시간)
+      { source: "/managed/estimate/:id(\\d+)/approve/:token", destination: "/estimate-auth?estimate_id=:id&token=:token&action=approve", permanent: false },
+      { source: "/managed/estimate/:id(\\d+)/reject/:token", destination: "/estimate-auth?estimate_id=:id&token=:token&action=reject", permanent: false },
+      { source: "/managed/estimate/:id(\\d+)/pdf/:token", destination: "/estimate-auth?estimate_id=:id&token=:token", permanent: false },
+      { source: "/customer/estimate/:id(\\d+)/revision/:token", destination: "/estimate-auth?estimate_id=:id&token=:token&action=revision", permanent: false },
     ];
   },
 
