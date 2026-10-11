@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { fmtDate, selectClass } from "@/components/managed/field";
+import { fmtDate, selectCls } from "@/components/managed/field";
 import { BillingShell, won } from "@/components/managed/billing-ui";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet } from "@/lib/staff-ops";
@@ -26,7 +26,7 @@ export default function RevenuePage() {
     <PageTransition>
       <BillingShell cmsPath="/managed/monthly-revenue/">
         <div className="flex items-center gap-2">
-          <select className={`${selectClass} w-auto`} value={year} onChange={(e) => { setYear(Number(e.target.value)); setMonth(0); }}>
+          <select className={selectCls("w-auto")} value={year} onChange={(e) => { setYear(Number(e.target.value)); setMonth(0); }}>
             {(data?.year_options ?? [year]).map((y) => <option key={y} value={y}>{y}년</option>)}
           </select>
           {month > 0 && <button className="text-xs underline" onClick={() => setMonth(0)}>월 선택 해제</button>}

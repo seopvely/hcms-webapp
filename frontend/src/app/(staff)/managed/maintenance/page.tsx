@@ -5,13 +5,14 @@ import Link from "next/link";
 import { CalendarDays, Coins, Plus, Search, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { StatusBadge } from "@/components/common/status-badge";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { Field, fmtDate, selectClass } from "@/components/managed/field";
+import { Field, fmtDate, meta, selectClass } from "@/components/managed/field";
+import { DataTable } from "@/components/managed/data-table";
+import { PageActions } from "@/components/managed/page-actions";
 import { Pager } from "@/components/managed/pager";
 import { PendingPointsDialog } from "@/components/managed/pending-points-dialog";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
@@ -96,23 +97,23 @@ export default function StaffMaintenanceListPage() {
             </form>
           </FilterCard>
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="rounded-xl" onClick={() => setPendingOpen(true)}>
-            <Coins className="mr-1 h-4 w-4" /> 포인트 미실행 조회
+        <PageActions>
+          <Button variant="outline" size="sm" className="hidden rounded-xl sm:inline-flex" onClick={() => setPendingOpen(true)}>
+            <Coins className="mr-1 h-4 w-4" /> 포인트 미실행
           </Button>
-          <Button variant="outline" className="rounded-xl" asChild>
+          <Button variant="outline" size="sm" className="hidden rounded-xl sm:inline-flex" asChild>
             <Link href="/managed/maintenance/schedule">
               <CalendarDays className="mr-1 h-4 w-4" /> 일정
             </Link>
           </Button>
           {canWrite && (
-            <Button className="rounded-xl" asChild>
+            <Button size="sm" className="rounded-xl" asChild>
               <Link href="/managed/maintenance/new">
-                <Plus className="mr-1 h-4 w-4" /> 새 요청 등록
+                <Plus className="mr-1 h-4 w-4" /> 새 요청
               </Link>
             </Button>
           )}
-        </div>
+        </PageActions>
 
         {isLoading ? (
           <TableSkeleton />
@@ -120,28 +121,52 @@ export default function StaffMaintenanceListPage() {
           <EmptyState icon={Wrench} title="유지보수 요청이 없습니다" description="필터를 바꿔 보세요." />
         ) : (
           <>
-            <Card className="rounded-2xl">
-              <CardContent className="divide-y p-0">
-                {data.items.map((m) => (
-                  <Link key={m.seq} href={`/managed/maintenance/${m.seq}`} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-muted/40">
-                    <span className="w-12 text-xs text-muted-foreground">#{m.seq}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
+            <DataTable
+              rows={data.items}
+              rowKey={(m) => m.seq}
+              rowHref={(m) => `/managed/maintenance/${m.seq}`}
+              sort={params.sort}
+              onSortChange={(sort) => set({ sort })}
+              columns={[
+                { key: "seq", header: "번호", sort: "seq", className: "w-16 text-xs text-muted-foreground", cell: (m) => `#${m.seq}` },
+                {
+                  key: "title", header: "제목", sort: "title", cell: (m) => (
+                    <div className="min-w-0 max-w-[420px]">
+                      <p className="truncate font-medium">
                         {m.title}
                         {m.is_free_maint && <Badge className="ml-2 bg-emerald-100 text-emerald-700">무상</Badge>}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {m.company_name} · {m.project_title || "프로젝트 없음"} · {m.writer_name || "-"} · 요청 {fmtDate(m.request_date)}
-                        {m.completion_date && ` · 완료예정 ${fmtDate(m.completion_date)}`}
-                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{meta(m.company_name, m.project_title || "프로젝트 없음")}</p>
                     </div>
-                    {m.pending_points > 0 && <Badge className="bg-amber-100 text-amber-700">미실행 {m.pending_points}P</Badge>}
-                    {m.points_used > 0 && <span className="text-xs text-muted-foreground">사용 {m.points_used}P</span>}
-                    <StatusBadge status={m.status ?? ""} type="maintenance" />
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
+                  ),
+                },
+                { key: "writer", header: "요청자", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (m) => m.writer_name || "-" },
+                { key: "request_date", header: "요청일", sort: "request_date", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (m) => fmtDate(m.request_date) },
+                { key: "completion_date", header: "완료예정", sort: "completion_date", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (m) => (m.completion_date ? fmtDate(m.completion_date) : "-") },
+                {
+                  key: "points", header: "포인트", align: "right", className: "w-28 whitespace-nowrap", cell: (m) => (
+                    <>
+                      {m.pending_points > 0 && <Badge className="bg-amber-100 text-amber-700">미실행 {m.pending_points}P</Badge>}
+                      {m.points_used > 0 && <span className="text-muted-foreground">{m.points_used}P</span>}
+                      {!m.pending_points && !m.points_used && <span className="text-muted-foreground">-</span>}
+                    </>
+                  ),
+                },
+                { key: "status", header: "상태", sort: "status", align: "center", className: "w-20", cell: (m) => <StatusBadge status={m.status ?? ""} type="maintenance" /> },
+              ]}
+              mobile={(m) => (
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {m.title}
+                      {m.is_free_maint && <Badge className="ml-2 bg-emerald-100 text-emerald-700">무상</Badge>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{meta(`#${m.seq}`, m.company_name, fmtDate(m.request_date), m.points_used > 0 && `${m.points_used}P`)}</p>
+                  </div>
+                  <StatusBadge status={m.status ?? ""} type="maintenance" />
+                </div>
+              )}
+            />
             <Pager page={data.page} totalPages={data.total_pages} total={data.total} onChange={(page) => set({ page })} />
           </>
         )}

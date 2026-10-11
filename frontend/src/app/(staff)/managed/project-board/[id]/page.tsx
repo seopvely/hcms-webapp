@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Paperclip, Pencil, Trash2 } from "lucide-react";
+import { Paperclip, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,10 +16,20 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { BOARD_STATUS_COLORS } from "@/components/managed/board-status";
 import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
 import { SafeHtml } from "@/components/managed/safe-html";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { type BoardFile, type BoardPost, useBoardCategories, useBoardMutation, useBoardProjects, useStaffBoardPost } from "@/lib/staff-content";
 import { useStaffMe } from "@/lib/staff-hooks";
+
+function Info({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{children}</dd>
+    </div>
+  );
+}
 
 function Files({ files }: { files: BoardFile[] }) {
   if (!files.length) return null;
@@ -53,8 +62,8 @@ function PostView({ seq }: { seq: number }) {
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    setPageTitle("프로젝트구축진행");
-  }, [setPageTitle]);
+    setPageTitle(data?.title || "프로젝트구축진행");
+  }, [data?.title, setPageTitle]);
 
   if (error) return <LoadFailed error={error} />;
 
@@ -89,18 +98,7 @@ function PostView({ seq }: { seq: number }) {
           <span>{fmtDateTime(p.created_at)}</span>
           {p.categories.map((c) => <Badge key={c} variant="outline">{c}</Badge>)}
           <div className="flex-1" />
-          {isRoot && canWrite && (
-            <select className="h-7 rounded-lg border px-1 text-xs" value={p.status ?? "1"} onChange={(e) => call(`/${p.seq}/status`, { status: e.target.value }, "상태를 변경했습니다.")}>
-              <option value="1">진행중</option><option value="2">완료</option><option value="3">보류</option>
-            </select>
-          )}
-          {isRoot && !canWrite && <Badge className={`min-w-16 justify-center ${BOARD_STATUS_COLORS[p.status ?? ""] ?? "bg-muted"}`}>{p.status_label}</Badge>}
-          {isRoot && canWrite && p.is_staff && p.writer_id === me?.id && (
-            <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs" onClick={() => setEditing(true)}>
-              <Pencil className="h-3 w-3" />
-            </Button>
-          )}
-          {canManage(p) && (
+          {!isRoot && canManage(p) && (
             <Button size="sm" variant="ghost" className="h-7 rounded-lg text-xs text-red-600" onClick={() => setDeleteTarget(`/${p.seq}/delete`)}>
               <Trash2 className="h-3 w-3" />
             </Button>
@@ -135,41 +133,72 @@ function PostView({ seq }: { seq: number }) {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild>
-          <Link href="/managed/project-board"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link>
-        </Button>
-        <p className="text-sm text-muted-foreground">{data.company_name} · {data.project_title}</p>
-        {editing ? (
-          <EditPost
-            post={data}
-            projectId={data.project_id}
-            onCancel={() => setEditing(false)}
-            onSave={async (body) => {
-              try {
-                await mutate.mutateAsync({ method: "patch", url: `/${seq}`, body });
-                toast("success", "수정했습니다.");
-                setEditing(false);
-              } catch (err) {
-                toast("error", apiErrorDetail(err, "수정에 실패했습니다."));
-              }
-            }}
-          />
-        ) : (
-          renderPost(data, true)
-        )}
-        {data.replies.map((r) => renderPost(r, false))}
-        {canWrite && (
-          <ReplyBox
-            onSubmit={async (title, content) => {
-              const form = new FormData();
-              form.append("project_id", String(data.project_id));
-              form.append("parent_id", String(seq));
-              form.append("title", title);
-              form.append("content", content);
-              return call("", form, "답글을 등록했습니다.");
-            }}
-          />
-        )}
+        <PageActions>
+          {canWrite && data.is_staff && data.writer_id === me?.id && (
+            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEditing(true)}>
+              <Pencil className="mr-1 h-4 w-4" /> 수정
+            </Button>
+          )}
+          {canManage(data) && (
+            <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteTarget(`/${data.seq}/delete`)}>
+              <Trash2 className="mr-1 h-4 w-4" /> 삭제
+            </Button>
+          )}
+        </PageActions>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
+            <Card className="rounded-2xl">
+              <CardContent className="pt-5 pb-5">
+                <dl className="space-y-3">
+                  <Info label="상태">
+                    {canWrite ? (
+                      <select className="h-7 rounded-lg border px-1 text-xs" value={data.status ?? "1"} onChange={(e) => call(`/${data.seq}/status`, { status: e.target.value }, "상태를 변경했습니다.")}>
+                        <option value="1">진행중</option><option value="2">완료</option><option value="3">보류</option>
+                      </select>
+                    ) : (
+                      <Badge className={`min-w-16 justify-center ${BOARD_STATUS_COLORS[data.status ?? ""] ?? "bg-muted"}`}>{data.status_label}</Badge>
+                    )}
+                  </Info>
+                  <Info label="업체">{data.company_name || "-"}</Info>
+                  <Info label="프로젝트">{data.project_title || "-"}</Info>
+                </dl>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="min-w-0 space-y-4">
+            {editing ? (
+              <EditPost
+                post={data}
+                projectId={data.project_id}
+                onCancel={() => setEditing(false)}
+                onSave={async (body) => {
+                  try {
+                    await mutate.mutateAsync({ method: "patch", url: `/${seq}`, body });
+                    toast("success", "수정했습니다.");
+                    setEditing(false);
+                  } catch (err) {
+                    toast("error", apiErrorDetail(err, "수정에 실패했습니다."));
+                  }
+                }}
+              />
+            ) : (
+              renderPost(data, true)
+            )}
+            {data.replies.map((r) => renderPost(r, false))}
+            {canWrite && (
+              <ReplyBox
+                onSubmit={async (title, content) => {
+                  const form = new FormData();
+                  form.append("project_id", String(data.project_id));
+                  form.append("parent_id", String(seq));
+                  form.append("title", title);
+                  form.append("content", content);
+                  return call("", form, "답글을 등록했습니다.");
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
       <AppAlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} title="삭제" description="삭제하면 되돌릴 수 없습니다(답글·댓글·첨부 포함)." confirmText="삭제" variant="destructive" onConfirm={confirmDelete} />
     </PageTransition>

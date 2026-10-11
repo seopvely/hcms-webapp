@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.config import settings
 from app.core.deps import get_current_staff
 from app.db.session import get_db
@@ -109,7 +109,9 @@ def _leads(db: Session, ids) -> dict:
 
 @router.get("")
 def list_meetings(q: str | None = None, status: str | None = None, meeting_type: str | None = None, page: int = Query(1, ge=1),
-                  per_page: int = Query(20, le=100), db: Session = Depends(get_db)):
+                  per_page: int = Query(20, le=100),
+                  sort: str | None = Query(None, description="meeting_date|title|meeting_type|valid_status, '-' 접두 = 내림차순"),
+                  db: Session = Depends(get_db)):
     query = db.query(MeetingAppointment)
     if q:
         like = f"%{q}%"
@@ -119,7 +121,10 @@ def list_meetings(q: str | None = None, status: str | None = None, meeting_type:
     if meeting_type:
         query = query.filter(MeetingAppointment.meeting_type == meeting_type)
     total = query.count()
-    rows = query.order_by(MeetingAppointment.meeting_date.desc(), MeetingAppointment.meeting_time.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    M = MeetingAppointment
+    query = apply_sort(query, sort, {"meeting_date": M.meeting_date, "title": M.title, "meeting_type": M.meeting_type, "valid_status": M.valid_status},
+                       [M.meeting_date.desc(), M.meeting_time.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     nxt = {}
     for mid, d in db.query(MeetingAlarm.meeting_id, MeetingAlarm.alarm_datetime).filter(
             MeetingAlarm.meeting_id.in_([m.seq for m in rows] or [0]), MeetingAlarm.notified == False).order_by(MeetingAlarm.alarm_datetime):  # noqa: E712

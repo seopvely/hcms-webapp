@@ -13,6 +13,7 @@ from app.api.endpoints.managed.common import (
     POINT_TYPE_LABELS,
     REQUEST_TYPE_LABELS,
     WORKER_TYPE_LABELS,
+    apply_sort,
     code,
     page_response,
     require_write,
@@ -67,6 +68,7 @@ def list_requests(
     date_from: date | None = None,
     date_to: date | None = None,
     q: str | None = None,
+    sort: str | None = Query(None, description="seq|title|request_date|completion_date|status, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -101,7 +103,10 @@ def list_requests(
                                  Company.name.like(like), Project.title.like(like)))
 
     total = query.count()
-    rows = query.order_by(Managelist.created_at.desc(), Managelist.seq.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"seq": Managelist.seq, "title": Managelist.title, "request_date": Managelist.request_date,
+                                     "completion_date": Managelist.completion_date, "status": Managelist.status},
+                       [Managelist.created_at.desc(), Managelist.seq.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
 
     ids = [m.seq for m in rows]
     pending = dict(
@@ -207,6 +212,7 @@ def search_comments(
     q: str | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    sort: str | None = Query(None, description="created_at|worker_type|status|point, '-' 접두 = 내림차순"),
     db: Session = Depends(get_db),
 ):
     """처리내역 검색(cms 댓글히스토리). 내용은 정화한 평문 요약."""
@@ -222,7 +228,10 @@ def search_comments(
     if q:
         query = query.filter(ManagelistComment.content.like(f"%{q.strip()}%"))
     total = query.count()
-    rows = query.order_by(ManagelistComment.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"created_at": ManagelistComment.created_at, "worker_type": ManagelistComment.worker_type,
+                                     "status": ManagelistComment.status, "point": ManagelistComment.point},
+                       [ManagelistComment.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     names = _staff_names(db, {c.writer_id for c, _ in rows})
     companies = {c.seq: c.name for c in db.query(Company).filter(Company.seq.in_({m.company_id for _, m in rows}))} if rows else {}
     items = [{

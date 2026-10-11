@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.endpoints.managed.common import code, page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, code, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import SessionLocal, get_db
 from app.models.company import Company
@@ -38,6 +38,7 @@ def list_inquiries(
     q: str | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    sort: str | None = Query(None, description="seq|title|status|created_at|answered_at, '-' 접두 = 내림차순"),
     db: Session = Depends(get_db),
 ):
     query = db.query(Inquiry).outerjoin(Company, Inquiry.company_id == Company.seq)
@@ -55,7 +56,9 @@ def list_inquiries(
         like = f"%{q.strip()}%"
         query = query.filter(or_(Inquiry.title.like(like), Inquiry.contents.like(like), Company.name.like(like)))
     total = query.count()
-    rows = query.order_by(Inquiry.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"seq": Inquiry.seq, "title": Inquiry.title, "status": Inquiry.status, "created_at": Inquiry.created_at,
+                                     "answered_at": Inquiry.answered_at}, [Inquiry.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     ids = [r.seq for r in rows]
     answers = dict(db.query(InquiryAnswer.inquiry_id, func.count(InquiryAnswer.seq)).filter(InquiryAnswer.inquiry_id.in_(ids)).group_by(InquiryAnswer.inquiry_id)) if ids else {}
     # 마지막 답글이 고객이면 직원 확인 필요

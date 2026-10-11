@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { History, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,15 +8,18 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { Field, fmtDateTime, selectClass } from "@/components/managed/field";
+import { Field, fmtDateTime, meta, selectClass } from "@/components/managed/field";
+import { DataTable } from "@/components/managed/data-table";
 import { Pager } from "@/components/managed/pager";
 import { useNavigationStore } from "@/store/navigation-store";
-import { useCommentSearch } from "@/lib/staff-maintenance";
+import { type CommentSearchItem, useCommentSearch } from "@/lib/staff-maintenance";
+
+const pointOf = (c: CommentSearchItem) => (c.point > 0 ? `${c.point}P${c.point_executed ? " 실행" : " 책정"}` : null);
 
 // 처리내역 검색 (cms 댓글히스토리 대체)
 export default function StaffCommentSearchPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const [params, setParams] = useState<{ q?: string; worker_type?: string; date_from?: string; date_to?: string; page: number }>({ page: 1 });
+  const [params, setParams] = useState<{ q?: string; worker_type?: string; date_from?: string; date_to?: string; sort?: string; page: number }>({ page: 1 });
   const [keyword, setKeyword] = useState("");
   const { data, isLoading } = useCommentSearch(params);
 
@@ -60,23 +62,47 @@ export default function StaffCommentSearchPage() {
           <EmptyState icon={History} title="처리 내역이 없습니다" />
         ) : (
           <>
-            <Card className="rounded-2xl">
-              <CardContent className="divide-y p-0">
-                {data.items.map((c) => (
-                  <Link key={c.comment_id} href={`/managed/maintenance/${c.managelist_id}`} className="block px-4 py-3 hover:bg-muted/40">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground">{c.writer_name}</span>
-                      {c.worker_type_label && <Badge variant="outline">{c.worker_type_label}</Badge>}
-                      {c.status_label && <span>{c.status_label}</span>}
-                      <span>{fmtDateTime(c.created_at)}</span>
-                      {c.point > 0 && <span>{c.point}P{c.point_executed ? " 실행" : " 책정"}</span>}
-                      <span className="truncate">· {c.company_name} / {c.title}</span>
+            <DataTable
+              rows={data.items}
+              rowKey={(c) => c.comment_id}
+              rowHref={(c) => `/managed/maintenance/${c.managelist_id}`}
+              sort={params.sort}
+              onSortChange={(sort) => set({ sort })}
+              columns={[
+                { key: "created_at", header: "작성일시", sort: "created_at", className: "w-36 whitespace-nowrap text-xs text-muted-foreground", cell: (c) => fmtDateTime(c.created_at) },
+                {
+                  key: "summary", header: "요청 · 내용", cell: (c) => (
+                    <div className="min-w-0 max-w-[520px]">
+                      <p className="truncate text-xs text-muted-foreground">{meta(c.company_name, c.title)}</p>
+                      <p className="line-clamp-2">{c.summary}</p>
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm">{c.summary}</p>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
+                  ),
+                },
+                {
+                  key: "writer", header: "작성자", sort: "worker_type", hideOnMobile: true, className: "w-36 whitespace-nowrap", cell: (c) => (
+                    <>
+                      <span className="font-semibold">{c.writer_name}</span>
+                      {c.worker_type_label && <Badge variant="outline" className="ml-1">{c.worker_type_label}</Badge>}
+                    </>
+                  ),
+                },
+                { key: "status", header: "상태", sort: "status", align: "center", hideOnMobile: true, className: "w-20 whitespace-nowrap text-xs", cell: (c) => c.status_label || "-" },
+                { key: "point", header: "포인트", sort: "point", align: "right", hideOnMobile: true, className: "w-24 whitespace-nowrap text-xs", cell: (c) => pointOf(c) || "-" },
+              ]}
+              mobile={(c) => (
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{c.writer_name}</span>
+                    {c.worker_type_label && <Badge variant="outline">{c.worker_type_label}</Badge>}
+                    {c.status_label && <span>{c.status_label}</span>}
+                    <span>{fmtDateTime(c.created_at)}</span>
+                    {pointOf(c) && <span>{pointOf(c)}</span>}
+                    <span className="truncate">· {c.company_name} / {c.title}</span>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm">{c.summary}</p>
+                </div>
+              )}
+            />
             <Pager page={data.page} totalPages={data.total_pages} total={data.total} onChange={(page) => setParams((p) => ({ ...p, page }))} />
           </>
         )}

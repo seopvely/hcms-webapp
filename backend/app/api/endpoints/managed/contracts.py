@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, verify_step_up, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, verify_step_up, write_enabled
 from app.services.estimate_calc import amounts
 from app.core.deps import get_current_staff
 from app.db.session import get_db
@@ -63,6 +63,7 @@ def list_contracts(
     q: str | None = None,
     status: str | None = None,
     company_id: int | None = None,
+    sort: str | None = Query(None, description="number|title|party_a|amount|sent_at|customer_signed_at|status, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -77,7 +78,12 @@ def list_contracts(
     if company_id:  # 직접 등록 계약(company_id)과 견적 기반 계약(견적 업체) 모두
         query = query.filter(or_(EstimateContract.company_id == company_id, Estimate.company_id == company_id))
     total = query.count()
-    rows = query.order_by(EstimateContract.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"number": EstimateContract.contract_number, "title": EstimateContract.contract_title,
+                                    "party_a": EstimateContract.party_a_name, "amount": EstimateContract.contract_amount,
+                                    "sent_at": EstimateContract.sent_at, "customer_signed_at": EstimateContract.customer_signed_at,
+                                    "status": EstimateContract.status},
+                       [EstimateContract.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     counts: dict[str, int] = {}
     for (s,) in db.query(EstimateContract.status):
         counts[str(s)] = counts.get(str(s), 0) + 1

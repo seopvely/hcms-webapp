@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { CardSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { fmtDate, selectClass } from "@/components/managed/field";
+import { fmtDate, selectCls } from "@/components/managed/field";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useEstimateDashboard } from "@/lib/staff-sales";
 
@@ -20,7 +20,7 @@ export default function EstimateDashboardPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <select className={`${selectClass} w-40`} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
+        <select className={selectCls("w-40")} value={months} onChange={(e) => setMonths(Number(e.target.value))}>
           {[3, 6, 12, 24].map((m) => <option key={m} value={m}>최근 {m}개월</option>)}
         </select>
         {!data ? <CardSkeleton /> : (

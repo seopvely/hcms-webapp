@@ -12,11 +12,13 @@ import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
-import { Field, apiErrorDetail, fmtDate, fmtDateTime, selectClass } from "@/components/managed/field";
+import { Field, apiErrorDetail, fmtDate, fmtDateTime, meta, selectClass } from "@/components/managed/field";
+import { DataTable } from "@/components/managed/data-table";
+import { PageActions } from "@/components/managed/page-actions";
 import { Pager } from "@/components/managed/pager";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffMe } from "@/lib/staff-hooks";
-import { useAdjustPoints, useLookupCompanies, useLookupProjects, usePointLedger, useProjectBalances } from "@/lib/staff-maintenance";
+import { type LedgerItem, useAdjustPoints, useLookupCompanies, useLookupProjects, usePointLedger, useProjectBalances } from "@/lib/staff-maintenance";
 
 const TYPE_COLORS: Record<string, string> = {
   "1": "bg-emerald-100 text-emerald-700",
@@ -24,12 +26,16 @@ const TYPE_COLORS: Record<string, string> = {
   "3": "bg-amber-100 text-amber-700",
 };
 
+const typeBadge = (r: LedgerItem) => <Badge className={`min-w-16 justify-center ${TYPE_COLORS[r.point_type ?? ""] ?? "bg-muted"}`}>{r.point_type_label}/{r.status_label}</Badge>;
+const contentOf = (r: LedgerItem) => (r.managelist_id ? <Link className="hover:underline" href={`/managed/maintenance/${r.managelist_id}`}>{r.content}</Link> : r.content);
+const pointOf = (r: LedgerItem) => <span className={`font-semibold ${r.point >= 0 ? "text-emerald-600" : ""}`}>{r.point > 0 ? "+" : ""}{r.point}P</span>;
+
 // 포인트 장부 — 프로젝트별 현재 주기 잔여(고객 화면과 같은 계산) + 장부(책정 포함) + 수동 조정.
 export default function StaffPointsPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data: me } = useStaffMe();
   const canAdjust = !!me?.write_areas.includes("points");
-  const [params, setParams] = useState<{ company_id?: number; project_id?: number; point_type?: string; page: number }>({ page: 1 });
+  const [params, setParams] = useState<{ company_id?: number; project_id?: number; point_type?: string; sort?: string; page: number }>({ page: 1 });
   const [adjustOpen, setAdjustOpen] = useState(false);
   const { data: balances } = useProjectBalances();
   const { data: companies } = useLookupCompanies();
@@ -45,16 +51,16 @@ export default function StaffPointsPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="rounded-xl" asChild>
+        <PageActions>
+          <Button variant="outline" size="sm" className="hidden rounded-xl sm:inline-flex" asChild>
             <Link href="/managed/points/guide"><BookOpen className="mr-1 h-4 w-4" /> 포인트 안내</Link>
           </Button>
           {canAdjust && (
-            <Button className="rounded-xl" onClick={() => setAdjustOpen(true)}>
+            <Button size="sm" className="rounded-xl" onClick={() => setAdjustOpen(true)}>
               <Plus className="mr-1 h-4 w-4" /> 수동 충전·차감
             </Button>
           )}
-        </div>
+        </PageActions>
 
         <div>
           <h2 className="mb-2 text-sm font-semibold">진행중 프로젝트 잔여 (현재 6개월 주기)</h2>
@@ -106,24 +112,37 @@ export default function StaffPointsPage() {
           <EmptyState icon={Coins} title="포인트 내역이 없습니다" />
         ) : (
           <>
-            <Card className="rounded-2xl">
-              <CardContent className="divide-y p-0">
-                {data.items.map((r) => (
-                  <div key={r.seq} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                    <Badge className={`min-w-16 justify-center ${TYPE_COLORS[r.point_type ?? ""] ?? "bg-muted"}`}>{r.point_type_label}/{r.status_label}</Badge>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate">
-                        {r.managelist_id ? <Link className="hover:underline" href={`/managed/maintenance/${r.managelist_id}`}>{r.content}</Link> : r.content}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {r.company_name} · {r.project_title || "프로젝트 없음"} · {r.category} · {r.writer_name || "-"} · {fmtDateTime(r.created_at)}
-                      </p>
+            <DataTable
+              rows={data.items}
+              rowKey={(r) => r.seq}
+              sort={params.sort}
+              onSortChange={(sort) => set({ sort })}
+              columns={[
+                { key: "point_type", header: "유형", sort: "point_type", align: "center", className: "w-28", cell: (r) => typeBadge(r) },
+                {
+                  key: "content", header: "내용", sort: "content", cell: (r) => (
+                    <div className="min-w-0 max-w-[480px]">
+                      <p className="truncate">{contentOf(r)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{meta(r.company_name, r.project_title || "프로젝트 없음", r.category, r.writer_name)}</p>
                     </div>
-                    <span className={`font-semibold ${r.point >= 0 ? "text-emerald-600" : ""}`}>{r.point > 0 ? "+" : ""}{r.point}P</span>
+                  ),
+                },
+                { key: "created_at", header: "일시", sort: "created_at", hideOnMobile: true, className: "w-36 whitespace-nowrap text-xs text-muted-foreground", cell: (r) => fmtDateTime(r.created_at) },
+                { key: "point", header: "포인트", sort: "point", align: "right", className: "w-24 whitespace-nowrap", cell: (r) => pointOf(r) },
+              ]}
+              mobile={(r) => (
+                <div className="flex items-center gap-3 text-sm">
+                  {typeBadge(r)}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate">{contentOf(r)}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.company_name} · {r.project_title || "프로젝트 없음"} · {r.category} · {r.writer_name || "-"} · {fmtDateTime(r.created_at)}
+                    </p>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
+                  {pointOf(r)}
+                </div>
+              )}
+            />
             <Pager page={data.page} totalPages={data.total_pages} total={data.total} onChange={(page) => setParams((p) => ({ ...p, page }))} />
           </>
         )}

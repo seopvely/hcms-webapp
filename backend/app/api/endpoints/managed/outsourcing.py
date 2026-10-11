@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.customer import (
@@ -98,6 +98,7 @@ def _maps(db: Session):
 
 @router.get("")
 def list_outsourcing(q: str | None = None, status: str | None = None, vendor_id: int | None = None,
+                     sort: str | None = Query(None, description="start_date|end_date|amount|is_paid|status, '-' 접두 = 내림차순"),
                      page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)):
     query = db.query(Outsourcing).outerjoin(OutsourcingVendor, Outsourcing.vendor_id == OutsourcingVendor.seq)
     if q:
@@ -108,7 +109,10 @@ def list_outsourcing(q: str | None = None, status: str | None = None, vendor_id:
     if vendor_id:
         query = query.filter(Outsourcing.vendor_id == vendor_id)
     total = query.count()
-    rows = query.order_by(Outsourcing.start_date.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"start_date": Outsourcing.start_date, "end_date": Outsourcing.end_date, "amount": Outsourcing.amount,
+                                    "is_paid": Outsourcing.is_paid, "status": Outsourcing.status},
+                       [Outsourcing.start_date.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     vendors, projects, staff = _maps(db)
     return page_response([_serialize(db, o, vendors, projects, staff) for o in rows], total, page, per_page) | {
         "choices": {"work_type": WORK_TYPES, "status": STATUS}, "write_enabled": write_enabled("outsourcing")}

@@ -4,13 +4,14 @@ import { Search, UserCog, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { DataTable } from "@/components/managed/data-table";
+import { fmtDate, meta } from "@/components/managed/field";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { useNavigationStore } from "@/store/navigation-store";
-import { impersonate, useCustomerAccounts, useStaffMe } from "@/lib/staff-hooks";
+import { type CustomerAccount, impersonate, useCustomerAccounts, useStaffMe } from "@/lib/staff-hooks";
 
 const PERMIT_LABELS: Record<string, { label: string; className: string }> = {
   "2": { label: "잠김", className: "bg-red-100 text-red-700" },
@@ -53,6 +54,23 @@ export default function ManagedCustomersPage() {
     }
   };
 
+  const permitLabel = (c: CustomerAccount) => {
+    const permit = PERMIT_LABELS[c.login_permit_tf ?? ""];
+    return permit ? <Badge className={permit.className}>{permit.label}</Badge> : null;
+  };
+  const openButton = (c: CustomerAccount) => (
+    <Button
+      size="sm"
+      variant="outline"
+      className="rounded-xl"
+      disabled={!me?.is_admin || busy !== null}
+      onClick={() => openAs(c.seq)}
+    >
+      <UserCog className="mr-1 h-4 w-4" />
+      {busy === c.seq ? "여는 중..." : "고객 화면 열기"}
+    </Button>
+  );
+
   return (
     <PageTransition>
       <div className="space-y-4">
@@ -75,35 +93,36 @@ export default function ManagedCustomersPage() {
         ) : !data?.items.length ? (
           <EmptyState icon={Users} title="고객 계정이 없습니다" description="검색어를 바꿔 보세요." />
         ) : (
-          <Card className="rounded-2xl">
-            <CardContent className="divide-y p-0">
-              {data.items.map((c) => {
-                const permit = PERMIT_LABELS[c.login_permit_tf ?? ""];
-                return (
-                  <div key={c.seq} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{c.company_name || "(회사 없음)"}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {c.name || "-"} · {c.login_id}
-                        {c.last_login && ` · 최근 로그인 ${c.last_login.slice(0, 10)}`}
-                      </p>
-                    </div>
-                    {permit && <Badge className={permit.className}>{permit.label}</Badge>}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-xl"
-                      disabled={!me?.is_admin || busy !== null}
-                      onClick={() => openAs(c.seq)}
-                    >
-                      <UserCog className="mr-1 h-4 w-4" />
-                      {busy === c.seq ? "여는 중..." : "고객 화면 열기"}
-                    </Button>
+          <DataTable
+            rows={data.items}
+            rowKey={(c) => c.seq}
+            columns={[
+              {
+                key: "company", header: "회사", sort: "company", value: (c) => c.company_name, cell: (c) => (
+                  <div className="min-w-0 max-w-[420px]">
+                    <p className="truncate font-medium">{c.company_name || "(회사 없음)"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{meta(c.name || "-", c.login_id)}</p>
                   </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                ),
+              },
+              { key: "last_login", header: "최근 로그인", sort: "last_login", value: (c) => c.last_login, hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (c) => fmtDate(c.last_login) },
+              { key: "permit", header: "상태", sort: "permit", value: (c) => PERMIT_LABELS[c.login_permit_tf ?? ""]?.label, align: "center", className: "w-20", cell: (c) => permitLabel(c) },
+              { key: "action", header: "", align: "right", className: "w-36", cell: (c) => openButton(c) },
+            ]}
+            mobile={(c) => (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{c.company_name || "(회사 없음)"}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {c.name || "-"} · {c.login_id}
+                    {c.last_login && ` · 최근 로그인 ${c.last_login.slice(0, 10)}`}
+                  </p>
+                </div>
+                {permitLabel(c)}
+                {openButton(c)}
+              </div>
+            )}
+          />
         )}
       </div>
     </PageTransition>

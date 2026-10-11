@@ -77,10 +77,10 @@ export interface NewsItem {
   content?: string;
 }
 
-export function useStaffNews(page: number) {
+export function useStaffNews(page: number, sort?: string) {
   return useQuery({
-    queryKey: ["staff", "news", "list", page],
-    queryFn: async (): Promise<Paged<NewsItem> & { write_enabled: boolean }> => (await staffApi.get("/managed/news", { params: { page } })).data,
+    queryKey: ["staff", "news", "list", page, sort],
+    queryFn: async (): Promise<Paged<NewsItem> & { write_enabled: boolean }> => (await staffApi.get("/managed/news", { params: { page, sort } })).data,
   });
 }
 
@@ -153,7 +153,7 @@ export interface BoardListItem {
   created_at: string | null;
 }
 
-export function useStaffBoard(params: { project_id?: number; status?: string; page: number }) {
+export function useStaffBoard(params: { project_id?: number; status?: string; sort?: string; page: number }) {
   return useQuery({
     queryKey: ["staff", "board", "list", params],
     queryFn: async (): Promise<Paged<BoardListItem> & { write_enabled: boolean }> => (await staffApi.get("/managed/project-board", { params })).data,

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.api.endpoints.managed.estimates import next_estimate_number
 from app.core.deps import get_current_staff
 from app.db.session import get_db
@@ -67,6 +67,7 @@ def list_leads(
     priority: str | None = None,
     manager_id: int | None = None,
     drafts: bool = False,
+    sort: str | None = Query(None, description="title|expected_amount|status|created_at, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -81,7 +82,10 @@ def list_leads(
         if value:
             query = query.filter(col == value)
     total = query.count()
-    rows = query.order_by(SalesLead.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"title": SalesLead.title, "expected_amount": SalesLead.expected_amount,
+                                    "status": SalesLead.status, "created_at": SalesLead.created_at},
+                       [SalesLead.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     staff = {u.id: (u.name or u.username) for u in db.query(CustomAuthUser)}
     pipeline = dict(db.query(SalesLead.status, func.count(SalesLead.seq)).filter(SalesLead.is_draft == False).group_by(SalesLead.status))  # noqa: E712
     draft_count = db.query(func.count(SalesLead.seq)).filter(SalesLead.is_draft == True).scalar()  # noqa: E712

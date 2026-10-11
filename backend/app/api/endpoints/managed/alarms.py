@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.customer import CustomAuthUser
@@ -80,7 +80,9 @@ def options(db: Session = Depends(get_db)):
 
 @router.get("")
 def list_alarms(q: str | None = None, status: str | None = None, when_to_notify: str | None = None, page: int = Query(1, ge=1),
-                per_page: int = Query(20, le=100), db: Session = Depends(get_db)):
+                per_page: int = Query(20, le=100),
+                sort: str | None = Query(None, description="title|last_sent_at|created_at|valid_status, '-' 접두 = 내림차순"),
+                db: Session = Depends(get_db)):
     query = db.query(AlarmSetting)
     if q:
         query = query.filter(or_(AlarmSetting.title.like(f"%{q}%"), AlarmSetting.content.like(f"%{q}%")))
@@ -89,7 +91,9 @@ def list_alarms(q: str | None = None, status: str | None = None, when_to_notify:
     if when_to_notify:
         query = query.filter(AlarmSetting.when_to_notify == when_to_notify)
     total = query.count()
-    rows = query.order_by(AlarmSetting.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"title": AlarmSetting.title, "last_sent_at": AlarmSetting.last_sent_at, "created_at": AlarmSetting.created_at,
+                                     "valid_status": AlarmSetting.valid_status}, [AlarmSetting.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     nxt = {}
     for aid, d in db.query(AlarmEventDate.alarm_id, AlarmEventDate.event_date).filter(
             AlarmEventDate.alarm_id.in_([r.seq for r in rows] or [0]), AlarmEventDate.notified == False).order_by(AlarmEventDate.event_date):  # noqa: E712
@@ -106,12 +110,16 @@ def _history_row(h: AlarmHistory, titles: dict) -> dict:
 
 
 @router.get("/history")
-def history(alarm_id: int | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=100), db: Session = Depends(get_db)):
+def history(alarm_id: int | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=100),
+            sort: str | None = Query(None, description="sent_at|status|recipient_count, '-' 접두 = 내림차순"),
+            db: Session = Depends(get_db)):
     query = db.query(AlarmHistory)
     if alarm_id:
         query = query.filter(AlarmHistory.alarm_setting_id == alarm_id)
     total = query.count()
-    rows = query.order_by(AlarmHistory.sent_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"sent_at": AlarmHistory.sent_at, "status": AlarmHistory.status, "recipient_count": AlarmHistory.recipient_count},
+                       [AlarmHistory.sent_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     titles = dict(db.query(AlarmSetting.seq, AlarmSetting.title).filter(AlarmSetting.seq.in_({h.alarm_setting_id for h in rows} or {0})))
     return page_response([_history_row(h, titles) for h in rows], total, page, per_page)
 

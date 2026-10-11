@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
 import { BillingShell, useBillingOptions, useBillingWritable, won } from "@/components/managed/billing-ui";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 
@@ -89,12 +90,12 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   );
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/billing/history"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        {data?.payment_id ? <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href={`/managed/billing/payments/${data.payment_id}`}>결제정보 #{data.payment_id as number}</Link></Button> : null}
-        <div className="flex-1" />
-        {data && canWrite && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>}
-      </div>
+      {data && (
+        <PageActions>
+          {data.payment_id ? <Button variant="outline" size="sm" className="rounded-xl" asChild><Link href={`/managed/billing/payments/${data.payment_id}`}>결제정보 #{data.payment_id as number}</Link></Button> : null}
+          {canWrite && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>}
+        </PageActions>
+      )}
       <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="업체">

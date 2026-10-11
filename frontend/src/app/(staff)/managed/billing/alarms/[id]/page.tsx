@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Power, Send, Trash2 } from "lucide-react";
+import { Power, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail, fmtDate, fmtDateTime, selectClass } from "@/components/managed/field";
 import { BillingShell, useBillingOptions, useBillingWritable } from "@/components/managed/billing-ui";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 
@@ -101,19 +101,19 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   const histories = (data?.histories as Dict[] | undefined) ?? [];
   return (
     <div className="space-y-4">
+      {data && canWrite && (
+        <PageActions>
+          <Button size="sm" variant="outline" className="rounded-xl" onClick={() => action(`/billing/alarms/${id}/toggle`, "상태를 바꿨습니다.")}><Power className="mr-1 h-4 w-4" /> 유효/무효</Button>
+          <Button size="sm" variant="outline" className="rounded-xl" onClick={() => action(`/billing/alarms/${id}/test-send`, "테스트 메일을 보냈습니다.")}><Send className="mr-1 h-4 w-4" /> 테스트 발송</Button>
+          <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>
+        </PageActions>
+      )}
+      {data && (
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/billing/alarms"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
         {data && <span className={`rounded-full px-2 py-0.5 text-xs ${data.valid_status === "valid" ? "bg-blue-100 text-blue-700" : "bg-muted"}`}>{data.valid_status === "valid" ? "유효" : "무효"}</span>}
         {data && <span className="text-xs text-muted-foreground">다음 결제일 {fmtDate(data.next_payment_date as string)} · 마지막 발송 {fmtDateTime(data.last_sent_at as string)}</span>}
-        <div className="flex-1" />
-        {data && canWrite && (
-          <>
-            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => action(`/billing/alarms/${id}/toggle`, "상태를 바꿨습니다.")}><Power className="mr-1 h-4 w-4" /> 유효/무효</Button>
-            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => action(`/billing/alarms/${id}/test-send`, "테스트 메일을 보냈습니다.")}><Send className="mr-1 h-4 w-4" /> 테스트 발송</Button>
-            <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>
-          </>
-        )}
       </div>
+      )}
       <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="제목 *" className="sm:col-span-2"><Input className="rounded-xl" disabled={!canWrite} value={v.title} onChange={(e) => set("title", e.target.value)} /></Field>

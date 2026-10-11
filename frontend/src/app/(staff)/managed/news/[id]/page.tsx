@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Paperclip, Trash2 } from "lucide-react";
+import { Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,6 +14,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
 import { SafeHtml } from "@/components/managed/safe-html";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { staffFileUrl, useLookupCompanies } from "@/lib/staff-maintenance";
 import { type NewsItem, useNewsMutation, useStaffNewsDetail } from "@/lib/staff-content";
@@ -28,8 +28,8 @@ export default function StaffNewsDetailPage() {
   const { data: me } = useStaffMe();
   const { data, isLoading, error } = useStaffNewsDetail(isNew ? null : Number(id));
   useEffect(() => {
-    setPageTitle(isNew ? "소식 등록" : "최신소식");
-  }, [setPageTitle, isNew]);
+    setPageTitle(isNew ? "소식 등록" : data?.title || "최신소식");
+  }, [setPageTitle, isNew, data?.title]);
 
   if (!isNew && error) return <LoadFailed error={error} />;
 
@@ -81,17 +81,13 @@ function NewsEditor({ news, canWrite }: { news: NewsItem | null; canWrite: boole
   return (
     <PageTransition>
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-xl" asChild>
-            <Link href="/managed/news"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link>
-          </Button>
-          <div className="flex-1" />
-          {canWrite && news && (
+        {canWrite && news && (
+          <PageActions>
             <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="mr-1 h-4 w-4" /> 삭제
             </Button>
-          )}
-        </div>
+          </PageActions>
+        )}
         {!canWrite && news ? (
           <Card className="rounded-2xl">
             <CardContent className="space-y-3 pt-5 pb-5">

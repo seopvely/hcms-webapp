@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.endpoints.estimates import WITHDRAW_REASON_PREFIX, build_estimate_pdf_data
 from app.services.estimate_calc import amounts
 from app.db.locks import hold_lock
-from app.api.endpoints.managed.common import page_response, require_write, verify_step_up, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, verify_step_up, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.company import Company
@@ -103,6 +103,7 @@ def list_estimates(
     q: str | None = None,
     company_id: int | None = None,
     status: str | None = None,
+    sort: str | None = Query(None, description="number|title|written_date|status|created_at, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -117,7 +118,10 @@ def list_estimates(
     if status:
         query = query.filter(Estimate.estimate_status == status)
     total = query.count()
-    rows = query.order_by(Estimate.created_at.desc(), Estimate.seq.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"number": Estimate.estimate_number, "title": Estimate.estimate_title, "written_date": Estimate.written_date,
+                                    "status": Estimate.estimate_status, "created_at": Estimate.created_at},
+                       [Estimate.created_at.desc(), Estimate.seq.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     withdrawn = _withdrawn_ids(db)
     managers = {u.id: (u.name or u.username) for u in db.query(CustomAuthUser)}
     items = [{

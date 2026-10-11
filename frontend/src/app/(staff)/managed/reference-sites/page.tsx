@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail } from "@/components/managed/field";
+import { PageActions } from "@/components/managed/page-actions";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -52,11 +53,10 @@ export default function ReferenceSitesPage() {
     <PageTransition>
       <div className="space-y-4">
         {data && !data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/reference-sites/`} />}
-        <div className="flex items-center">
-          <p className="text-sm text-muted-foreground">노출 순서대로. 저장하면 홈페이지에는 캐시(5분) 뒤 반영됩니다.</p>
-          <div className="flex-1" />
-          {data?.write_enabled && <Button className="rounded-xl" onClick={() => setEditing("new")}><Plus className="mr-1 h-4 w-4" /> 등록</Button>}
-        </div>
+        <p className="text-sm text-muted-foreground">노출 순서대로. 저장하면 홈페이지에는 캐시(5분) 뒤 반영됩니다.</p>
+        <PageActions>
+          {data?.write_enabled && <Button size="sm" className="rounded-xl" onClick={() => setEditing("new")}><Plus className="mr-1 h-4 w-4" /> 등록</Button>}
+        </PageActions>
         {isLoading ? (
           <TableSkeleton />
         ) : !data?.items.length ? (

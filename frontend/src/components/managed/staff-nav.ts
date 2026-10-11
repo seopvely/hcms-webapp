@@ -15,8 +15,6 @@ export interface StaffNavGroup {
   items: StaffNavItem[];
 }
 
-const cms = (path: string): StaffNavItem["href"] => `${CMS_BASE}${path}`;
-
 export const STAFF_NAV: StaffNavGroup[] = [
   { title: "대시보드", items: [{ label: "대시보드", href: "/managed" }] },
   {

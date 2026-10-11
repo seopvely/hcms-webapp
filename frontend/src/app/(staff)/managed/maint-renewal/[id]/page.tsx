@@ -3,7 +3,7 @@ import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Mail } from "lucide-react";
+import { FileText, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Field, apiErrorDetail, fmtDate, fmtDateTime, selectClass } from "@/comp
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { won } from "@/components/managed/billing-ui";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 
@@ -27,8 +28,8 @@ export default function MaintRenewalDetailPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data, isLoading, error } = useStaffGet<Dict>(["maint-renewal", "detail", id], `/maint-renewal/${id}`);
   useEffect(() => {
-    setPageTitle("유지보수 전환");
-  }, [setPageTitle]);
+    setPageTitle(data?.project ? `${data.project as string} · 유지보수 전환` : "유지보수 전환");
+  }, [setPageTitle, data?.project]);
   if (error) return <LoadFailed error={error} />;
   if (isLoading || !data) return <DetailSkeleton />;
   return <PageTransition><Detail key={String(data.status)} id={id} data={data} /></PageTransition>;
@@ -63,22 +64,37 @@ function Detail({ id, data }: { id: string; data: Dict }) {
   const monthly = p ? (v.hosting_type === "E" ? p.external_price : p.internal_price) : 0;
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/maint-renewal"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{data.status_label as string}</span>
-        <div className="flex-1" />
-        {canWrite && <Button size="sm" variant="outline" className="rounded-xl" onClick={() => act(() => write.mutateAsync({ url: `/maint-renewal/${id}/notify-customer` }), "고객 안내 메일을 보냈습니다.")}><Mail className="mr-1 h-4 w-4" /> 고객 안내 메일</Button>}
-        {canWrite && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => { setForce(false); setEndOpen(true); }}>프로젝트 종료</Button>}
-      </div>
+      {canWrite && (
+        <PageActions>
+          <Button size="sm" variant="outline" className="rounded-xl" onClick={() => act(() => write.mutateAsync({ url: `/maint-renewal/${id}/notify-customer` }), "고객 안내 메일을 보냈습니다.")}><Mail className="mr-1 h-4 w-4" /> 고객 안내 메일</Button>
+          <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => { setForce(false); setEndOpen(true); }}>프로젝트 종료</Button>
+        </PageActions>
+      )}
       {!data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/maint-renewal/${id}/`} />}
-      <Card className="rounded-2xl"><CardContent className="grid gap-2 pt-5 pb-5 text-sm sm:grid-cols-2">
-        <p><b>{data.company as string}</b> · <Link className="underline" href={`/managed/projects/${data.project_id}`}>{data.project as string}</Link></p>
-        <p>기준일 <b className="text-red-600">{fmtDate(data.due_date as string)}</b> (계약종료 {fmtDate(data.contract_termination_date as string)} · 무상 종료 {fmtDate(data.free_maint_end_date as string)})</p>
-        <p>담당 {((data.agents as { name: string; role: string }[]) ?? []).map((a) => `${a.name}(${a.role})`).join(", ") || "-"}</p>
-        <p>고객 수신자 {((data.recipients as { name: string; email: string }[]) ?? []).map((r) => `${r.name} <${r.email}>`).join(", ") || "없음(로그인 허용 + 이메일 필요)"}</p>
-        <p className="text-xs text-muted-foreground">담당자 알림 {fmtDateTime(data.notified_at as string)} · 고객 안내 {fmtDateTime(data.contacted_at as string)} · 의향 {fmtDateTime(data.responded_at as string)}</p>
-        {Boolean(data.in_free_maint) && <p className="text-xs text-amber-700">현재 무상 유지보수 기간입니다.</p>}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
+      <Card className="rounded-2xl"><CardContent className="pt-5 pb-5">
+        <dl className="space-y-3">
+          <RInfo label="상태"><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{data.status_label as string}</span></RInfo>
+          <RInfo label="업체 · 프로젝트"><b>{data.company as string}</b> · <Link className="underline" href={`/managed/projects/${data.project_id}`}>{data.project as string}</Link></RInfo>
+          <RInfo label="기준일"><b className="text-red-600">{fmtDate(data.due_date as string)}</b> <span className="text-xs text-muted-foreground">(계약종료 {fmtDate(data.contract_termination_date as string)} · 무상 종료 {fmtDate(data.free_maint_end_date as string)})</span></RInfo>
+          <RInfo label="담당">{((data.agents as { name: string; role: string }[]) ?? []).map((a) => `${a.name}(${a.role})`).join(", ") || "-"}</RInfo>
+          <RInfo label="고객 수신자"><span className="break-words">{((data.recipients as { name: string; email: string }[]) ?? []).map((r) => `${r.name} <${r.email}>`).join(", ") || "없음(로그인 허용 + 이메일 필요)"}</span></RInfo>
+          <RInfo label="담당자 알림">{fmtDateTime(data.notified_at as string)}</RInfo>
+          <RInfo label="고객 안내">{fmtDateTime(data.contacted_at as string)}</RInfo>
+          <RInfo label="의향">{fmtDateTime(data.responded_at as string)}</RInfo>
+        </dl>
+        {Boolean(data.in_free_maint) && <p className="mt-3 text-xs text-amber-700">현재 무상 유지보수 기간입니다.</p>}
       </CardContent></Card>
+      <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm">
+        <p className="font-semibold">진행</p>
+        <p>견적서: {est ? <Link className="underline" href={`/managed/estimates/${est.seq}`}>{est.number as string} {est.title as string}</Link> : "미생성"}</p>
+        <p>계약서: {((data.contracts as Dict[]) ?? []).map((c) => <Link key={c.seq as number} className="mr-2 underline" href={`/managed/contracts/${c.seq}`}>{(c.number as string) || `#${c.seq}`}</Link>)}{!(data.contracts as Dict[])?.length && "미작성"}</p>
+        <p>전환 프로젝트: {data.new_project ? <Link className="underline" href={`/managed/projects/${(data.new_project as Dict).seq}`}>{(data.new_project as Dict).title as string}</Link> : "미전환"}</p>
+        {data.memo ? <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-muted/50 p-3 text-xs">{data.memo as string}</pre> : null}
+      </CardContent></Card>
+      </div>
+      <div className="min-w-0 space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         {Object.entries(plans).map(([code, pl]) => (
           <button key={code} disabled={!canWrite} onClick={() => setV({ ...v, chosen_plan: code })}
@@ -129,13 +145,8 @@ function Detail({ id, data }: { id: string; data: Dict }) {
           </div>
         )}
       </CardContent></Card>
-      <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm">
-        <p className="font-semibold">진행</p>
-        <p>견적서: {est ? <Link className="underline" href={`/managed/estimates/${est.seq}`}>{est.number as string} {est.title as string}</Link> : "미생성"}</p>
-        <p>계약서: {((data.contracts as Dict[]) ?? []).map((c) => <Link key={c.seq as number} className="mr-2 underline" href={`/managed/contracts/${c.seq}`}>{(c.number as string) || `#${c.seq}`}</Link>)}{!(data.contracts as Dict[])?.length && "미작성"}</p>
-        <p>전환 프로젝트: {data.new_project ? <Link className="underline" href={`/managed/projects/${(data.new_project as Dict).seq}`}>{(data.new_project as Dict).title as string}</Link> : "미전환"}</p>
-        {data.memo ? <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-muted/50 p-3 text-xs">{data.memo as string}</pre> : null}
-      </CardContent></Card>
+      </div>
+      </div>
       <AppAlertDialog open={endOpen} onOpenChange={setEndOpen} variant="destructive" confirmText="종료" title={force ? "무상 기간이 남아도 종료" : "프로젝트 종료"}
         description={force ? "무상 유지보수 기간이 남아 있습니다. 그래도 종료 처리합니다." : "원 프로젝트를 완료 처리하고 유지보수 요청을 막습니다."}
         onConfirm={async () => {
@@ -150,6 +161,15 @@ function Detail({ id, data }: { id: string; data: Dict }) {
             toast("warning", apiErrorDetail(err, "처리에 실패했습니다."));
           }
         }} />
+    </div>
+  );
+}
+
+function RInfo({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{children}</dd>
     </div>
   );
 }

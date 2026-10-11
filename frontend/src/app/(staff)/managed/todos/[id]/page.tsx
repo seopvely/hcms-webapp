@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { PageActions } from "@/components/managed/page-actions";
 import { staffFileUrl, useLookupCompanies } from "@/lib/staff-maintenance";
 import { useStaffMe } from "@/lib/staff-hooks";
 import { useStaffList } from "@/lib/staff-sales";
@@ -35,8 +35,8 @@ export default function TodoDetailPage() {
   const it = search.get("inditask");
   const { data: prefill, isLoading: preLoading } = useStaffGet<Dict>(["todos", "prefill", ml, it], isNew && (ml || it) ? "/todos/prefill" : null, { managelist: ml, inditask: it });
   useEffect(() => {
-    setPageTitle(isNew ? "할일 등록" : "할일");
-  }, [setPageTitle, isNew]);
+    setPageTitle(isNew ? "할일 등록" : (data?.title as string | undefined) || "할일");
+  }, [setPageTitle, isNew, data?.title]);
   if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   if (isNew && (ml || it) && preLoading) return <DetailSkeleton />;
@@ -98,11 +98,11 @@ function Editor({ id, data, init }: { id: string; data: Dict | null; init: Dict 
   const input = (k: string, label: string, type = "text") => <Field label={label}><Input className="rounded-xl" type={type} disabled={!canWrite} value={v[k]} onChange={(e) => set(k, e.target.value)} /></Field>;
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/todos"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        <div className="flex-1" />
-        {data && canWrite && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>}
-      </div>
+      {data && canWrite && (
+        <PageActions>
+          <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} title="삭제" aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>
+        </PageActions>
+      )}
       {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/todo/${data ? `${id}/` : "create/"}`} />}
       <Card className="rounded-2xl"><CardContent className="space-y-3 pt-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

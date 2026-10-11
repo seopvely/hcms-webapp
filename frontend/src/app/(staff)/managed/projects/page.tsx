@@ -4,12 +4,13 @@ import Link from "next/link";
 import { CalendarRange, FolderKanban, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
-import { fmtDate } from "@/components/managed/field";
+import { DataTable } from "@/components/managed/data-table";
+import { fmtDate, meta } from "@/components/managed/field";
+import { PageActions } from "@/components/managed/page-actions";
 import { Pager } from "@/components/managed/pager";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
@@ -21,7 +22,7 @@ const PHASE_COLORS: Record<string, string> = { active: "bg-blue-100 text-blue-70
 
 export default function StaffProjectsPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const [params, setParams] = useState<{ q?: string; phase?: string; page: number }>({ page: 1 });
+  const [params, setParams] = useState<{ q?: string; phase?: string; sort?: string; page: number }>({ page: 1 });
   const [keyword, setKeyword] = useState("");
   const { data, isLoading } = useStaffGet<ListResult>(["projects", "list"], "/projects", params);
   useEffect(() => {
@@ -40,24 +41,49 @@ export default function StaffProjectsPage() {
             <Input className="rounded-xl" placeholder="프로젝트명·업체" value={keyword} onChange={(e) => setKeyword(e.target.value)} />
             <Button type="submit" className="rounded-xl"><Search className="h-4 w-4" /></Button>
           </form>
-          <Button variant="outline" className="rounded-xl" asChild><Link href="/managed/projects/calendar"><CalendarRange className="mr-1 h-4 w-4" /> 계약 달력</Link></Button>
-          {data?.write_enabled && <Button className="rounded-xl" asChild><Link href="/managed/projects/new"><Plus className="mr-1 h-4 w-4" /> 프로젝트 등록</Link></Button>}
         </div>
+        <PageActions>
+          <Button variant="outline" size="sm" className="hidden rounded-xl sm:inline-flex" asChild><Link href="/managed/projects/calendar"><CalendarRange className="mr-1 h-4 w-4" /> 계약 달력</Link></Button>
+          {data?.write_enabled && <Button size="sm" className="rounded-xl" asChild><Link href="/managed/projects/new"><Plus className="mr-1 h-4 w-4" /> 프로젝트 등록</Link></Button>}
+        </PageActions>
         {isLoading ? <TableSkeleton /> : !data?.items.length ? <EmptyState icon={FolderKanban} title="프로젝트가 없습니다" /> : (
           <>
-            <Card className="rounded-2xl"><CardContent className="divide-y p-0">
-              {data.items.map((p) => (
-                <Link key={p.seq as number} href={`/managed/projects/${p.seq}`} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-muted/40">
-                  <span className="w-12 text-xs text-muted-foreground">#{p.seq as number}</span>
+            <DataTable
+              rows={data.items}
+              rowKey={(p) => p.seq as number}
+              rowHref={(p) => `/managed/projects/${p.seq}`}
+              sort={params.sort}
+              onSortChange={(sort) => setParams((s) => ({ ...s, sort, page: 1 }))}
+              columns={[
+                { key: "seq", header: "번호", sort: "seq", className: "w-16 text-xs text-muted-foreground", cell: (p) => `#${p.seq}` },
+                {
+                  key: "title", header: "프로젝트", sort: "title", cell: (p) => (
+                    <div className="min-w-0 max-w-[420px]">
+                      <p className="truncate font-medium">
+                        {p.title as string}
+                        {Boolean(p.is_opened) && <Badge variant="outline" className="ml-2">오픈</Badge>}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{meta(p.company_name as string, p.project_type_label as string)}</p>
+                    </div>
+                  ),
+                },
+                { key: "contract_date", header: "계약시작", sort: "contract_date", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (p) => fmtDate(p.contract_date as string) },
+                { key: "contract_termination_date", header: "계약종료", sort: "contract_termination_date", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (p) => fmtDate(p.contract_termination_date as string) },
+                { key: "extension_count", header: "연장", align: "right", hideOnMobile: true, className: "w-16 whitespace-nowrap", cell: (p) => ((p.extension_count as number) > 0 ? `${p.extension_count}회` : "-") },
+                { key: "point", header: "월 포인트", sort: "point", align: "right", hideOnMobile: true, className: "w-24 whitespace-nowrap", cell: (p) => ((p.point as number) > 0 ? `${p.point}P` : "-") },
+                { key: "phase", header: "상태", align: "center", className: "w-28", cell: (p) => <Badge className={`min-w-16 justify-center ${PHASE_COLORS[p.phase as string] ?? "bg-muted"}`}>{p.phase_label as string}</Badge> },
+              ]}
+              mobile={(p) => (
+                <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{p.title as string}</p>
-                    <p className="truncate text-xs text-muted-foreground">{p.company_name as string} · {p.project_type_label as string} · {fmtDate(p.contract_date as string)} ~ {fmtDate(p.contract_termination_date as string)}{(p.extension_count as number) > 0 && ` · 연장 ${p.extension_count}회`}{(p.point as number) > 0 && ` · 월 ${p.point}P`}</p>
+                    <p className="truncate text-xs text-muted-foreground">{meta(`#${p.seq}`, p.company_name as string, p.project_type_label as string, `${fmtDate(p.contract_date as string)} ~ ${fmtDate(p.contract_termination_date as string)}`, (p.extension_count as number) > 0 && `연장 ${p.extension_count}회`, (p.point as number) > 0 && `월 ${p.point}P`)}</p>
                   </div>
                   {Boolean(p.is_opened) && <Badge variant="outline">오픈</Badge>}
                   <Badge className={`min-w-16 justify-center ${PHASE_COLORS[p.phase as string] ?? "bg-muted"}`}>{p.phase_label as string}</Badge>
-                </Link>
-              ))}
-            </CardContent></Card>
+                </div>
+              )}
+            />
             <Pager page={data.page} totalPages={data.total_pages} total={data.total} onChange={(page) => setParams((s) => ({ ...s, page }))} />
           </>
         )}

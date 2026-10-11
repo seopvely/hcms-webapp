@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import MAINT_STATUS_LABELS, page_response, require_write, verify_step_up, write_enabled
+from app.api.endpoints.managed.common import MAINT_STATUS_LABELS, apply_sort, page_response, require_write, verify_step_up, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.company import Company
@@ -70,7 +70,9 @@ def plans():
 
 @router.get("/{kind}")
 def list_subscriptions(kind: str, status: str | None = None, plan: str | None = None, q: str | None = None,
-                       page: int = Query(1, ge=1), per_page: int = Query(20, le=100), db: Session = Depends(get_db)):
+                       page: int = Query(1, ge=1), per_page: int = Query(20, le=100),
+                       sort: str | None = Query(None, description="plan_type|start_date|next_charge_date|monthly_price|status|created_at, '-' 접두 = 내림차순"),
+                       db: Session = Depends(get_db)):
     M = _model(kind)
     query = db.query(M)
     if status:
@@ -80,7 +82,10 @@ def list_subscriptions(kind: str, status: str | None = None, plan: str | None = 
     if q:
         query = query.filter(M.company_id.in_(db.query(Company.seq).filter(Company.name.like(f"%{q}%"))))
     total = query.count()
-    rows = query.order_by(M.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"plan_type": M.plan_type, "start_date": M.start_date, "next_charge_date": M.next_charge_date,
+                                     "monthly_price": M.monthly_price, "status": M.status, "created_at": M.created_at},
+                       [M.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     companies = _company_names(db, [r.company_id for r in rows])
     out = page_response([_row(kind, r, companies) for r in rows], total, page, per_page)
     out["write_enabled"] = write_enabled("subscriptions")

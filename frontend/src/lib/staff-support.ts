@@ -35,7 +35,7 @@ export interface InquiryDetail {
   write_enabled: boolean;
 }
 
-export type SimpleListParams = { company_id?: number; status?: string; task_type?: string; q?: string; page: number };
+export type SimpleListParams = { company_id?: number; status?: string; task_type?: string; q?: string; sort?: string; page: number };
 
 export function useStaffInquiries(params: SimpleListParams) {
   return useQuery({

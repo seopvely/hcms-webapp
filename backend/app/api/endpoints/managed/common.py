@@ -62,3 +62,17 @@ def page_response(items: list, total: int, page: int, per_page: int) -> dict:
 
 
 StaffDep = Depends(get_current_staff)
+
+
+def apply_sort(query, sort: str | None, columns: dict, default: list):
+    """목록 정렬. sort='field' 또는 '-field'(내림차순). 허용 목록(columns: 이름 → 컬럼)에 없으면 default 순서.
+
+    같은 값끼리는 default 순서로 이어 정렬해 페이지가 바뀌어도 순서가 흔들리지 않게 한다.
+    NULL 은 오름·내림 모두 뒤로 보낸다.
+    """
+    if sort:
+        desc = sort.startswith("-")
+        col = columns.get(sort.lstrip("-"))
+        if col is not None:
+            return query.order_by(col.is_(None), col.desc() if desc else col.asc(), *default)
+    return query.order_by(*default)

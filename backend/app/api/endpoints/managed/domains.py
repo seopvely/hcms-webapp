@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.company import Company
@@ -48,6 +48,7 @@ def _serialize(d: Domain, company_name: str | None = None) -> dict:
 @router.get("")
 def list_domains(
     q: str | None = None, status: str | None = None, company_id: int | None = None,
+    sort: str | None = Query(None, description="domain_end_date|domain_ssl_end_date|hosting_end_date|status, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=200), db: Session = Depends(get_db),
 ):
     query = db.query(Domain, Company.name).outerjoin(Company, Domain.company_id == Company.seq)
@@ -59,7 +60,10 @@ def list_domains(
     if company_id:
         query = query.filter(Domain.company_id == company_id)
     total = query.count()
-    rows = query.order_by(Domain.domain_end_date.is_(None), Domain.domain_end_date).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"domain_end_date": Domain.domain_end_date, "domain_ssl_end_date": Domain.domain_ssl_end_date,
+                                    "hosting_end_date": Domain.hosting_end_date, "status": Domain.domain_status},
+                       [Domain.domain_end_date.is_(None), Domain.domain_end_date])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     return page_response([_serialize(d, n) for d, n in rows], total, page, per_page) | {"write_enabled": write_enabled("domains")}
 
 

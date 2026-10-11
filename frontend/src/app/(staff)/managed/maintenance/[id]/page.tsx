@@ -3,7 +3,7 @@ import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Coins, CornerDownRight, Paperclip, Pencil, Reply, Trash2, ListTodo } from "lucide-react";
+import { CheckCircle2, Coins, CornerDownRight, Paperclip, Pencil, Reply, Trash2, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { SalesActivityPanel } from "@/components/managed/sales-activity-panel";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import staffApi from "@/lib/staff-api";
 import {
@@ -68,8 +69,8 @@ export default function StaffMaintenanceDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
-    setPageTitle("유지보수 요청 상세");
-  }, [setPageTitle]);
+    setPageTitle(data?.title || "유지보수 요청 상세");
+  }, [data?.title, setPageTitle]);
 
   const tree = useMemo(() => {
     const children = new Map<number | null, MaintComment[]>();
@@ -167,13 +168,7 @@ export default function StaffMaintenanceDetailPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-xl" asChild>
-            <Link href="/managed/maintenance">
-              <ArrowLeft className="mr-1 h-4 w-4" /> 목록
-            </Link>
-          </Button>
-          <div className="flex-1" />
+        <PageActions>
           <Button size="sm" variant="outline" className="rounded-xl" asChild>
             <Link href={`/managed/todos/new?managelist=${seq}`}><ListTodo className="mr-1 h-4 w-4" /> 할일 등록</Link>
           </Button>
@@ -187,11 +182,11 @@ export default function StaffMaintenanceDetailPage() {
               <Trash2 className="mr-1 h-4 w-4" /> 삭제
             </Button>
           )}
-        </div>
+        </PageActions>
 
         {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/managelist_detail/${seq}`} />}
 
-        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
+        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-4 text-white">
           <p className="text-sm text-white/80">
             #{data.seq} · {data.company_name} · {data.project_title || "프로젝트 없음"}
           </p>
@@ -201,73 +196,81 @@ export default function StaffMaintenanceDetailPage() {
           </h1>
         </div>
 
-        <Card className="rounded-2xl">
-          <CardContent className="grid gap-3 pt-5 pb-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <Info label="상태" value={<StatusBadge status={data.status ?? ""} type="maintenance" />} />
-            <Info label="요청자" value={`${data.writer_name || "-"}${data.writer_email ? ` (${data.writer_email})` : ""}`} />
-            <Info label="요청일" value={fmtDateTime(data.request_date)} />
-            <Info label="완료예정 / 완료" value={`${fmtDate(data.completion_date)} / ${fmtDate(data.complete_date)}`} />
-            <Info
-              label="요청 유형"
-              value={
-                <span className="flex items-center gap-2">
-                  {data.request_type_label}
-                  {canWrite && (
-                    <select
-                      className="h-7 rounded-lg border px-1 text-xs"
-                      value={data.request_type ?? ""}
-                      onChange={(e) => setStepUp({ kind: "request-type", value: e.target.value || null })}
-                    >
-                      <option value="">미분류</option>
-                      <option value="maint">유지보수</option>
-                      <option value="dev">개발</option>
-                    </select>
-                  )}
-                </span>
-              }
-            />
-            <Info
-              label="사용 포인트"
-              value={`${data.points_used}P${data.points_used_ledger !== data.points_used ? ` (장부 ${data.points_used_ledger}P)` : ""}`}
-            />
-            <Info label="남은 포인트(현재 주기)" value={data.remaining_points === null ? "-" : `${data.remaining_points}P`} />
-            <Info label="월 포인트" value={data.monthly_point ? `${data.monthly_point}P` : "-"} />
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-4">
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-3 pt-5 pb-5">
+                <SafeHtml html={data.contents} />
+                <FileLinks files={data.attachments} base="/maintenance/files/request" legacy={data.legacy_file ? staffFileUrl(`/maintenance/files/request-legacy/${seq}`) : null} />
+              </CardContent>
+            </Card>
 
-        <Card className="rounded-2xl">
-          <CardContent className="space-y-3 pt-5 pb-5">
-            <SafeHtml html={data.contents} />
-            <FileLinks files={data.attachments} base="/maintenance/files/request" legacy={data.legacy_file ? staffFileUrl(`/maintenance/files/request-legacy/${seq}`) : null} />
-          </CardContent>
-        </Card>
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-3 pt-5 pb-5">
+                <h2 className="font-semibold">처리 내역 ({data.comments.length})</h2>
+                {data.comments.length === 0 ? <p className="text-sm text-muted-foreground">아직 처리 내역이 없습니다.</p> : <div className="space-y-2">{renderComments(null, 0)}</div>}
+              </CardContent>
+            </Card>
 
-        <Card className="rounded-2xl">
-          <CardContent className="space-y-3 pt-5 pb-5">
-            <h2 className="font-semibold">처리 내역 ({data.comments.length})</h2>
-            {data.comments.length === 0 ? <p className="text-sm text-muted-foreground">아직 처리 내역이 없습니다.</p> : <div className="space-y-2">{renderComments(null, 0)}</div>}
-          </CardContent>
-        </Card>
+            {canWrite && <CommentForm detail={data} replyTo={replyTo} onClearReply={() => setReplyTo(null)} />}
+          </div>
 
-        {canWrite && <CommentForm detail={data} replyTo={replyTo} onClearReply={() => setReplyTo(null)} />}
+          <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
+            <Card className="rounded-2xl">
+              <CardContent className="pt-5 pb-5">
+                <dl className="space-y-3">
+                  <Info label="상태" value={<StatusBadge status={data.status ?? ""} type="maintenance" />} />
+                  <Info label="요청자" value={`${data.writer_name || "-"}${data.writer_email ? ` (${data.writer_email})` : ""}`} />
+                  <Info label="요청일" value={fmtDateTime(data.request_date)} />
+                  <Info label="완료예정 / 완료" value={`${fmtDate(data.completion_date)} / ${fmtDate(data.complete_date)}`} />
+                  <Info
+                    label="요청 유형"
+                    value={
+                      <span className="flex items-center gap-2">
+                        {data.request_type_label}
+                        {canWrite && (
+                          <select
+                            className="h-7 rounded-lg border px-1 text-xs"
+                            value={data.request_type ?? ""}
+                            onChange={(e) => setStepUp({ kind: "request-type", value: e.target.value || null })}
+                          >
+                            <option value="">미분류</option>
+                            <option value="maint">유지보수</option>
+                            <option value="dev">개발</option>
+                          </select>
+                        )}
+                      </span>
+                    }
+                  />
+                  <Info
+                    label="사용 포인트"
+                    value={`${data.points_used}P${data.points_used_ledger !== data.points_used ? ` (장부 ${data.points_used_ledger}P)` : ""}`}
+                  />
+                  <Info label="남은 포인트(현재 주기)" value={data.remaining_points === null ? "-" : `${data.remaining_points}P`} />
+                  <Info label="월 포인트" value={data.monthly_point ? `${data.monthly_point}P` : "-"} />
+                </dl>
+              </CardContent>
+            </Card>
 
-        {data.point_histories.length > 0 && (
-          <Card className="rounded-2xl">
-            <CardContent className="space-y-2 pt-5 pb-5 text-sm">
-              <h2 className="font-semibold">포인트 장부</h2>
-              {data.point_histories.map((h) => (
-                <div key={h.seq} className="flex justify-between text-muted-foreground">
-                  <span>
-                    {fmtDateTime(h.created_at)} · {h.point_type_label}/{h.status_label}
-                  </span>
-                  <span className="font-medium text-foreground">{h.point}P</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+            {data.point_histories.length > 0 && (
+              <Card className="rounded-2xl">
+                <CardContent className="space-y-2 pt-5 pb-5 text-sm">
+                  <h2 className="font-semibold">포인트 장부</h2>
+                  {data.point_histories.map((h) => (
+                    <div key={h.seq} className="flex justify-between gap-2 text-muted-foreground">
+                      <span>
+                        {fmtDateTime(h.created_at)} · {h.point_type_label}/{h.status_label}
+                      </span>
+                      <span className="shrink-0 font-medium text-foreground">{h.point}P</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
-        <SalesActivityPanel companyId={data.company_id} />
+            <SalesActivityPanel companyId={data.company_id} />
+          </div>
+        </div>
       </div>
 
       <StepUpDialog
@@ -294,8 +297,8 @@ export default function StaffMaintenanceDetailPage() {
 function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="mt-0.5">{value}</div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{value}</dd>
     </div>
   );
 }

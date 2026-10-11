@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.company import Company
@@ -69,6 +69,7 @@ def _row(db: Session, r: MaintRenewal, project: Project | None, company: str, to
 
 @router.get("")
 def list_renewals(tab: str = "pending", q: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=100),
+                  sort: str | None = Query(None, description="due_date|status|created_at, '-' 접두 = 내림차순"),
                   db: Session = Depends(get_db)):
     if tab not in subs.RENEWAL_TABS:
         tab = "pending"
@@ -81,7 +82,9 @@ def list_renewals(tab: str = "pending", q: str | None = None, page: int = Query(
     query = base if statuses is None else base.filter(MaintRenewal.status.in_(statuses))
     order = (MaintRenewal.due_date, MaintRenewal.seq) if tab in ("pending", "progress") else (MaintRenewal.due_date.desc(), MaintRenewal.seq.desc())
     total = query.count()
-    rows = query.order_by(*order).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"due_date": MaintRenewal.due_date, "status": MaintRenewal.status, "created_at": MaintRenewal.created_at},
+                       list(order))
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     projects = {p.seq: p for p in db.query(Project).filter(Project.seq.in_({r.project_id for r in rows} or {0}))}
     companies = dict(db.query(Company.seq, Company.name).filter(Company.seq.in_({r.company_id for r in rows} - {None} or {0})))
     today = date.today()

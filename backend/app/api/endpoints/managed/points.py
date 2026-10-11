@@ -10,6 +10,7 @@ from app.services.points import calculate_remaining_points
 from app.api.endpoints.managed.common import (
     POINT_STATUS_LABELS,
     POINT_TYPE_LABELS,
+    apply_sort,
     code,
     page_response,
     require_write,
@@ -33,6 +34,7 @@ def ledger(
     date_to: date | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    sort: str | None = Query(None, description="point_type|content|point|created_at, '-' 접두 = 내림차순"),
     db: Session = Depends(get_db),
 ):
     query = db.query(PointHistory).options(joinedload(PointHistory.project), joinedload(PointHistory.company))
@@ -47,7 +49,9 @@ def ledger(
     if date_to:
         query = query.filter(PointHistory.created_at < datetime.combine(date_to + timedelta(days=1), datetime.min.time()))
     total = query.count()
-    rows = query.order_by(PointHistory.created_at.desc(), PointHistory.seq.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"point_type": PointHistory.point_type, "content": PointHistory.content, "point": PointHistory.point,
+                                     "created_at": PointHistory.created_at}, [PointHistory.created_at.desc(), PointHistory.seq.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     writer_ids = {r.writer_id for r in rows if r.writer_id}
     names = {u.id: (u.name or u.username) for u in db.query(CustomAuthUser).filter(CustomAuthUser.id.in_(writer_ids))} if writer_ids else {}
     items = [{

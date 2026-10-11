@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import bindparam, or_, text
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write
 from app.core.deps import require_staff_admin
 from app.db.session import get_db
 from app.models.company import Company
@@ -138,7 +138,9 @@ def _payment_row(p: Payment, companies, projects, ctx, alarms) -> dict:
 
 
 @router.get("/payments")
-def list_payments(q: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(50, le=200), db: Session = Depends(get_db)):
+def list_payments(q: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(50, le=200),
+                  sort: str | None = Query(None, description="payment_date|payment_amount|created_at, '-' 접두 = 내림차순"),
+                  db: Session = Depends(get_db)):
     query = db.query(Payment).filter(or_(Payment.project_type.is_(None), Payment.project_type != "5")).filter(
         or_(Payment.payment_alarm_id.is_(None), ~Payment.payment_alarm_id.in_(_excluded_alarm_ids(db))))
     if q:
@@ -146,7 +148,9 @@ def list_payments(q: str | None = None, page: int = Query(1, ge=1), per_page: in
         query = query.filter(or_(Payment.company_id.in_(db.query(Company.seq).filter(Company.name.like(like))),
                                  Payment.project_id.in_(db.query(Project.seq).filter(Project.title.like(like)))))
     total = query.count()
-    rows = query.order_by(Payment.created_at.desc(), Payment.seq.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"payment_date": Payment.payment_date, "payment_amount": Payment.payment_amount, "created_at": Payment.created_at},
+                       [Payment.created_at.desc(), Payment.seq.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     companies, projects = _names(db, [p.company_id for p in rows if p.company_id], [p.project_id for p in rows if p.project_id])
     ctx = bl.PaymentContext(db, [p.seq for p in rows])
     alarms = dict(db.query(PaymentAlarm.seq, PaymentAlarm.title).filter(PaymentAlarm.seq.in_({p.payment_alarm_id for p in rows} - {None} or {0})))
@@ -306,7 +310,9 @@ def _history_row(h: PaymentHistory, companies, projects, payments) -> dict:
 
 @router.get("/payment-history")
 def list_history(type: str = "sales", period: str | None = None, q: str | None = None, page: int = Query(1, ge=1),
-                 per_page: int = Query(50, le=200), db: Session = Depends(get_db)):
+                 per_page: int = Query(50, le=200),
+                 sort: str | None = Query(None, description="target_month|payment_tf|created_at, '-' 접두 = 내림차순"),
+                 db: Session = Depends(get_db)):
     purchase_payments = db.query(Payment.seq).filter(Payment.payment_alarm_id.in_(_excluded_alarm_ids(db)))
     query = db.query(PaymentHistory)
     if type == "purchase":
@@ -326,7 +332,10 @@ def list_history(type: str = "sales", period: str | None = None, q: str | None =
             conds.append(Payment.payment_alarm_id.in_(db.query(PaymentAlarm.seq).filter(PaymentAlarm.title.like(like))))
         query = query.filter(PaymentHistory.payment_id.in_(db.query(Payment.seq).filter(or_(*conds))))
     total = query.count()
-    rows = query.order_by(PaymentHistory.created_at.desc(), PaymentHistory.seq.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"target_month": PaymentHistory.target_month, "payment_tf": PaymentHistory.payment_tf,
+                                     "created_at": PaymentHistory.created_at},
+                       [PaymentHistory.created_at.desc(), PaymentHistory.seq.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     payments = {p.seq: p for p in db.query(Payment).filter(Payment.seq.in_({h.payment_id for h in rows} - {None} or {0}))}
     alarm_titles = dict(db.query(PaymentAlarm.seq, PaymentAlarm.title).filter(PaymentAlarm.seq.in_({p.payment_alarm_id for p in payments.values()} - {None} or {0})))
     for p in payments.values():
@@ -537,7 +546,9 @@ def _this_month_totals(db: Session, today: date) -> dict:
 
 @router.get("/alarms")
 def list_alarms(q: str | None = None, status: str | None = None, cycle_type: str | None = None, payment_type: str | None = None,
-                page: int = Query(1, ge=1), per_page: int = Query(20, le=200), db: Session = Depends(get_db)):
+                page: int = Query(1, ge=1), per_page: int = Query(20, le=200),
+                sort: str | None = Query(None, description="payment_type|title|amount|next_payment_date|valid_status|created_at, '-' 접두 = 내림차순"),
+                db: Session = Depends(get_db)):
     query = db.query(PaymentAlarm)
     if q:
         query = query.filter(or_(PaymentAlarm.title.like(f"%{q}%"), PaymentAlarm.description.like(f"%{q}%")))
@@ -548,7 +559,11 @@ def list_alarms(q: str | None = None, status: str | None = None, cycle_type: str
     if payment_type:
         query = query.filter(PaymentAlarm.payment_type == payment_type)
     total = query.count()
-    rows = query.order_by(PaymentAlarm.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"payment_type": PaymentAlarm.payment_type, "title": PaymentAlarm.title, "amount": PaymentAlarm.amount,
+                                     "next_payment_date": PaymentAlarm.next_payment_date, "valid_status": PaymentAlarm.valid_status,
+                                     "created_at": PaymentAlarm.created_at},
+                       [PaymentAlarm.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     today = date.today()
     confirmed: dict[int, set] = {}
     for aid, d in db.query(PaymentAlarmHistory.payment_alarm_id, PaymentAlarmHistory.payment_date).filter(
@@ -580,10 +595,15 @@ def alarm_calendar(start: date, end: date, db: Session = Depends(get_db)):
 
 
 @router.get("/alarms/history")
-def alarm_history_all(page: int = Query(1, ge=1), per_page: int = Query(20, le=200), db: Session = Depends(get_db)):
+def alarm_history_all(page: int = Query(1, ge=1), per_page: int = Query(20, le=200),
+                      sort: str | None = Query(None, description="sent_at|payment_date|status|recipient_count, '-' 접두 = 내림차순"),
+                      db: Session = Depends(get_db)):
     query = db.query(PaymentAlarmHistory)
     total = query.count()
-    rows = query.order_by(PaymentAlarmHistory.sent_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"sent_at": PaymentAlarmHistory.sent_at, "payment_date": PaymentAlarmHistory.payment_date,
+                                     "status": PaymentAlarmHistory.status, "recipient_count": PaymentAlarmHistory.recipient_count},
+                       [PaymentAlarmHistory.sent_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     titles = dict(db.query(PaymentAlarm.seq, PaymentAlarm.title).filter(PaymentAlarm.seq.in_({h.payment_alarm_id for h in rows} or {0})))
     return page_response([_alarm_history_row(h, titles) for h in rows], total, page, per_page)
 

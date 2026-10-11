@@ -72,6 +72,7 @@ export interface MaintListParams {
   q?: string;
   date_from?: string;
   date_to?: string;
+  sort?: string;
   page?: number;
 }
 
@@ -198,7 +199,7 @@ export interface CommentSearchItem {
   summary: string;
 }
 
-export function useCommentSearch(params: { q?: string; worker_type?: string; date_from?: string; date_to?: string; page?: number }) {
+export function useCommentSearch(params: { q?: string; worker_type?: string; date_from?: string; date_to?: string; sort?: string; page?: number }) {
   return useQuery({
     queryKey: ["staff", "maintenance", "comments", params],
     queryFn: async (): Promise<Paged<CommentSearchItem>> =>
@@ -304,7 +305,7 @@ export interface LedgerItem {
   created_at: string | null;
 }
 
-export function usePointLedger(params: { company_id?: number; project_id?: number; point_type?: string; page?: number }) {
+export function usePointLedger(params: { company_id?: number; project_id?: number; point_type?: string; sort?: string; page?: number }) {
   return useQuery({
     queryKey: ["staff", "points", "ledger", params],
     queryFn: async (): Promise<Paged<LedgerItem>> => (await staffApi.get("/managed/points", { params })).data,

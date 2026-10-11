@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 
 export const selectClass = "h-10 w-full rounded-xl border bg-background px-3 text-sm";
+/** selectClass + 덮어쓸 클래스(w-auto 등이 w-full 을 확실히 이기게 tailwind-merge) */
+export const selectCls = (extra: string) => cn(selectClass, extra);
 
 export function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (

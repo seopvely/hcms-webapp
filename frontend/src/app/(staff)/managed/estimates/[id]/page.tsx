@@ -3,7 +3,7 @@ import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowUp, FileDown, FileSignature, Pencil, Plus, Send, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, FileDown, FileSignature, Pencil, Plus, Send, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import staffApi from "@/lib/staff-api";
 import { staffFileUrl, useLookupCompanies } from "@/lib/staff-maintenance";
@@ -77,8 +78,8 @@ export default function StaffEstimatePage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data, isLoading, error } = useStaffEstimate(isNew ? null : Number(id));
   useEffect(() => {
-    setPageTitle(isNew ? "새 견적" : "견적서");
-  }, [setPageTitle, isNew]);
+    setPageTitle(isNew ? "새 견적" : data?.estimate_title || data?.estimate_number || "견적서");
+  }, [setPageTitle, isNew, data?.estimate_title, data?.estimate_number]);
   if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return isNew ? <EstimateForm detail={null} onDone={() => undefined} /> : <EstimateView detail={data!} />;
@@ -165,112 +166,126 @@ function EstimateView({ detail }: { detail: EstimateDetail }) {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/estimates"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-          <div className="flex-1" />
+        <PageActions>
           <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={staffFileUrl(`/estimates/${detail.seq}/pdf`)} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1 h-4 w-4" /> PDF</a></Button>
           {editable && <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEditing(true)}><Pencil className="mr-1 h-4 w-4" /> 수정</Button>}
           {canWrite && ["1", "2", "4"].includes(detail.status) && <Button size="sm" className="rounded-xl" onClick={() => setSendOpen(true)}><Send className="mr-1 h-4 w-4" /> 고객 발송</Button>}
           {detail.status === "3" && <Button size="sm" variant="outline" className="rounded-xl" asChild><Link href={`/managed/contracts/new?estimate=${detail.seq}`}><FileSignature className="mr-1 h-4 w-4" /> 계약서 작성</Link></Button>}
           {canConvert && detail.status !== "5" && !detail.converted_project_id && <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setConvertOpen(true)}>계약전환</Button>}
-          {editable && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>}
-        </div>
+          {editable && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>}
+        </PageActions>
         {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/estimate/${detail.seq}/`} />}
 
-        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
+        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-4 text-white">
           <p className="text-sm text-white/80">{detail.estimate_number} · {detail.company_name} · 담당 {detail.manager_name || "-"}</p>
           <h1 className="mt-1 text-lg font-bold">{detail.estimate_title}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge className={ESTIMATE_STATUS_COLORS[detail.status] ?? "bg-white/20"}>{detail.status_label}</Badge>
-            {detail.withdrawn && <Badge className="bg-orange-100 text-orange-700">계약철회</Badge>}
-            {detail.customer_email_sent && <span className="text-xs text-white/80">발송: {detail.customer_email_sent}</span>}
-            {detail.converted_project_id && <span className="text-xs text-white/80">전환 프로젝트 #{detail.converted_project_id}</span>}
-          </div>
         </div>
 
-        {canWrite && detail.status !== "5" && (
-          <Card className="rounded-2xl">
-            <CardContent className="flex flex-wrap items-center gap-2 pt-4 pb-4 text-sm">
-              <span className="text-muted-foreground">상태 변경</span>
-              {[["1", "작성중"], ["2", "발송"], ["3", "승인"], ["4", "거절"]].filter(([v]) => v !== detail.status).map(([v, l]) => (
-                <Button key={v} size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => {
-                  const reason = window.prompt(`'${l}'(으)로 변경 사유(선택)`) ?? null;
-                  if (reason !== null) call(`/estimates/${detail.seq}/status`, { status: v, reason }, `${l}(으)로 변경했습니다.`);
-                }}>{l}</Button>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-4">
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-3 pt-5 pb-5">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold">항목 ({detail.items.length})</h2>
+                  {editable && <Button size="sm" className="rounded-xl" onClick={() => setItemEdit("new")}><Plus className="mr-1 h-4 w-4" /> 항목 추가</Button>}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-sm [&_td]:px-2 [&_th]:px-2 [&_td:first-child]:pl-0 [&_th:first-child]:pl-0 [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+                    <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="py-2 text-left">분류</th><th className="text-left">항목</th><th className="text-left">규격</th><th>수량</th><th>단위</th><th className="text-right">단가</th><th className="text-right">금액</th><th /></tr></thead>
+                    <tbody>
+                      {detail.items.map((i, idx) => (
+                        <tr key={i.seq} className="border-b">
+                          <td className="py-2">{i.category}</td><td>{i.item_name}</td><td className="max-w-48 truncate text-xs text-muted-foreground" title={i.specification ?? undefined}>{i.specification}</td>
+                          <td className="text-center">{i.quantity}</td><td className="text-center">{i.unit}</td>
+                          <td className="text-right">{i.unit_price.toLocaleString()}</td>
+                          <td className="text-right">{i.is_separate ? <Badge variant="outline">별도</Badge> : i.total.toLocaleString()}</td>
+                          <td className="whitespace-nowrap text-right">
+                            {editable && (<>
+                              <button className="p-1" onClick={() => move(idx, -1)}><ArrowUp className="h-3 w-3" /></button>
+                              <button className="p-1" onClick={() => move(idx, 1)}><ArrowDown className="h-3 w-3" /></button>
+                              <button className="p-1" onClick={() => setItemEdit(i)}><Pencil className="h-3 w-3" /></button>
+                              <button className="p-1 text-red-600" onClick={() => window.confirm("항목을 삭제할까요?") && call(`/estimates/items/${i.seq}/delete`, {}, "삭제했습니다.")}><Trash2 className="h-3 w-3" /></button>
+                            </>)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="ml-auto max-w-xs space-y-1 text-sm">
+                  <div className="flex justify-between"><span>소계</span><span>{a.subtotal.toLocaleString()}</span></div>
+                  {a.discount > 0 && <div className="flex justify-between text-red-600"><span>할인</span><span>-{a.discount.toLocaleString()}</span></div>}
+                  <div className="flex justify-between"><span>부가세</span><span>{a.tax.toLocaleString()}</span></div>
+                  <div className="flex justify-between font-bold"><span>총액</span><span>{a.total.toLocaleString()}원</span></div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="rounded-2xl">
-          <CardContent className="space-y-3 pt-5 pb-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">항목 ({detail.items.length})</h2>
-              {editable && <Button size="sm" className="rounded-xl" onClick={() => setItemEdit("new")}><Plus className="mr-1 h-4 w-4" /> 항목 추가</Button>}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead className="text-xs text-muted-foreground"><tr className="border-b"><th className="py-2 text-left">분류</th><th className="text-left">항목</th><th className="text-left">규격</th><th>수량</th><th>단위</th><th className="text-right">단가</th><th className="text-right">금액</th><th /></tr></thead>
-                <tbody>
-                  {detail.items.map((i, idx) => (
-                    <tr key={i.seq} className="border-b">
-                      <td className="py-2">{i.category}</td><td>{i.item_name}</td><td className="max-w-48 truncate text-xs text-muted-foreground">{i.specification}</td>
-                      <td className="text-center">{i.quantity}</td><td className="text-center">{i.unit}</td>
-                      <td className="text-right">{i.unit_price.toLocaleString()}</td>
-                      <td className="text-right">{i.is_separate ? <Badge variant="outline">별도</Badge> : i.total.toLocaleString()}</td>
-                      <td className="whitespace-nowrap text-right">
-                        {editable && (<>
-                          <button className="p-1" onClick={() => move(idx, -1)}><ArrowUp className="h-3 w-3" /></button>
-                          <button className="p-1" onClick={() => move(idx, 1)}><ArrowDown className="h-3 w-3" /></button>
-                          <button className="p-1" onClick={() => setItemEdit(i)}><Pencil className="h-3 w-3" /></button>
-                          <button className="p-1 text-red-600" onClick={() => window.confirm("항목을 삭제할까요?") && call(`/estimates/items/${i.seq}/delete`, {}, "삭제했습니다.")}><Trash2 className="h-3 w-3" /></button>
-                        </>)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="ml-auto max-w-xs space-y-1 text-sm">
-              <div className="flex justify-between"><span>소계</span><span>{a.subtotal.toLocaleString()}</span></div>
-              {a.discount > 0 && <div className="flex justify-between text-red-600"><span>할인</span><span>-{a.discount.toLocaleString()}</span></div>}
-              <div className="flex justify-between"><span>부가세</span><span>{a.tax.toLocaleString()}</span></div>
-              <div className="flex justify-between font-bold"><span>총액</span><span>{a.total.toLocaleString()}원</span></div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="rounded-2xl">
+              <CardContent className="grid gap-3 pt-5 pb-5 text-sm sm:grid-cols-2">
+                <div><p className="text-xs text-muted-foreground">지불조건</p><p className="whitespace-pre-wrap">{(detail.payment_terms as string) || "-"}</p></div>
+                <div><p className="text-xs text-muted-foreground">납품조건</p><p className="whitespace-pre-wrap">{(detail.delivery_terms as string) || "-"}</p></div>
+                <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">내용</p><SafeHtml html={detail.estimate_content as string} /></div>
+              </CardContent>
+            </Card>
 
-        <Card className="rounded-2xl">
-          <CardContent className="grid gap-3 pt-5 pb-5 text-sm sm:grid-cols-2">
-            <div><p className="text-xs text-muted-foreground">지불조건</p><p className="whitespace-pre-wrap">{(detail.payment_terms as string) || "-"}</p></div>
-            <div><p className="text-xs text-muted-foreground">납품조건</p><p className="whitespace-pre-wrap">{(detail.delivery_terms as string) || "-"}</p></div>
-            <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">내용</p><SafeHtml html={detail.estimate_content as string} /></div>
-          </CardContent>
-        </Card>
+            {detail.revisions.length > 0 && (
+              <Card className="rounded-2xl"><CardContent className="space-y-2 pt-5 pb-5 text-sm"><h2 className="font-semibold">고객 수정요청</h2>
+                {detail.revisions.map((r) => (
+                  <div key={r.seq} className="rounded-xl bg-muted/40 px-3 py-2">
+                    <p className="font-medium">{r.title} <span className="text-xs text-muted-foreground">{r.requester_name} · {fmtDateTime(r.created_at)}</span></p>
+                    <p className="whitespace-pre-wrap text-sm">{r.content}</p>
+                    {r.is_resolved ? <p className="text-xs text-emerald-700">처리 완료 {r.resolved_comment}</p> : canWrite && (
+                      <Button size="sm" variant="outline" className="mt-1 h-7 rounded-lg" onClick={() => { const c = window.prompt("처리 내용(선택)"); if (c !== null) call(`/estimates/revisions/${r.seq}/resolve`, { comment: c }, "처리 완료로 표시했습니다."); }}>처리 완료</Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent></Card>
+            )}
+          </div>
 
-        {detail.contracts.length > 0 && (
-          <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm"><h2 className="font-semibold">계약서</h2>
-            {detail.contracts.map((c) => <Link key={c.seq} href={`/managed/contracts/${c.seq}`} className="flex justify-between hover:underline"><span>{c.contract_number}</span><span>{c.status_label}</span></Link>)}
-          </CardContent></Card>
-        )}
-
-        {detail.revisions.length > 0 && (
-          <Card className="rounded-2xl"><CardContent className="space-y-2 pt-5 pb-5 text-sm"><h2 className="font-semibold">고객 수정요청</h2>
-            {detail.revisions.map((r) => (
-              <div key={r.seq} className="rounded-xl bg-muted/40 px-3 py-2">
-                <p className="font-medium">{r.title} <span className="text-xs text-muted-foreground">{r.requester_name} · {fmtDateTime(r.created_at)}</span></p>
-                <p className="whitespace-pre-wrap text-sm">{r.content}</p>
-                {r.is_resolved ? <p className="text-xs text-emerald-700">처리 완료 {r.resolved_comment}</p> : canWrite && (
-                  <Button size="sm" variant="outline" className="mt-1 h-7 rounded-lg" onClick={() => { const c = window.prompt("처리 내용(선택)"); if (c !== null) call(`/estimates/revisions/${r.seq}/resolve`, { comment: c }, "처리 완료로 표시했습니다."); }}>처리 완료</Button>
+          <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-4 pt-5 pb-5">
+                <dl className="space-y-3">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">상태</dt>
+                    <dd className="mt-0.5 flex flex-wrap items-center gap-2 text-sm">
+                      <Badge className={ESTIMATE_STATUS_COLORS[detail.status] ?? ""}>{detail.status_label}</Badge>
+                      {detail.withdrawn && <Badge className="bg-orange-100 text-orange-700">계약철회</Badge>}
+                    </dd>
+                  </div>
+                  <div><dt className="text-xs text-muted-foreground">총액</dt><dd className="mt-0.5 text-sm font-semibold">{a.total.toLocaleString()}원</dd></div>
+                  {detail.customer_email_sent && <div><dt className="text-xs text-muted-foreground">고객 발송</dt><dd className="mt-0.5 break-all text-sm">{detail.customer_email_sent}</dd></div>}
+                  {detail.converted_project_id && <div><dt className="text-xs text-muted-foreground">전환 프로젝트</dt><dd className="mt-0.5 text-sm">#{detail.converted_project_id}</dd></div>}
+                </dl>
+                {canWrite && detail.status !== "5" && (
+                  <div className="space-y-2 border-t pt-4">
+                    <p className="text-xs text-muted-foreground">상태 변경</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[["1", "작성중"], ["2", "발송"], ["3", "승인"], ["4", "거절"]].filter(([v]) => v !== detail.status).map(([v, l]) => (
+                        <Button key={v} size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => {
+                          const reason = window.prompt(`'${l}'(으)로 변경 사유(선택)`) ?? null;
+                          if (reason !== null) call(`/estimates/${detail.seq}/status`, { status: v, reason }, `${l}(으)로 변경했습니다.`);
+                        }}>{l}</Button>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </div>
-            ))}
-          </CardContent></Card>
-        )}
+              </CardContent>
+            </Card>
 
-        <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm"><h2 className="font-semibold">상태 이력</h2>
-          {detail.histories.map((h, i) => <p key={i} className="text-muted-foreground">{fmtDateTime(h.created_at)} · {h.previous_status ?? "-"}→{h.new_status} · {h.by} · {h.reason}</p>)}
-        </CardContent></Card>
+            {detail.contracts.length > 0 && (
+              <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm"><h2 className="font-semibold">계약서</h2>
+                {detail.contracts.map((c) => <Link key={c.seq} href={`/managed/contracts/${c.seq}`} className="flex justify-between hover:underline"><span>{c.contract_number}</span><span>{c.status_label}</span></Link>)}
+              </CardContent></Card>
+            )}
+
+            <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm"><h2 className="font-semibold">상태 이력</h2>
+              {detail.histories.map((h, i) => <p key={i} className="text-muted-foreground">{fmtDateTime(h.created_at)} · {h.previous_status ?? "-"}→{h.new_status} · {h.by} · {h.reason}</p>)}
+            </CardContent></Card>
+          </div>
+        </div>
       </div>
 
       {itemEdit && <ItemDialog estimateId={detail.seq} item={itemEdit === "new" ? null : itemEdit} onClose={() => setItemEdit(null)} />}

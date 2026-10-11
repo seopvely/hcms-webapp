@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Lock, Mail, Pencil, Plus, Unlock, UserCog } from "lucide-react";
+import { Lock, Mail, Pencil, Plus, Unlock, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DetailSkeleton } from "@/components/common/loading-skeleton";
@@ -14,6 +13,7 @@ import { COMPANY_FIELDS, EditDialog } from "@/components/managed/edit-dialog";
 import { PermitBadge } from "@/components/managed/permit-badge";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { type CustomerManager, useAccount, useAccountMutation } from "@/lib/staff-content";
 import { impersonate, useStaffMe } from "@/lib/staff-hooks";
@@ -34,8 +34,8 @@ export default function StaffAccountDetailPage() {
   const [managerEdit, setManagerEdit] = useState<CustomerManager | "new" | null>(null);
 
   useEffect(() => {
-    setPageTitle("업체·고객 계정");
-  }, [setPageTitle]);
+    setPageTitle(data?.name || "업체·고객 계정");
+  }, [data?.name, setPageTitle]);
 
   if (error) return <LoadFailed error={error} />;
 
@@ -67,29 +67,33 @@ export default function StaffAccountDetailPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild>
-          <Link href="/managed/accounts"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link>
-        </Button>
+        {canWrite && (
+          <PageActions>
+            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setCompanyEdit(true)}>
+              <Pencil className="mr-1 h-4 w-4" /> 업체 정보 수정
+            </Button>
+          </PageActions>
+        )}
         {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/suppliermanage/${seq}`} />}
 
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
         <Card className="rounded-2xl">
           <CardContent className="space-y-3 pt-5 pb-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{data.name}</h2>
-              {canWrite && (
-                <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setCompanyEdit(true)}>
-                  <Pencil className="mr-1 h-4 w-4" /> 업체 정보 수정
-                </Button>
-              )}
-            </div>
-            <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <h2 className="font-semibold">{data.name}</h2>
+            <dl className="space-y-3">
               {COMPANY_FIELDS.slice(1).map(([k, label]) => (
-                <div key={k}><span className="text-xs text-muted-foreground">{label}</span><p>{(data[k] as string) || "-"}</p></div>
+                <div key={k}>
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5 text-sm break-words">{(data[k] as string) || "-"}</dd>
+                </div>
               ))}
-            </div>
+            </dl>
           </CardContent>
         </Card>
+        </div>
 
+        <div className="min-w-0 space-y-4">
         <Card className="rounded-2xl">
           <CardContent className="space-y-3 pt-5 pb-5">
             <div className="flex items-center justify-between">
@@ -138,6 +142,8 @@ export default function StaffAccountDetailPage() {
             ))}
           </CardContent>
         </Card>
+        </div>
+        </div>
       </div>
 
       {companyEdit && (

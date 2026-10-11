@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff, require_staff_admin
 from app.db.session import get_db
 from app.models.company import Company
@@ -115,6 +115,7 @@ def _row(e: FdeEngagement, plans: dict, companies: dict) -> dict:
 
 @router.get("/engagements")
 def list_engagements(status: str | None = None, plan_id: str | None = None, company_id: int | None = None, q: str | None = None,
+                     sort: str | None = Query(None, description="start_date|end_date|headcount|status|created_at, '-' 접두 = 내림차순"),
                      page: int = Query(1, ge=1), per_page: int = Query(20, le=100), db: Session = Depends(get_db)):
     query = db.query(FdeEngagement)
     if status:
@@ -126,7 +127,11 @@ def list_engagements(status: str | None = None, plan_id: str | None = None, comp
     if q:
         query = query.filter(FdeEngagement.company_id.in_(db.query(Company.seq).filter(Company.name.like(f"%{q}%"))))
     total = query.count()
-    rows = query.order_by(FdeEngagement.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"start_date": FdeEngagement.start_date, "end_date": FdeEngagement.end_date,
+                                    "headcount": FdeEngagement.headcount, "status": FdeEngagement.status,
+                                    "created_at": FdeEngagement.created_at},
+                       [FdeEngagement.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     plans = {p.plan_id: p for p in db.query(ServicePlan)}
     companies = dict(db.query(Company.seq, Company.name).filter(Company.seq.in_({r.company_id for r in rows} or {0})))
     out = page_response([_row(r, plans, companies) for r in rows], total, page, per_page)

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { ShieldAlert, ShieldCheck, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +17,8 @@ import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
+import { DataTable } from "@/components/managed/data-table";
+import { fmtDateTime } from "@/components/managed/field";
 import { useNavigationStore } from "@/store/navigation-store";
 import {
   type StaffAccount,
@@ -38,6 +39,15 @@ function twoFactorLabel(s: StaffAccount) {
   return { label: "2FA 사용", className: "bg-emerald-100 text-emerald-700" };
 }
 
+const roleBadge = (s: StaffAccount) => (
+  <Badge className={s.is_admin ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"}>{s.is_admin ? "관리자" : "사용자"}</Badge>
+);
+const tfBadge = (s: StaffAccount) => {
+  const tf = twoFactorLabel(s);
+  return <Badge className={tf.className}>{tf.label}</Badge>;
+};
+const inactiveBadge = <Badge className="bg-red-100 text-red-700">비활성</Badge>;
+
 export default function ManagedStaffPage() {
   const setPageTitle = useNavigationStore((state) => state.setPageTitle);
   const { data: me } = useStaffMe();
@@ -48,6 +58,12 @@ export default function ManagedStaffPage() {
     setPageTitle("직원 계정");
   }, [setPageTitle]);
 
+  const editBtn = (s: StaffAccount) => (
+    <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEditing(s)}>
+      <UserCog className="mr-1 h-4 w-4" /> 수정
+    </Button>
+  );
+
   if (me && !me.is_admin) {
     return <EmptyState icon={ShieldAlert} title="관리자만 볼 수 있습니다" />;
   }
@@ -57,35 +73,46 @@ export default function ManagedStaffPage() {
       {isLoading || !data ? (
         <TableSkeleton />
       ) : (
-        <Card className="rounded-2xl">
-          <CardContent className="divide-y p-0">
-            {data.items.map((s) => {
-              const tf = twoFactorLabel(s);
-              return (
-                <div key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">
-                      {s.name || s.username}
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">{s.username}</span>
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {s.email || "이메일 없음"}
-                      {s.last_login && ` · 최근 로그인 ${s.last_login.slice(0, 16).replace("T", " ")}`}
-                    </p>
-                  </div>
-                  <Badge className={s.is_admin ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"}>
-                    {s.is_admin ? "관리자" : "사용자"}
-                  </Badge>
-                  <Badge className={tf.className}>{tf.label}</Badge>
-                  {!s.is_active && <Badge className="bg-red-100 text-red-700">비활성</Badge>}
-                  <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEditing(s)}>
-                    <UserCog className="mr-1 h-4 w-4" /> 수정
-                  </Button>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+        <DataTable
+          rows={data.items}
+          rowKey={(s) => s.id}
+          onRowClick={(s) => setEditing(s)}
+          rowClassName={(s) => (s.is_active ? undefined : "opacity-70")}
+          columns={[
+            {
+              key: "name", header: "이름", sort: "name", value: (s) => s.name || s.username, cell: (s) => (
+                <p className="whitespace-nowrap font-medium">
+                  {s.name || s.username}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{s.username}</span>
+                </p>
+              ),
+            },
+            { key: "email", header: "이메일", sort: "email", value: (s) => s.email, hideOnMobile: true, className: "text-muted-foreground", cell: (s) => s.email || "이메일 없음" },
+            { key: "last_login", header: "최근 로그인", sort: "last_login", value: (s) => s.last_login, hideOnMobile: true, className: "w-36 whitespace-nowrap text-xs text-muted-foreground", cell: (s) => fmtDateTime(s.last_login) },
+            { key: "role", header: "등급", sort: "role", value: (s) => (s.is_admin ? 0 : 1), align: "center", className: "w-20", cell: (s) => roleBadge(s) },
+            { key: "tf", header: "2FA", sort: "tf", value: (s) => twoFactorLabel(s).label, align: "center", className: "w-28", cell: (s) => tfBadge(s) },
+            { key: "active", header: "상태", sort: "active", value: (s) => (s.is_active ? 0 : 1), align: "center", hideOnMobile: true, className: "w-20", cell: (s) => (s.is_active ? <span className="text-xs text-muted-foreground">활성</span> : inactiveBadge) },
+            { key: "edit", header: "", align: "right", className: "w-20", cell: (s) => editBtn(s) },
+          ]}
+          mobile={(s) => (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">
+                  {s.name || s.username}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{s.username}</span>
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {s.email || "이메일 없음"}
+                  {s.last_login && ` · 최근 로그인 ${fmtDateTime(s.last_login)}`}
+                </p>
+              </div>
+              {roleBadge(s)}
+              {tfBadge(s)}
+              {!s.is_active && inactiveBadge}
+              {editBtn(s)}
+            </div>
+          )}
+        />
       )}
 
       {editing && (

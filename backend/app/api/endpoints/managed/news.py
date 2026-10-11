@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import SessionLocal, get_db
 from app.models.company import Company
@@ -41,10 +41,15 @@ def _serialize(n: News, full: bool = False) -> dict:
 
 
 @router.get("")
-def list_news(page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=200), db: Session = Depends(get_db)):
+def list_news(page: int = Query(1, ge=1), per_page: int = Query(50, ge=1, le=200),
+              sort: str | None = Query(None, description="title|category|views|is_published|created_at, '-' 접두 = 내림차순"),
+              db: Session = Depends(get_db)):
     query = db.query(News).options(joinedload(News.companies))
     total = query.count()
-    rows = query.order_by(News.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"title": News.title, "category": News.category, "views": News.views,
+                                    "is_published": News.is_published, "created_at": News.created_at},
+                       [News.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     return page_response([_serialize(n) for n in rows], total, page, per_page) | {"write_enabled": write_enabled("news")}
 
 

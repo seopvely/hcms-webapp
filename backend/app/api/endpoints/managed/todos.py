@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.company import Company
@@ -55,6 +55,7 @@ def _base(db: Session):
 @router.get("")
 def list_todos(q: str | None = None, status: str | None = None, priority: str | None = None, assignee_id: int | None = None,
                company_id: int | None = None, project_id: int | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=100),
+               sort: str | None = Query(None, description="title|priority|status|due_date|created_at, '-' 접두 = 내림차순"),
                db: Session = Depends(get_db)):
     today = date.today()
     query = _base(db)
@@ -75,7 +76,9 @@ def list_todos(q: str | None = None, status: str | None = None, priority: str | 
     if project_id:
         query = query.filter(Todo.project_id == project_id)
     total = query.count()
-    rows = query.order_by(Todo.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"title": Todo.title, "priority": Todo.priority, "status": Todo.status, "due_date": Todo.due_date,
+                                     "created_at": Todo.created_at}, [Todo.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     out = page_response([_row(t, *_names(db, rows), today) for t in rows], total, page, per_page)
     out["counts"] = {s: _base(db).filter(Todo.status == s).count() for s in ("pending", "in_progress", "done")}
     out["counts"]["overdue"] = _base(db).filter(Todo.due_date < today, Todo.status != "done").count()

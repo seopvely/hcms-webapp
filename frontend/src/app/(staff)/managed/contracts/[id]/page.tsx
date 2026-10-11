@@ -3,7 +3,7 @@ import { LoadFailed } from "@/components/managed/load-failed";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, FileDown, Pencil, Send, ShieldCheck, Trash2, Undo2 } from "lucide-react";
+import { FileDown, Pencil, Send, ShieldCheck, Trash2, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/mana
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { useContractPrefill, useSalesMutation, useStaffContract, useWithdrawInfo } from "@/lib/staff-sales";
@@ -114,6 +115,11 @@ function ContractView({ seq }: { seq: number }) {
   const [sendMode, setSendMode] = useState<"send" | "resend" | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const setPageTitle = useNavigationStore((st) => st.setPageTitle);
+  const pageTitle = data ? (data.contract_title as string) || data.contract_number : null;
+  useEffect(() => {
+    if (pageTitle) setPageTitle(pageTitle);
+  }, [pageTitle, setPageTitle]);
   if (error) return <LoadFailed error={error} />;
   if (isLoading || !data) return <DetailSkeleton />;
   if (editing) return <ContractForm initial={data} estimateId={null} seq={seq} onDone={() => setEditing(false)} />;
@@ -134,9 +140,7 @@ function ContractView({ seq }: { seq: number }) {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/contracts"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-          <div className="flex-1" />
+        <PageActions>
           <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={staffFileUrl(`/contracts/${seq}/pdf`)} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1 h-4 w-4" /> PDF</a></Button>
           {data.has_signed_pdf && <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={staffFileUrl(`/contracts/${seq}/pdf?signed=true`)}><FileDown className="mr-1 h-4 w-4" /> 서명본</a></Button>}
           {canWrite && ["1", "2"].includes(s) && <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEditing(true)}><Pencil className="mr-1 h-4 w-4" /> 수정</Button>}
@@ -144,26 +148,32 @@ function ContractView({ seq }: { seq: number }) {
           {canWrite && s === "3" && <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setSendMode("resend")}><Send className="mr-1 h-4 w-4" /> 재발송</Button>}
           {canWrite && s === "4" && !data.manager_signed_hash && <Button size="sm" className="rounded-xl" onClick={() => window.confirm("을(한결랩) 서명을 진행할까요?") && call(`/contracts/${seq}/manager-sign`, {}, "을 서명을 완료했습니다.")}><ShieldCheck className="mr-1 h-4 w-4" /> 을 서명</Button>}
           {me?.write_areas.includes("conversion") && data.estimate?.converted_project_id && s !== "5" && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setWithdrawOpen(true)}><Undo2 className="mr-1 h-4 w-4" /> 계약 철회</Button>}
-          {canWrite && ["1", "2", "3"].includes(s) && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>}
-        </div>
+          {canWrite && ["1", "2", "3"].includes(s) && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>}
+        </PageActions>
         {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/contract/${seq}/`} />}
-        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
+        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-4 text-white">
           <p className="text-sm text-white/80">{data.contract_number} · {data.party_a_name as string}{data.estimate && <> · 견적 <Link className="underline" href={`/managed/estimates/${data.estimate.seq}`}>{data.estimate.number}</Link></>}</p>
           <h1 className="mt-1 text-lg font-bold">{data.contract_title as string}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-            <Badge className={CONTRACT_STATUS_COLORS[s] ?? "bg-white/20"}>{data.status_label}</Badge>
-            <span>{((data.contract_amount as number) ?? 0).toLocaleString()}원</span>
-            {data.sent_to_email ? <span>발송 {data.sent_to_email as string} · 링크 {data.token_valid ? "유효" : "만료"}</span> : null}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-4">
+            <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm"><h2 className="font-semibold">이력</h2>
+              {data.histories.map((h, i) => <p key={i} className="whitespace-pre-wrap text-muted-foreground">{fmtDateTime(h.created_at)} · {h.action} · {h.by || "-"} · {h.description}{h.ip ? ` (${h.ip})` : ""}</p>)}
+            </CardContent></Card>
+          </div>
+          <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
+            <Card className="rounded-2xl"><CardContent className="pt-5 pb-5">
+              <dl className="space-y-3">
+                <Info label="상태"><Badge className={CONTRACT_STATUS_COLORS[s] ?? ""}>{data.status_label}</Badge></Info>
+                <Info label="계약금액"><span className="font-semibold">{((data.contract_amount as number) ?? 0).toLocaleString()}원</span></Info>
+                {data.sent_to_email ? <Info label="고객 발송"><span className="break-all">{data.sent_to_email as string}</span> · 링크 {data.token_valid ? "유효" : "만료"}</Info> : null}
+                <Info label="고객 서명">{data.customer_signed_name ? `${data.customer_signed_name as string} · ${fmtDateTime(data.customer_signed_at as string)}` : "-"}</Info>
+                <Info label="을 서명">{data.manager_signed_name ? `${data.manager_signed_name as string} · ${fmtDateTime(data.manager_signed_at as string)}` : "-"}</Info>
+                {data.customer_signed_hash ? <Info label="고객 서명 해시"><span className="break-all text-xs text-muted-foreground">{data.customer_signed_hash as string}</span></Info> : null}
+              </dl>
+            </CardContent></Card>
           </div>
         </div>
-        <Card className="rounded-2xl"><CardContent className="grid gap-2 pt-5 pb-5 text-sm sm:grid-cols-2">
-          <p>고객 서명: {data.customer_signed_name ? `${data.customer_signed_name as string} · ${fmtDateTime(data.customer_signed_at as string)}` : "-"}</p>
-          <p>을 서명: {data.manager_signed_name ? `${data.manager_signed_name as string} · ${fmtDateTime(data.manager_signed_at as string)}` : "-"}</p>
-          {data.customer_signed_hash ? <p className="break-all text-xs text-muted-foreground sm:col-span-2">고객 서명 해시 {data.customer_signed_hash as string}</p> : null}
-        </CardContent></Card>
-        <Card className="rounded-2xl"><CardContent className="space-y-1 pt-5 pb-5 text-sm"><h2 className="font-semibold">이력</h2>
-          {data.histories.map((h, i) => <p key={i} className="whitespace-pre-wrap text-muted-foreground">{fmtDateTime(h.created_at)} · {h.action} · {h.by || "-"} · {h.description}{h.ip ? ` (${h.ip})` : ""}</p>)}
-        </CardContent></Card>
       </div>
       {sendMode && (
         <SendContractDialog mode={sendMode} recipients={data.recipients} defaultEmail={(data.sent_to_email as string) || ""} onClose={() => setSendMode(null)}
@@ -173,6 +183,15 @@ function ContractView({ seq }: { seq: number }) {
       <StepUpDialog open={deleteOpen} onOpenChange={setDeleteOpen} title="계약서 삭제" description="이력과 함께 삭제됩니다. 서명된 계약서는 삭제할 수 없습니다." confirmText="삭제"
         onConfirm={async (password) => { if (await call(`/contracts/${seq}/delete`, { password }, "삭제했습니다.")) router.replace("/managed/contracts"); }} />
     </PageTransition>
+  );
+}
+
+function Info({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{children}</dd>
+    </div>
   );
 }
 

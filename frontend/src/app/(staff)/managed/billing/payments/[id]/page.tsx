@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { apiErrorDetail, fmtDate } from "@/components/managed/field";
 import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/managed/form-grid";
 import { BillingShell, STATUS_COLOR, useBillingOptions, useBillingWritable, won } from "@/components/managed/billing-ui";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 
@@ -86,13 +87,17 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   const histories = (data?.histories as Dict[] | undefined) ?? [];
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/billing/payments"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        {data && <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[data.status_color as string] ?? "bg-muted"}`}>{data.status_text as string}</span>}
-        <div className="flex-1" />
-        {data && canWrite && <Button size="sm" variant="outline" className="rounded-xl" asChild><Link href={`/managed/billing/history/new?payment_id=${id}&company_id=${data.company_id ?? ""}&project_id=${data.project_id ?? ""}`}>납부내역 등록</Link></Button>}
-        {data && canWrite && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>}
-      </div>
+      {data && canWrite && (
+        <PageActions>
+          <Button size="sm" variant="outline" className="rounded-xl" asChild><Link href={`/managed/billing/history/new?payment_id=${id}&company_id=${data.company_id ?? ""}&project_id=${data.project_id ?? ""}`}>납부내역 등록</Link></Button>
+          <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>
+        </PageActions>
+      )}
+      {data && (
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_COLOR[data.status_color as string] ?? "bg-muted"}`}>{data.status_text as string}</span>
+        </div>
+      )}
       <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
         <FormGrid fields={fields} values={v} disabled={!canWrite} onChange={(k, val) => setV((s) => ({ ...s, [k]: val, ...(k === "company_id" ? { project_id: "" } : {}) }))} />
         <div className="space-y-2">

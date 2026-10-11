@@ -1,16 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { FileSignature, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
 import { CONTRACT_STATUS_COLORS } from "@/components/managed/contract-status";
-import { fmtDate } from "@/components/managed/field";
+import { DataTable } from "@/components/managed/data-table";
+import { fmtDate, meta } from "@/components/managed/field";
 import { Pager } from "@/components/managed/pager";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
@@ -19,7 +18,7 @@ import { useStaffContracts } from "@/lib/staff-sales";
 
 export default function StaffContractsPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
-  const [params, setParams] = useState<{ q?: string; status?: string; page: number }>({ page: 1 });
+  const [params, setParams] = useState<{ q?: string; status?: string; sort?: string; page: number }>({ page: 1 });
   const [keyword, setKeyword] = useState("");
   const { data, isLoading } = useStaffContracts(params);
   useEffect(() => {
@@ -41,18 +40,38 @@ export default function StaffContractsPage() {
         </form>
         {isLoading ? <TableSkeleton /> : !data?.items.length ? <EmptyState icon={FileSignature} title="계약서가 없습니다" /> : (
           <>
-            <Card className="rounded-2xl"><CardContent className="divide-y p-0">
-              {data.items.map((c) => (
-                <Link key={c.seq} href={`/managed/contracts/${c.seq}`} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-muted/40">
+            <DataTable
+              rows={data.items}
+              rowKey={(c) => c.seq}
+              rowHref={(c) => `/managed/contracts/${c.seq}`}
+              sort={params.sort}
+              onSortChange={(sort) => setParams((p) => ({ ...p, sort, page: 1 }))}
+              columns={[
+                { key: "number", header: "번호", sort: "number", hideOnMobile: true, className: "w-36 whitespace-nowrap text-xs text-muted-foreground", cell: (c) => c.contract_number },
+                {
+                  key: "title", header: "계약명", sort: "title", cell: (c) => (
+                    <div className="min-w-0 max-w-[420px]">
+                      <p className="truncate font-medium">{c.contract_title}</p>
+                      <p className="truncate text-xs text-muted-foreground">{meta(c.party_a_name)}</p>
+                    </div>
+                  ),
+                },
+                { key: "sent_at", header: "발송", sort: "sent_at", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (c) => fmtDate(c.sent_at) },
+                { key: "customer_signed_at", header: "고객서명", sort: "customer_signed_at", hideOnMobile: true, className: "w-28 whitespace-nowrap", cell: (c) => fmtDate(c.customer_signed_at) },
+                { key: "amount", header: "금액", sort: "amount", align: "right", className: "w-32 whitespace-nowrap", cell: (c) => `${(c.contract_amount ?? 0).toLocaleString()}원` },
+                { key: "status", header: "상태", sort: "status", align: "center", className: "w-24", cell: (c) => <Badge className={`min-w-16 justify-center ${CONTRACT_STATUS_COLORS[c.status] ?? "bg-muted"}`}>{c.status_label}</Badge> },
+              ]}
+              mobile={(c) => (
+                <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{c.contract_title}</p>
                     <p className="truncate text-xs text-muted-foreground">{c.contract_number} · {c.party_a_name} · 발송 {fmtDate(c.sent_at)} · 고객서명 {fmtDate(c.customer_signed_at)}</p>
+                    <p className="text-xs tabular-nums">{(c.contract_amount ?? 0).toLocaleString()}원</p>
                   </div>
-                  <span className="text-sm">{(c.contract_amount ?? 0).toLocaleString()}원</span>
                   <Badge className={`min-w-16 justify-center ${CONTRACT_STATUS_COLORS[c.status] ?? "bg-muted"}`}>{c.status_label}</Badge>
-                </Link>
-              ))}
-            </CardContent></Card>
+                </div>
+              )}
+            />
             <Pager page={data.page} totalPages={data.total_pages} total={data.total} onChange={(page) => setParams((p) => ({ ...p, page }))} />
           </>
         )}

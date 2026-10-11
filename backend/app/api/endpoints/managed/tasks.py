@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import code, page_response, require_write, verify_step_up, write_enabled
+from app.api.endpoints.managed.common import apply_sort, code, page_response, require_write, verify_step_up, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import SessionLocal, get_db
 from app.models.company import Company
@@ -53,6 +53,7 @@ def list_tasks(
     q: str | None = None,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    sort: str | None = Query(None, description="seq|title|task_status|created_at|deadline, '-' 접두 = 내림차순"),
     db: Session = Depends(get_db),
 ):
     query = db.query(Inditask).outerjoin(Company, Inditask.company_id == Company.seq)
@@ -70,7 +71,9 @@ def list_tasks(
         like = f"%{q.strip()}%"
         query = query.filter(or_(Inditask.title.like(like), Inditask.content.like(like), Company.name.like(like)))
     total = query.count()
-    rows = query.order_by(Inditask.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"seq": Inditask.seq, "title": Inditask.title, "task_status": Inditask.task_status,
+                                     "created_at": Inditask.created_at, "deadline": Inditask.deadline}, [Inditask.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     companies = {c.seq: c.name for c in db.query(Company).filter(Company.seq.in_({r.company_id for r in rows}))} if rows else {}
     writers = {m.seq: m.name for m in db.query(Manager).filter(Manager.seq.in_({r.writer_id for r in rows if r.writer_id}))} if rows else {}
     items = [{

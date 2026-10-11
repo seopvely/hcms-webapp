@@ -3,14 +3,14 @@ import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Receipt, Trash2 } from "lucide-react";
+import { Plus, Receipt, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DetailSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
-import { apiErrorDetail, fmtDate, selectClass } from "@/components/managed/field";
+import { apiErrorDetail, fmtDate, selectCls } from "@/components/managed/field";
 import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/managed/form-grid";
 import { STATUS_COLOR, won } from "@/components/managed/billing-ui";
 import { useLookupCompanies } from "@/lib/staff-maintenance";
@@ -41,8 +41,9 @@ export default function FdeDetailPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data, isLoading, error } = useStaffGet<Dict>(["fde", "detail", id], isNew ? null : `/fde/engagements/${id}`);
   useEffect(() => {
-    setPageTitle(isNew ? "FDE 계약 등록" : "FDE 계약");
-  }, [setPageTitle, isNew]);
+    const company = data?.company as string | undefined;
+    setPageTitle(isNew ? "FDE 계약 등록" : company ? `${company} FDE 계약` : "FDE 계약");
+  }, [setPageTitle, isNew, data?.company]);
   if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition><Editor key={id} id={id} data={isNew ? null : data!} /></PageTransition>;
@@ -97,10 +98,7 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   const pays = (data?.payments as Dict[] | undefined) ?? [];
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/fde"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        {data && <span className="text-sm font-semibold">{data.company as string} · {data.plan_name as string} · {data.status_label as string}</span>}
-      </div>
+      {data && <p className="text-sm font-semibold">{data.company as string} · {data.plan_name as string} · {data.status_label as string}</p>}
       <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
         <FormGrid fields={fields} values={v} disabled={!canWrite} onChange={(k, val) => setV((s) => ({ ...s, [k]: val }))} />
         <div className="flex flex-wrap gap-3 text-xs">
@@ -128,7 +126,7 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
           ))}
           {canWrite && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-              <select className={`${selectClass} sm:col-span-2`} value={addon.plan_id} onChange={(e) => setAddon({ ...addon, plan_id: e.target.value })}>
+              <select className={selectCls("sm:col-span-2")} value={addon.plan_id} onChange={(e) => setAddon({ ...addon, plan_id: e.target.value })}>
                 <option value="">옵션 선택</option>{addonPlans.map((p) => <option key={p.plan_id} value={p.plan_id}>{p.name_ko}{p.list_price_supply ? ` (${p.list_price_supply.toLocaleString()})` : ""}</option>)}
               </select>
               <Input className="rounded-xl" placeholder="수량" value={addon.qty} onChange={(e) => setAddon({ ...addon, qty: e.target.value })} />

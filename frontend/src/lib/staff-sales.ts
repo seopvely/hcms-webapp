@@ -56,7 +56,7 @@ export interface EstimateDetail extends Dict {
   write_enabled: boolean;
 }
 
-export function useStaffEstimates(params: { q?: string; status?: string; company_id?: number; page: number }) {
+export function useStaffEstimates(params: { q?: string; status?: string; company_id?: number; sort?: string; page: number }) {
   return useQuery({
     queryKey: ["staff", "estimates", "list", params],
     queryFn: async (): Promise<Paged<EstimateListItem> & { write_enabled: boolean }> => (await staffApi.get("/managed/estimates", { params })).data,
@@ -112,7 +112,7 @@ export interface ContractListItem {
   created_at: string | null;
 }
 
-export function useStaffContracts(params: { q?: string; status?: string; page: number }) {
+export function useStaffContracts(params: { q?: string; status?: string; sort?: string; page: number }) {
   return useQuery({
     queryKey: ["staff", "contracts", "list", params],
     queryFn: async (): Promise<Paged<ContractListItem> & { stats: { status: string; label: string; count: number }[]; write_enabled: boolean }> =>
@@ -179,7 +179,7 @@ export interface SalesChoices {
   activity: Record<string, string>;
 }
 
-export function useStaffLeads(params: { q?: string; status?: string; source?: string; drafts?: boolean; page: number }) {
+export function useStaffLeads(params: { q?: string; status?: string; source?: string; drafts?: boolean; sort?: string; page: number }) {
   return useQuery({
     queryKey: ["staff", "sales", "list", params],
     queryFn: async (): Promise<Paged<LeadListItem> & { pipeline: { status: string; label: string; count: number }[]; draft_count: number; choices: SalesChoices; write_enabled: boolean }> =>

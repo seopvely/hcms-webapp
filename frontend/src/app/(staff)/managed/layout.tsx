@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
-import { AppHeader } from "@/components/layout/app-header";
 import { StaffSidebar } from "@/components/managed/staff-sidebar";
+import { StaffHeader } from "@/components/managed/staff-header";
 import { CommandPalette } from "@/components/managed/command-palette";
 import { PageSpinner } from "@/components/common/page-spinner";
 import { ToastProvider } from "@/components/common/app-toast";
@@ -60,7 +60,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <StaffSidebar name={me.name || me.username} email={me.email} onLogout={logout} />
           <CommandPalette isAdmin={!!me.is_admin} onLogout={logout} />
           <div className="lg:pl-64">
-            <AppHeader />
+            <StaffHeader />
             {/* 직원 화면 카드는 CardContent 가 여백을 직접 정한다 — Card 기본 py-6·gap-6 이 겹쳐 위아래가 비던 것을 없앤다 */}
             <main className="mx-auto max-w-[1600px] p-4 lg:p-6 [&_[data-slot=card]]:gap-0 [&_[data-slot=card]]:py-0">{children}</main>
           </div>

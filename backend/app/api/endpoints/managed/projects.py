@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.api.endpoints.managed.estimates import PROJECT_TYPES
 from app.core.deps import get_current_staff, require_staff_admin
 from app.db.session import get_db
@@ -74,6 +74,7 @@ def list_projects(
     phase: str | None = None,
     project_type: str | None = None,
     company_id: int | None = None,
+    sort: str | None = Query(None, description="seq|title|contract_date|contract_termination_date|point, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -86,7 +87,9 @@ def list_projects(
         query = query.filter(Project.project_type == project_type)
     if company_id:
         query = query.filter(Project.company_id == company_id)
-    rows = query.order_by(Project.created_at.desc(), Project.seq.desc()).all()
+    rows = apply_sort(query, sort, {"seq": Project.seq, "title": Project.title, "contract_date": Project.contract_date,
+                                   "contract_termination_date": Project.contract_termination_date, "point": Project.point},
+                      [Project.created_at.desc(), Project.seq.desc()]).all()
     today = date.today()
     if phase:
         rows = [p for p in rows if _phase(p, today) == phase]

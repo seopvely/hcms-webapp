@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Paperclip } from "lucide-react";
+import { Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,8 +32,8 @@ export default function StaffInquiryDetailPage() {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    setPageTitle("고객문의 상세");
-  }, [setPageTitle]);
+    setPageTitle(data?.title || "고객문의 상세");
+  }, [data?.title, setPageTitle]);
 
   if (error) return <LoadFailed error={error} />;
 
@@ -59,76 +58,98 @@ export default function StaffInquiryDetailPage() {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild>
-          <Link href="/managed/inquiries"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link>
-        </Button>
         {!data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/inquiry_detail/${seq}`} />}
-        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-5 text-white">
-          <p className="text-sm text-white/80">#{data.seq} · {data.company_name} · {data.writer_name} · {data.inquiry_type_label}</p>
+        <div className="rounded-2xl bg-gradient-to-r from-[#667eea] to-[#764ba2] p-4 text-white">
+          <p className="text-sm text-white/80">#{data.seq} · {data.company_name}</p>
           <h1 className="mt-1 text-lg font-bold">{data.title}</h1>
-          <p className="mt-1 text-xs text-white/80">{data.status_label} · 문의 {fmtDateTime(data.created_at)}</p>
         </div>
-        <Card className="rounded-2xl">
-          <CardContent className="space-y-3 pt-5 pb-5">
-            <SafeHtml html={data.contents} />
-            <div className="flex flex-wrap gap-2">
-              {data.attachments.map((a) => (
-                <a key={a.id} href={staffFileUrl(`/inquiries/files/attachment/${a.id}`)} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-muted">
-                  <Paperclip className="h-3 w-3" /> {a.filename}
-                </a>
-              ))}
-              {data.has_legacy_file && (
-                <a href={staffFileUrl(`/inquiries/files/legacy/${seq}`)} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-muted">
-                  <Paperclip className="h-3 w-3" /> 기존 첨부
-                </a>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl">
-          <CardContent className="space-y-2 pt-5 pb-5">
-            <h2 className="font-semibold">답변 ({data.answers.length})</h2>
-            {data.answers.map((a) => (
-              <div key={a.seq} className={`rounded-xl px-3 py-3 ${a.is_staff ? "bg-muted/40" : "bg-blue-50/60"} ${a.parent_answer_id ? "ml-4" : ""}`}>
-                <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">{a.writer_name || (a.is_staff ? "직원" : "고객")}</span>
-                  <Badge variant="outline">{a.is_staff ? "관리자" : "고객"}</Badge>
-                  <span>{fmtDateTime(a.created_at)}</span>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-4">
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-3 pt-5 pb-5">
+                <SafeHtml html={data.contents} />
+                <div className="flex flex-wrap gap-2">
+                  {data.attachments.map((a) => (
+                    <a key={a.id} href={staffFileUrl(`/inquiries/files/attachment/${a.id}`)} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-muted">
+                      <Paperclip className="h-3 w-3" /> {a.filename}
+                    </a>
+                  ))}
+                  {data.has_legacy_file && (
+                    <a href={staffFileUrl(`/inquiries/files/legacy/${seq}`)} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs hover:bg-muted">
+                      <Paperclip className="h-3 w-3" /> 기존 첨부
+                    </a>
+                  )}
                 </div>
-                <SafeHtml html={a.content} />
-                {a.has_file && (
-                  <a href={staffFileUrl(`/inquiries/files/answer/${a.seq}`)} className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600">
-                    <Paperclip className="h-3 w-3" /> 첨부
-                  </a>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        {data.write_enabled && (
-          <Card className="rounded-2xl">
-            <CardContent className="space-y-3 pt-5 pb-5">
-              <h2 className="font-semibold">답변 작성</h2>
-              <SimpleEditor key={editorKey} value={content} onChange={setContent} placeholder="답변 내용" />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="문의 상태">
-                  <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="1">대기중</option>
-                    <option value="2">진행중</option>
-                    <option value="3">답변완료</option>
-                  </select>
-                </Field>
-                <Field label="첨부(1개)">
-                  <Input type="file" className="rounded-xl" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-                </Field>
-              </div>
-              <div className="flex justify-end">
-                <Button className="rounded-xl" onClick={submit} disabled={answer.isPending}>등록</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl">
+              <CardContent className="space-y-2 pt-5 pb-5">
+                <h2 className="font-semibold">답변 ({data.answers.length})</h2>
+                {data.answers.map((a) => (
+                  <div key={a.seq} className={`rounded-xl px-3 py-3 ${a.is_staff ? "bg-muted/40" : "bg-blue-50/60"} ${a.parent_answer_id ? "ml-4" : ""}`}>
+                    <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground">{a.writer_name || (a.is_staff ? "직원" : "고객")}</span>
+                      <Badge variant="outline">{a.is_staff ? "관리자" : "고객"}</Badge>
+                      <span>{fmtDateTime(a.created_at)}</span>
+                    </div>
+                    <SafeHtml html={a.content} />
+                    {a.has_file && (
+                      <a href={staffFileUrl(`/inquiries/files/answer/${a.seq}`)} className="mt-1 inline-flex items-center gap-1 text-xs text-blue-600">
+                        <Paperclip className="h-3 w-3" /> 첨부
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            {data.write_enabled && (
+              <Card className="rounded-2xl">
+                <CardContent className="space-y-3 pt-5 pb-5">
+                  <h2 className="font-semibold">답변 작성</h2>
+                  <SimpleEditor key={editorKey} value={content} onChange={setContent} placeholder="답변 내용" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="문의 상태">
+                      <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)}>
+                        <option value="1">대기중</option>
+                        <option value="2">진행중</option>
+                        <option value="3">답변완료</option>
+                      </select>
+                    </Field>
+                    <Field label="첨부(1개)">
+                      <Input type="file" className="rounded-xl" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                    </Field>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button className="rounded-xl" onClick={submit} disabled={answer.isPending}>등록</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          <div className="order-first h-fit space-y-4 lg:sticky lg:top-20 lg:order-last">
+            <Card className="rounded-2xl">
+              <CardContent className="pt-5 pb-5">
+                <dl className="space-y-3">
+                  <Info label="상태"><Badge variant="outline">{data.status_label}</Badge></Info>
+                  <Info label="문의 유형">{data.inquiry_type_label || "-"}</Info>
+                  <Info label="업체">{data.company_name || "-"}</Info>
+                  <Info label="작성자">{data.writer_name || "-"}</Info>
+                  <Info label="문의일">{fmtDateTime(data.created_at)}</Info>
+                </dl>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </PageTransition>
+  );
+}
+
+function Info({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{children}</dd>
+    </div>
   );
 }

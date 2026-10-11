@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Power, Send, Trash2, X } from "lucide-react";
+import { Plus, Power, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,11 +11,12 @@ import { AppAlertDialog } from "@/components/common/app-alert-dialog";
 import { DetailSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
-import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
+import { Field, apiErrorDetail, fmtDateTime, selectClass, selectCls } from "@/components/managed/field";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { useStaffMe } from "@/lib/staff-hooks";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 
@@ -29,8 +29,8 @@ export default function AlarmDetailPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data, isLoading, error } = useStaffGet<Dict>(["alarms", "detail", id], isNew ? null : `/alarms/${id}`);
   useEffect(() => {
-    setPageTitle(isNew ? "알람 등록" : "알람");
-  }, [setPageTitle, isNew]);
+    setPageTitle(isNew ? "알람 등록" : (data?.title as string | undefined) || "알람");
+  }, [setPageTitle, isNew, data?.title]);
   if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition><Editor key={id} id={id} data={isNew ? null : data!} /></PageTransition>;
@@ -97,18 +97,18 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   };
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/alarms"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        {data && <span className={`rounded-full px-2 py-0.5 text-xs ${data.valid_status === "valid" ? "bg-blue-100 text-blue-700" : "bg-muted"}`}>{data.valid_status === "valid" ? "유효" : "무효"}</span>}
-        <div className="flex-1" />
-        {data && canWrite && (
-          <>
-            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => act(`/alarms/${id}/toggle`, "상태를 바꿨습니다.")}><Power className="mr-1 h-4 w-4" /> 유효/무효</Button>
-            <Button size="sm" variant="outline" className="rounded-xl" onClick={() => act(`/alarms/${id}/test-send`, "테스트 메일을 보냈습니다.")}><Send className="mr-1 h-4 w-4" /> 테스트 발송</Button>
-            <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>
-          </>
-        )}
-      </div>
+      {data && canWrite && (
+        <PageActions>
+          <Button size="sm" variant="outline" className="rounded-xl" onClick={() => act(`/alarms/${id}/toggle`, "상태를 바꿨습니다.")}><Power className="mr-1 h-4 w-4" /> 유효/무효</Button>
+          <Button size="sm" variant="outline" className="rounded-xl" onClick={() => act(`/alarms/${id}/test-send`, "테스트 메일을 보냈습니다.")}><Send className="mr-1 h-4 w-4" /> 테스트 발송</Button>
+          <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>
+        </PageActions>
+      )}
+      {data && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-xs ${data.valid_status === "valid" ? "bg-blue-100 text-blue-700" : "bg-muted"}`}>{data.valid_status === "valid" ? "유효" : "무효"}</span>
+        </div>
+      )}
       {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/alarm/${data ? `${id}/` : "create/"}`} />}
       <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -130,7 +130,7 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
         </div>
         <Field label="내용 *">
           {canWrite && (
-            <select className={`${selectClass} mb-2`} value="" onChange={(e) => e.target.value && set("content", e.target.value)}>
+            <select className={selectCls("mb-2")} value="" onChange={(e) => e.target.value && set("content", e.target.value)}>
               <option value="">템플릿 문구 선택</option>
               {Object.entries(o?.templates ?? {}).map(([g, items]) => <optgroup key={g} label={g}>{items.map((t) => <option key={t} value={t}>{t.slice(0, 40)}…</option>)}</optgroup>)}
             </select>

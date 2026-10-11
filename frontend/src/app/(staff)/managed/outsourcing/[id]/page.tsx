@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import { apiErrorDetail } from "@/components/managed/field";
 import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/managed/form-grid";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useLookupProjects } from "@/lib/staff-maintenance";
 import { useStaffList } from "@/lib/staff-sales";
@@ -83,11 +83,11 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   return (
     <PageTransition>
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/outsourcing"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-          <div className="flex-1" />
-          {data && canWrite && <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>}
-        </div>
+        {data && canWrite && (
+          <PageActions>
+            <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} title="삭제" aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>
+          </PageActions>
+        )}
         {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/outsourcing/`} />}
         <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
           <FormGrid fields={fields} values={v} disabled={!canWrite} onChange={(k, val) => setV((s) => ({ ...s, [k]: val }))} />

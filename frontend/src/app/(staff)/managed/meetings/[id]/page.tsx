@@ -1,9 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CalendarPlus, MapPin, Plus, Power, Search, Send, Trash2, X } from "lucide-react";
+import { CalendarPlus, MapPin, Plus, Power, Search, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
+import { PageActions } from "@/components/managed/page-actions";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { useStaffMe } from "@/lib/staff-hooks";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -33,8 +33,8 @@ export default function MeetingDetailPage() {
   const setPageTitle = useNavigationStore((s) => s.setPageTitle);
   const { data, isLoading, error } = useStaffGet<Dict>(["meetings", "detail", id], isNew ? null : `/meetings/${id}`);
   useEffect(() => {
-    setPageTitle(isNew ? "미팅 등록" : "미팅약속");
-  }, [setPageTitle, isNew]);
+    setPageTitle(isNew ? "미팅 등록" : (data?.title as string | undefined) || "미팅약속");
+  }, [setPageTitle, isNew, data?.title]);
   if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
   return <PageTransition><Editor key={id} id={id} data={isNew ? null : data!} /></PageTransition>;
@@ -123,9 +123,7 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   );
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" className="rounded-xl" asChild><Link href="/managed/meetings"><ArrowLeft className="mr-1 h-4 w-4" /> 목록</Link></Button>
-        <div className="flex-1" />
+      <PageActions>
         {data && (
           <>
             {Boolean(data.map_url) && <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={data.map_url as string} target="_blank" rel="noopener noreferrer"><MapPin className="mr-1 h-4 w-4" /> 네이버지도</a></Button>}
@@ -137,10 +135,10 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
           <>
             <Button size="sm" variant="outline" className="rounded-xl" onClick={() => call(`/meetings/${id}/toggle`, undefined, "상태를 바꿨습니다.")}><Power className="mr-1 h-4 w-4" /> 유효/무효</Button>
             <Button size="sm" variant="outline" className="rounded-xl" onClick={() => call(`/meetings/${id}/test-send`, undefined, "테스트 메일을 보냈습니다.")}><Send className="mr-1 h-4 w-4" /> 테스트</Button>
-            <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)}><Trash2 className="h-4 w-4" /></Button>
+            <Button size="sm" variant="outline" className="rounded-xl text-red-600" onClick={() => setDeleteOpen(true)} title="삭제" aria-label="삭제"><Trash2 className="h-4 w-4" /></Button>
           </>
         )}
-      </div>
+      </PageActions>
       {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/meeting/${data ? `${id}/` : "create/"}`} />}
       <Card className="rounded-2xl"><CardContent className="space-y-3 pt-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

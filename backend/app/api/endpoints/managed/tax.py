@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import require_staff_admin
 from app.db.session import get_db
 from app.models.company import Company
@@ -136,11 +136,17 @@ def _purchase_query(db: Session, q, date_from, date_to, category, deduction):
 
 @router.get("/purchases")
 def list_purchases(q: str | None = None, date_from: date | None = None, date_to: date | None = None, category: str | None = None,
-                   deduction: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=200), db: Session = Depends(get_db)):
+                   deduction: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=200),
+                   sort: str | None = Query(None, description="issue_date|supplier_name|amount|deduction_status|is_submitted, '-' 접두 = 내림차순"),
+                   db: Session = Depends(get_db)):
     query = _purchase_query(db, q, date_from, date_to, category, deduction)
     total = query.count()
     sums = query.with_entities(func.coalesce(func.sum(PurchaseTaxInvoice.supply_amount), 0), func.coalesce(func.sum(PurchaseTaxInvoice.tax_amount), 0)).first()
-    rows = query.order_by(PurchaseTaxInvoice.issue_date.desc(), PurchaseTaxInvoice.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    P = PurchaseTaxInvoice
+    query = apply_sort(query, sort, {"issue_date": P.issue_date, "supplier_name": P.supplier_name, "amount": P.supply_amount + P.tax_amount,
+                                     "deduction_status": P.deduction_status, "is_submitted": P.is_submitted},
+                       [P.issue_date.desc(), P.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     atts = _attachments(db, TaxAttachment.purchase_invoice_id, [r.id for r in rows])
     out = page_response([_purchase_row(r, atts) for r in rows], total, page, per_page)
     out.update(totals={"supply": int(sums[0]), "tax": int(sums[1]), "total": int(sums[0]) + int(sums[1])}, write_enabled=write_enabled("tax"))
@@ -423,7 +429,9 @@ def bulk_create(body: BulkConfirm, request: Request, staff: CustomAuthUser = Dep
 
 @router.get("/sales")
 def list_sales(q: str | None = None, date_from: date | None = None, date_to: date | None = None, issue_status: str | None = None,
-               payment_status: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=200), db: Session = Depends(get_db)):
+               payment_status: str | None = None, page: int = Query(1, ge=1), per_page: int = Query(20, le=200),
+               sort: str | None = Query(None, description="issue_date|buyer_name|amount|issue_status|payment_status, '-' 접두 = 내림차순"),
+               db: Session = Depends(get_db)):
     query = db.query(SalesTaxInvoice).filter(SalesTaxInvoice.is_deleted == False)  # noqa: E712
     if q:
         like = f"%{q}%"
@@ -438,7 +446,11 @@ def list_sales(q: str | None = None, date_from: date | None = None, date_to: dat
         query = query.filter(SalesTaxInvoice.payment_status == payment_status)
     total = query.count()
     sums = query.with_entities(func.coalesce(func.sum(SalesTaxInvoice.supply_amount), 0), func.coalesce(func.sum(SalesTaxInvoice.tax_amount), 0)).first()
-    rows = query.order_by(SalesTaxInvoice.issue_date.desc(), SalesTaxInvoice.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    S = SalesTaxInvoice
+    query = apply_sort(query, sort, {"issue_date": S.issue_date, "buyer_name": S.buyer_name, "amount": S.supply_amount + S.tax_amount,
+                                     "issue_status": S.issue_status, "payment_status": S.payment_status},
+                       [S.issue_date.desc(), S.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     atts = _attachments(db, TaxAttachment.sales_invoice_id, [r.id for r in rows])
     out = page_response([_sales_row(r, atts) for r in rows], total, page, per_page)
     out.update(totals={"supply": int(sums[0]), "tax": int(sums[1]), "total": int(sums[0]) + int(sums[1])}, write_enabled=write_enabled("tax"))

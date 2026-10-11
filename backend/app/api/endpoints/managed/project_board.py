@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.endpoints.managed.common import page_response, require_write, write_enabled
+from app.api.endpoints.managed.common import apply_sort, page_response, require_write, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import SessionLocal, get_db
 from app.models.customer import (
@@ -51,6 +51,7 @@ def _files(rows, kind: str) -> list:
 def list_posts(
     project_id: int | None = None,
     status: str | None = None,
+    sort: str | None = Query(None, description="title|status|created_at, '-' 접두 = 내림차순"),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -64,7 +65,9 @@ def list_posts(
     if status:
         query = query.filter(ProjectBoard.status == status)
     total = query.count()
-    rows = query.order_by(ProjectBoard.is_notice.desc(), ProjectBoard.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    query = apply_sort(query, sort, {"title": ProjectBoard.title, "status": ProjectBoard.status, "created_at": ProjectBoard.created_at},
+                       [ProjectBoard.is_notice.desc(), ProjectBoard.created_at.desc()])
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
     items = [{
         "seq": b.seq,
         "title": b.title,
