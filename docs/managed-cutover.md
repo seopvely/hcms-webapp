@@ -50,7 +50,7 @@ hcms 쪽 cron 은 한 줄이다(hcms 사용자 crontab):
 */5 * * * * cd /home/hcms/hcms-customer-app/backend && venv/bin/python -m app.jobs.runner tick >> logs/jobs.cron.log 2>&1
 ```
 
-**이 줄은 아직 설치하지 않았다**(ENABLED_JOBS 가 비어 있으면 아무 일도 안 하므로 첫 job 을 켜는 날 설치).
+**2026-10-12 설치·16개 job 전체 활성화.** 같은 날 쓰기 영역 24개도 모두 열었다. 기존 `free_maint_alerts` 단독 줄은 지웠다(백업 `~/crontab.bak-20261012`). **cms 쪽 cron(pacms·root)은 아직 그대로라, 아래 표의 '끌 줄'을 꺼야 겹치는 job 의 중복 발송이 멈춘다.**
 
 **처음 켜기 전**: `run <job> --dry-run` 으로 건수를 확인한다. 만료·충전 job 은 cms 의 '정확히 그날' 대신 '기간 안 + 미처리'로 바뀌어,
 첫 실행에서 지금 해당되는 건을 한꺼번에 처리한다(10-11 dry-run: 도메인 만료 1건, 나머지 0건). 과거 건을 보내지 않으려면 그 키로
