@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, LogOut, X } from "lucide-react";
+import { ExternalLink, LogOut, Search, X } from "lucide-react";
+import { openCommandPalette } from "@/components/managed/command-palette";
 import { cn } from "@/lib/utils";
 import { useNavigationStore } from "@/store/navigation-store";
 import { STAFF_NAV } from "@/components/managed/staff-nav";
@@ -45,6 +46,17 @@ export function StaffSidebar({ name, email, onLogout }: StaffSidebarProps) {
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded-lg hover:bg-white/10">
             <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="px-3 pt-3">
+          <button
+            onClick={() => { setSidebarOpen(false); openCommandPalette(); }}
+            className="flex w-full items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/15 hover:text-white"
+          >
+            <Search className="h-4 w-4" />
+            <span className="flex-1 text-left">메뉴 검색</span>
+            <kbd className="rounded border border-white/20 px-1.5 text-[10px] text-slate-400">⌘K</kbd>
           </button>
         </div>
 

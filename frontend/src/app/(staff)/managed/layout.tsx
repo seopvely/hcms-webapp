@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { AppHeader } from "@/components/layout/app-header";
 import { StaffSidebar } from "@/components/managed/staff-sidebar";
+import { CommandPalette } from "@/components/managed/command-palette";
 import { PageSpinner } from "@/components/common/page-spinner";
 import { ToastProvider } from "@/components/common/app-toast";
 import { NavigationSpinnerProvider } from "@/components/common/navigation-spinner";
@@ -57,6 +58,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       <NavigationSpinnerProvider>
         <div className="min-h-screen bg-background">
           <StaffSidebar name={me.name || me.username} email={me.email} onLogout={logout} />
+          <CommandPalette isAdmin={!!me.is_admin} onLogout={logout} />
           <div className="lg:pl-64">
             <AppHeader />
             <main className="p-4">{children}</main>
