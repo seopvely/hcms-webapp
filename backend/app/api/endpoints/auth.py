@@ -1,9 +1,13 @@
 import re
+import time
+from collections import defaultdict, deque
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.staff_auth import login_staff
+from app.services.staff_auth import client_ip
 from app.core.deps import get_current_user
 from app.core.security import create_access_token, create_refresh_token, decode_customer_token
 from app.db.session import get_db
@@ -23,6 +27,29 @@ from app.services.auth import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# 고객 로그인 IP 제한: 15분 안 실패 30회. uvicorn 단일 프로세스라 메모리에 둔다(재시작하면 초기화).
+_IP_FAIL_LIMIT = 30
+_IP_FAIL_WINDOW = 15 * 60
+_ip_fails: dict[str, deque] = defaultdict(deque)
+
+
+def _ip_blocked(ip: str | None) -> bool:
+    if not ip:
+        return False
+    q = _ip_fails[ip]
+    cutoff = time.monotonic() - _IP_FAIL_WINDOW
+    while q and q[0] < cutoff:
+        q.popleft()
+    if not q:
+        _ip_fails.pop(ip, None)
+        return False
+    return len(q) >= _IP_FAIL_LIMIT
+
+
+def _ip_failed(ip: str | None) -> None:
+    if ip:
+        _ip_fails[ip].append(time.monotonic())
+
 
 @router.post("/login")
 def login(request: LoginRequest, http_request: Request, response: Response, db: Session = Depends(get_db)):
@@ -37,14 +64,20 @@ def login(request: LoginRequest, http_request: Request, response: Response, db: 
             raise HTTPException(status_code=401, detail="유효하지 않은 사이트 키입니다.")
         company_id = company.seq
 
+    ip = client_ip(http_request)
+    if _ip_blocked(ip):
+        raise HTTPException(status_code=429, detail="로그인 실패가 많아 잠시 제한되었습니다. 15분 후 다시 시도해주세요.")
     try:
         manager = authenticate_manager(db, request.login_id, request.password, company_id=company_id)
     except PermissionError as e:
+        _ip_failed(ip)
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
+        _ip_failed(ip)
         raise HTTPException(status_code=401, detail=str(e))
 
     if not manager:
+        _ip_failed(ip)
         raise HTTPException(
             status_code=401, detail="아이디 또는 비밀번호가 일치하지 않습니다."
         )

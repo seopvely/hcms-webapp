@@ -63,8 +63,8 @@ def list_my_tokens(
 
 
 def _verify_internal_key(x_api_key: str = Header(...)):
-    # 고객 토큰으로는 호출 불가. 직원 인증(/api/managed) 도입 전까지 내부 API 키로만 허용
-    if not settings.WEBHOOK_API_KEY or not hmac.compare_digest(x_api_key, settings.WEBHOOK_API_KEY):
+    # 고객 토큰으로는 호출 불가. 전용 내부 키로만(웹훅 키와 분리 — pacms 쪽에 보이지 않게)
+    if not settings.PUSH_API_KEY or not hmac.compare_digest(x_api_key, settings.PUSH_API_KEY):
         raise HTTPException(status_code=403, detail="Forbidden")
     return x_api_key
 

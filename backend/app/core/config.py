@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     FIREBASE_CREDENTIALS_PATH: str = ""
     WEBHOOK_API_KEY: str = ""
+    # /api/push/send 내부 호출 키(웹훅 키와 분리 — 비우면 비활성)
+    PUSH_API_KEY: str = ""
     PACMS_API_BASE_URL: str = "https://cms.hankyeul.com"
     PACMS_ESTIMATE_WEBHOOK_API_KEY: str = ""
     # 메일 링크 base URL — 하드코딩 금지. 고객용은 hcms, 직원용은 /managed 컷오버 때 hcms 로 바꾼다
@@ -67,6 +69,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         origins = [self.FRONTEND_URL, "capacitor://localhost", "http://localhost", "https://hcms.hankyeul.com"]
+        return origins
+
+    @property
+    def staff_origins(self) -> set[str]:
+        """직원 쿠키 세션의 Origin 허용 — 웹 도메인만(앱·localhost 제외, 직원 화면은 앱에서 막혀 있다)."""
+        origins = {"https://hcms.hankyeul.com"}
+        if self.FRONTEND_URL.startswith("https://"):
+            origins.add(self.FRONTEND_URL)
         return origins
 
     class Config:

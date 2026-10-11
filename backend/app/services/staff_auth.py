@@ -29,6 +29,8 @@ TOTP_VALID_WINDOW = 1
 MFA_MAX_ATTEMPTS = 5
 LOGIN_FAIL_LIMIT = 5
 LOGIN_FAIL_WINDOW = timedelta(minutes=15)
+LOGIN_FAIL_IP_LIMIT = 20
+SESSION_IDLE = timedelta(hours=1)  # SPEC 08 §6.1 유휴 1시간(절대 수명은 STAFF_SESSION_HOURS)
 
 STAGE_PENDING = "pending"
 STAGE_ACTIVE = "active"
@@ -58,14 +60,14 @@ def audit(db: Session, request: Request | None, action: str, user_id: int | None
     ))
 
 
-def is_login_locked(db: Session, email: str) -> bool:
+def is_login_locked(db: Session, email: str, ip: str | None = None) -> bool:
+    """15분 안에 같은 계정 실패(비밀번호·인증코드) 5회, 또는 같은 IP 실패 20회면 잠근다."""
     since = datetime.now() - LOGIN_FAIL_WINDOW
-    fails = (
-        db.query(func.count(StaffAuditLog.id))
-        .filter(StaffAuditLog.action == "login_fail", StaffAuditLog.target == email, StaffAuditLog.created_at >= since)
-        .scalar()
-    )
-    return fails >= LOGIN_FAIL_LIMIT
+    fails = db.query(StaffAuditLog).filter(StaffAuditLog.action.in_(("login_fail", "mfa_fail")),
+                                           StaffAuditLog.created_at >= since)
+    if fails.filter(StaffAuditLog.target == email).count() >= LOGIN_FAIL_LIMIT:
+        return True
+    return bool(ip) and fails.filter(StaffAuditLog.ip == ip).count() >= LOGIN_FAIL_IP_LIMIT
 
 
 def authenticate_staff(db: Session, email: str, password: str) -> CustomAuthUser | None:
@@ -120,7 +122,10 @@ def find_session(db: Session, token: str | None, stage: str) -> StaffSession | N
     if not token:
         return None
     row = db.query(StaffSession).filter(StaffSession.token_hash == _hash(token)).first()
-    if row is None or row.stage != stage or row.revoked_at is not None or row.expires_at <= datetime.now():
+    now = datetime.now()
+    if row is None or row.stage != stage or row.revoked_at is not None or row.expires_at <= now:
+        return None
+    if stage == STAGE_ACTIVE and row.last_seen_at and now - row.last_seen_at > SESSION_IDLE:
         return None
     return row
 
@@ -137,6 +142,10 @@ def revoke_user_sessions(db: Session, user_id: int) -> None:
     """직원의 모든 세션을 끊는다(비활성화·비밀번호 변경·2FA 초기화 시)."""
     db.query(StaffSession).filter(StaffSession.user_id == user_id, StaffSession.revoked_at.is_(None)).update(
         {StaffSession.revoked_at: datetime.now()}, synchronize_session=False)
+
+
+def session_has_otp(row: StaffSession | None) -> bool:
+    return bool(row and row.amr and "otp" in row.amr.split(","))
 
 
 def is_admin(user: CustomAuthUser) -> bool:

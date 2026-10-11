@@ -12,12 +12,12 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.deps import require_staff_admin
+from app.core.deps import require_staff_admin, require_staff_mfa
 from app.db.session import get_db
 from app.models.customer import CustomAuthUser
 from app.services import staff_auth
 
-router = APIRouter(prefix="/staff", tags=["managed-staff"], dependencies=[Depends(require_staff_admin)])
+router = APIRouter(prefix="/staff", tags=["managed-staff"], dependencies=[Depends(require_staff_admin), Depends(require_staff_mfa)])
 
 PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{10,}$")
 
@@ -98,7 +98,7 @@ def update_staff(
             value = 1 if value else 0
         setattr(user, field, value)
 
-    if changes.get("is_active") is False:
+    if changes.get("is_active") is False or changes.get("two_factor_enabled") is False:
         staff_auth.revoke_user_sessions(db, user.id)
     staff_auth.audit(db, request, "staff_update", user_id=admin.id, target=f"staff:{user.id}",
                      detail=",".join(sorted(changes)))

@@ -66,7 +66,7 @@ def get_current_staff(request: Request, db: Session = Depends(get_db)) -> Custom
 
     if request.method not in SAFE_METHODS:
         origin = request.headers.get("origin")
-        if origin and origin not in settings.cors_origins:
+        if origin and origin not in settings.staff_origins:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="허용되지 않은 출처입니다.")
         if not staff_auth.csrf_matches(row, request.headers.get(CSRF_HEADER)):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF 검증에 실패했습니다.")
@@ -83,6 +83,14 @@ def get_current_staff(request: Request, db: Session = Depends(get_db)) -> Custom
         row.last_seen_at = now
         db.commit()
     return user
+
+
+def require_staff_mfa(request: Request, staff: CustomAuthUser = Depends(get_current_staff)) -> CustomAuthUser:
+    """2단계 인증(인증앱 코드)을 거친 세션만 — 직원 계정 관리 등."""
+    if not staff_auth.session_has_otp(getattr(request.state, "staff_session", None)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="2단계 인증을 등록·사용해 로그인한 세션에서만 할 수 있습니다.")
+    return staff
 
 
 def require_staff_admin(staff: CustomAuthUser = Depends(get_current_staff)) -> CustomAuthUser:

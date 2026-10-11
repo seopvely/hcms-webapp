@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import (
+    get_current_staff,
     STAFF_CSRF_COOKIE,
     STAFF_PENDING_COOKIE,
     STAFF_SESSION_COOKIE,
@@ -44,7 +45,7 @@ def _start_active_session(db: Session, request: Request, response: Response, use
 
 def login_staff(db: Session, request: Request, response: Response, login_id: str, password: str) -> dict:
     email = login_id.strip().lower()
-    if staff_auth.is_login_locked(db, email):
+    if staff_auth.is_login_locked(db, email, staff_auth.client_ip(request)):
         raise HTTPException(status_code=429, detail="로그인 실패가 많아 잠시 잠겼습니다. 15분 후 다시 시도해주세요.")
 
     user = staff_auth.authenticate_staff(db, email, password)
@@ -65,7 +66,8 @@ def login_staff(db: Session, request: Request, response: Response, login_id: str
         }
 
     _start_active_session(db, request, response, user, amr="pwd")
-    return {"kind": "staff", "mfa_required": False}
+    # 2단계 인증 미사용 직원은 로그인 뒤 등록 화면으로 안내한다(막지는 않음 — 등록 전엔 SSO·계정관리 불가)
+    return {"kind": "staff", "mfa_required": False, "mfa_setup_recommended": True}
 
 
 def _pending(db: Session, request: Request) -> tuple:
@@ -138,4 +140,51 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         db.commit()
     _clear_cookie(response, STAFF_SESSION_COOKIE, "/api")
     _clear_cookie(response, STAFF_CSRF_COOKIE, "/", httponly=False)
+    return {"ok": True}
+
+
+# ── 로그인한 세션에서 인증앱 등록(2단계 인증 미사용 직원) ─────────────────────
+
+def _active_row(request: Request):
+    return getattr(request.state, "staff_session", None)
+
+
+@router.get("/mfa/enroll")
+def enroll_status(request: Request, staff: CustomAuthUser = Depends(get_current_staff), db: Session = Depends(get_db)):
+    if staff.two_factor_enabled and staff.totp_secret and staff.totp_confirmed_at:
+        return {"enrolled": True, "username": staff.username}
+    row = _active_row(request)
+    if not row.pending_totp_secret:
+        row.pending_totp_secret = staff_auth.new_totp_secret()
+        db.commit()
+    return {
+        "enrolled": False,
+        "username": staff.username,
+        "qr_svg": staff_auth.totp_qr_svg(row.pending_totp_secret, staff.username),
+        "secret": row.pending_totp_secret,
+    }
+
+
+@router.post("/mfa/enroll")
+def enroll(body: MfaVerifyRequest, request: Request, staff: CustomAuthUser = Depends(get_current_staff),
+           db: Session = Depends(get_db)):
+    row = _active_row(request)
+    if staff.two_factor_enabled and staff.totp_secret and staff.totp_confirmed_at:
+        raise HTTPException(status_code=400, detail="이미 2단계 인증을 사용 중입니다.")
+    if not row.pending_totp_secret:
+        raise HTTPException(status_code=400, detail="등록 화면을 다시 열어주세요.")
+    step = staff_auth.verify_totp(row.pending_totp_secret, body.code)
+    if step is None:
+        row.attempts = (row.attempts or 0) + 1
+        staff_auth.audit(db, request, "mfa_fail", user_id=staff.id, target=(staff.email or "").lower())
+        db.commit()
+        raise HTTPException(status_code=400, detail="인증 코드가 올바르지 않습니다.")
+    staff.totp_secret = row.pending_totp_secret
+    staff.totp_confirmed_at = datetime.now()
+    staff.totp_last_step = step
+    staff.two_factor_enabled = True
+    row.pending_totp_secret = None
+    row.amr = "pwd,otp"
+    staff_auth.audit(db, request, "mfa_setup", user_id=staff.id, target=(staff.email or "").lower())
+    db.commit()
     return {"ok": True}

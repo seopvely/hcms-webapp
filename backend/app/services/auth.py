@@ -14,9 +14,20 @@ def verify_django_password(plain_password: str, hashed_password: str) -> bool:
     return django_pbkdf2_sha256.verify(plain_password, hashed_password)
 
 
+# Django 기본(870000회)과 같은 강도 — passlib 기본값(29000회)으로 저장하지 않는다(SPEC 12 L8)
+PASSWORD_ROUNDS = 870000
+
+
 def hash_django_password(plain_password: str) -> str:
     """Django의 pbkdf2_sha256 형식으로 비밀번호를 해시합니다."""
-    return django_pbkdf2_sha256.hash(plain_password)
+    return django_pbkdf2_sha256.using(rounds=PASSWORD_ROUNDS).hash(plain_password)
+
+
+def _weak_hash(hashed: str) -> bool:
+    try:
+        return int(hashed.split("$")[1]) < PASSWORD_ROUNDS
+    except (IndexError, ValueError):
+        return False
 
 
 def authenticate_manager(db: Session, login_id: str, password: str, company_id: int | None = None) -> Manager | None:
@@ -46,14 +57,12 @@ def authenticate_manager(db: Session, login_id: str, password: str, company_id: 
             )
 
         db.commit()
-        remaining = 5 - manager.login_attempt_count
-        raise ValueError(
-            f"아이디 또는 비밀번호가 일치하지 않습니다. (남은 시도 횟수: {remaining}회)"
-        )
+        raise ValueError("아이디 또는 비밀번호가 일치하지 않습니다.")
 
-    # 로그인 성공: 시도 횟수 초기화
+    # 로그인 성공: 시도 횟수 초기화. login_permit_tf 는 관리자가 정한 값을 그대로 둔다(SPEC A4/D5)
     manager.login_attempt_count = 0
-    manager.login_permit_tf = "1"
+    if _weak_hash(manager.password):
+        manager.password = hash_django_password(password)
     manager.last_login = datetime.now()
     manager.customer_key = uuid.uuid4().hex
     db.commit()

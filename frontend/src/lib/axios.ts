@@ -17,9 +17,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// access 토큰이 만료되면 refresh 토큰으로 한 번 새로 받아 재시도한다(동시 요청은 한 번만 갱신).
+let refreshing: Promise<string | null> | null = null;
+
+function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) return Promise.resolve(null);
+  refreshing ??= axios
+    .post(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/auth/refresh`, { refresh_token: refreshToken })
+    .then((r) => {
+      localStorage.setItem("access_token", r.data.access_token);
+      return r.data.access_token as string;
+    })
+    .catch(() => null)
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
       const isLoginRequest = error.config?.url?.includes("/auth/");
       if (!isLoginRequest) {
@@ -29,8 +48,17 @@ api.interceptors.response.use(
           window.location.href = "/managed/customers";
           return Promise.reject(error);
         }
+        if (!error.config._retried && !documentTokenFor(error.config?.url)) {
+          const token = await refreshAccessToken();
+          if (token) {
+            error.config._retried = true;
+            error.config.headers.Authorization = `Bearer ${token}`;
+            return api.request(error.config);
+          }
+        }
         clearDocumentToken();
         localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
         window.location.href = "/login";
       }
     }

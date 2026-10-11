@@ -62,6 +62,8 @@ function LoginContent() {
         const next = safeStaffNext(searchParams.get("next"));
         if (response.data.mfa_required) {
           router.push(`/login/2fa?next=${encodeURIComponent(next)}`);
+        } else if (response.data.mfa_setup_recommended) {
+          router.push(`/managed/mfa-setup?next=${encodeURIComponent(next)}`);
         } else {
           router.push(next);
         }
