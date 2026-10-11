@@ -17,6 +17,7 @@ from app.models.manager import Manager
 from app.models.customer import Inditask, InditaskComment
 from app.models.company import Company
 from app.services.email import notify_task_created
+from app.utils.html_sanitize import sanitize_html
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -142,7 +143,7 @@ async def create_task(
         title=title,
         company_id=company_id,
         task_type=task_type,
-        content=content,
+        content=sanitize_html(content),
         writer_id=current_user.seq,
         task_status=1,  # 대기
         created_at=datetime.now(),
@@ -163,7 +164,7 @@ async def create_task(
                     title=title,
                     company_id=company_id,
                     task_type=task_type,
-                    content=content,
+                    content=sanitize_html(content),
                     writer_id=current_user.seq,
                     task_status=1,
                     inditask_file=file_path,
@@ -307,7 +308,7 @@ def get_task_detail(
     return {
         "id": item.seq,
         "title": item.title,
-        "content": item.content,
+        "content": sanitize_html(item.content),
         "task_type": item.task_type,
         "task_type_label": TASK_TYPE_LABELS.get(item.task_type, ""),
         "status": item.task_status,

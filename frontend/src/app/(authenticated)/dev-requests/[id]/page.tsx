@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
@@ -108,7 +109,7 @@ function CommentNode({
         </div>
         <div
           className="prose prose-sm max-w-none text-sm text-muted-foreground whitespace-pre-wrap"
-          dangerouslySetInnerHTML={{ __html: comment.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(comment.content) }}
         />
         {/* Legacy single attachment */}
         {comment.attachment && (
@@ -290,7 +291,7 @@ export default function DevRequestDetailPage() {
           <CardContent>
             <div
               className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: data.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.content) }}
             />
           </CardContent>
         </Card>

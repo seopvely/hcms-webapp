@@ -48,3 +48,45 @@ export function getImpersonationInfo(): ImpersonationInfo | null {
     return null;
   }
 }
+
+// 메일 링크(견적·계약)로 들어온 고객용 문서 토큰 — 견적 1건만 볼 수 있고 탭이 닫히면 사라진다.
+export const DOCUMENT_TOKEN_KEY = "document_token";
+
+export interface DocumentToken {
+  estimateId: number;
+  token: string;
+}
+
+export function getDocumentToken(): DocumentToken | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DOCUMENT_TOKEN_KEY);
+    return raw ? (JSON.parse(raw) as DocumentToken) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setDocumentToken(estimateId: number, token: string): void {
+  try {
+    sessionStorage.setItem(DOCUMENT_TOKEN_KEY, JSON.stringify({ estimateId, token }));
+  } catch {
+    // sessionStorage 를 쓸 수 없는 환경
+  }
+}
+
+export function clearDocumentToken(): void {
+  try {
+    sessionStorage.removeItem(DOCUMENT_TOKEN_KEY);
+  } catch {
+    // sessionStorage 를 쓸 수 없는 환경
+  }
+}
+
+/** 이 경로(견적 상세 화면 또는 견적 API)가 문서 토큰의 견적이면 그 토큰을 돌려준다. */
+export function documentTokenFor(path: string | undefined): string | null {
+  const doc = getDocumentToken();
+  if (!doc || !path) return null;
+  const m = path.match(/^\/estimates\/(\d+)(?:[/?]|$)/);
+  return m && Number(m[1]) === doc.estimateId ? doc.token : null;
+}

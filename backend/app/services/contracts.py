@@ -12,6 +12,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException, Request
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -19,6 +20,8 @@ from app.models.customer import Estimate, EstimateContract, EstimateContractHist
 from app.services.staff_auth import client_ip
 from app.utils.media import MEDIA_ROOT
 from app.utils.pdf_generator import generate_contract_pdf
+from app.db.locks import hold_lock
+from app.db.session import SessionLocal
 
 STATUS_LABELS = {"1": "작성중", "2": "검토대기", "3": "발송", "4": "서명완료(갑)", "5": "취소", "6": "쌍방서명완료"}
 TOKEN_TTL = timedelta(hours=24)
@@ -48,6 +51,7 @@ def party_b_defaults() -> dict:
 def next_contract_number(db: Session) -> str:
     """CT{YYYYMMDD}{NNNN} — cms EstimateContract.save() 와 같은 규칙."""
     prefix = f"CT{date.today():%Y%m%d}"
+    hold_lock(db, "hcms_contract_number")  # 커밋까지 다른 생성이 같은 번호를 읽지 못하게
     rows = db.query(EstimateContract.contract_number).filter(EstimateContract.contract_number.like(f"{prefix}%")).all()
     last = max((int(n[-4:]) for (n,) in rows if n and n[-4:].isdigit()), default=0)
     return f"{prefix}{last + 1:04d}"
@@ -108,14 +112,37 @@ def render_pdf(db: Session, c: EstimateContract) -> bytes:
     return bytes(generate_contract_pdf(build_pdf_data(c, estimate)))
 
 
-def archive_pdf(db: Session, c: EstimateContract) -> None:
-    """서명 시점 PDF 스냅샷 보관(덮어쓰지 않고 새 파일 — 이전 스냅샷 경로는 이력 설명에 남는다)."""
+def archive_pdf(db: Session, c: EstimateContract, label: str, request: Request | None = None,
+                by_id: int | None = None, by_name: str | None = None) -> str:
+    """서명 시점 PDF 스냅샷을 새 파일로 보관하고 그 경로를 이력('pdf_archived')에 남긴다.
+
+    contract_file 은 최신 스냅샷을 가리킨다(을 서명 때 바뀜). 이전 스냅샷(고객 서명본)은 이력 행으로 찾는다.
+    커밋이 실패하면 파일을 지운다(고아 파일 방지).
+    """
     now = datetime.now()
     rel = f"contract_files/{now:%Y}/{now:%m}/{c.contract_number or c.seq}_{uuid.uuid4().hex[:8]}.pdf"
-    os.makedirs(os.path.join(MEDIA_ROOT, os.path.dirname(rel)), exist_ok=True)
-    with open(os.path.join(MEDIA_ROOT, rel), "wb") as f:
+    path = os.path.join(MEDIA_ROOT, rel)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as f:
         f.write(render_pdf(db, c))
     c.contract_file = rel
+    history(db, c, "pdf_archived", f"{label} PDF 보관: {rel}", request, by_id, by_name)
+    db.info.setdefault("contract_pdf_files", []).append(path)
+    return rel
+
+
+@event.listens_for(SessionLocal, "after_rollback")
+def _discard_archived_pdfs(session: Session) -> None:
+    for path in session.info.pop("contract_pdf_files", []):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+@event.listens_for(SessionLocal, "after_commit")
+def _keep_archived_pdfs(session: Session) -> None:
+    session.info.pop("contract_pdf_files", None)
 
 
 def sign_hash(c: EstimateContract, signer: str, signed_at: datetime, ip: str | None, suffix: str = "") -> str:

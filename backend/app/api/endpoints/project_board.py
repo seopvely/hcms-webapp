@@ -30,6 +30,7 @@ from app.models.customer import (
     ProjectBoardCommentAttachment,
     project_board_categories,
 )
+from app.utils.html_sanitize import sanitize_html
 
 router = APIRouter(prefix="/project-board", tags=["project-board"])
 
@@ -370,7 +371,7 @@ def get_project_board_detail(
         replies.append({
             "id": r.seq,
             "title": r.title,
-            "content": r.content,
+            "content": sanitize_html(r.content),
             "writer_name": get_writer_name(r),
             "writer_type": r.writer_type,
             "status": r.status,
@@ -393,7 +394,7 @@ def get_project_board_detail(
     return {
         "id": board.seq,
         "title": board.title,
-        "content": board.content,
+        "content": sanitize_html(board.content),
         "project_id": board.project_id,
         "project_name": board.project.title if board.project else None,
         "categories": categories_list,
@@ -462,7 +463,7 @@ async def create_project_board(
         company_id=company_id,
         project_id=project_id,
         title=title,
-        content=content,
+        content=sanitize_html(content),
         customer_writer_id=current_user.seq,
         writer_type="2",
         status="1",
@@ -550,7 +551,7 @@ async def update_project_board(
         raise HTTPException(status_code=404, detail="프로젝트를 찾을 수 없습니다.")
 
     board.title = title
-    board.content = content
+    board.content = sanitize_html(content)
     board.project_id = project_id
     board.status = status
     board.updated_at = datetime.now()
@@ -679,7 +680,7 @@ async def create_project_board_reply(
         project_id=parent_board.project_id,
         parent_id=seq,
         title=title,
-        content=content,
+        content=sanitize_html(content),
         customer_writer_id=current_user.seq,
         writer_type="2",
         status=status,

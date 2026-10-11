@@ -13,7 +13,7 @@ from fastapi import HTTPException
 from sqlalchemy import or_, text, true
 from sqlalchemy.orm import Session
 
-from app.api.endpoints.managed.estimates import amounts
+from app.services.estimate_calc import amounts
 from app.services import subscriptions
 from app.models.customer import (
     CustomAuthUser,

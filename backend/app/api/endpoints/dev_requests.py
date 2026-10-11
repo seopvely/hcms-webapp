@@ -21,6 +21,7 @@ from app.models.customer import (
     DevSubscription,
     PointHistory,
 )
+from app.utils.html_sanitize import sanitize_html
 
 router = APIRouter(prefix="/dev-requests", tags=["dev-requests"])
 
@@ -140,7 +141,7 @@ async def create_dev_request(
         project_id=None,
         dev_subscription_id=dev_sub.seq,
         title=title,
-        contents=contents,
+        contents=sanitize_html(contents),
         writer_id=current_user.seq,
         request_date=datetime.now(),
         status=1,
@@ -222,7 +223,7 @@ def get_dev_request_detail(
             "id": c.seq,
             "author": c.writer.name if c.writer else None,
             "role": "manager" if c.writer_id else "customer",
-            "content": c.content,
+            "content": sanitize_html(c.content),
             "status": c.status,
             "point": c.point,
             "point_executed": c.point_executed,
@@ -257,7 +258,7 @@ def get_dev_request_detail(
     return {
         "id": item.seq,
         "title": item.title,
-        "content": item.contents,
+        "content": sanitize_html(item.contents),
         "status": item.status,
         "status_label": STATUS_LABELS.get(item.status, ""),
         "request_date": item.request_date.isoformat() if item.request_date else None,
@@ -302,7 +303,7 @@ async def create_dev_request_comment(
         managelist_id=request_id,
         writer_id=None,
         parent_id=parent_id,
-        content=f"[고객: {customer_name}] {content}",
+        content=f"[고객: {customer_name}] {sanitize_html(content)}",
         status=1,
         created_at=datetime.now(),
     )

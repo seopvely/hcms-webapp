@@ -15,7 +15,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.endpoints.managed.common import page_response, require_write, verify_step_up, write_enabled
-from app.api.endpoints.managed.estimates import amounts
+from app.services.estimate_calc import amounts
 from app.core.deps import get_current_staff
 from app.db.session import get_db
 from app.models.company import Company
@@ -327,7 +327,7 @@ def manager_sign(seq: int, request: Request, staff: CustomAuthUser = Depends(get
     c.manager_signed_hash = svc.sign_hash(c, name, now, ip, "|manager")
     c.manager_signed_by_id = staff.id
     c.status = "6"
-    svc.archive_pdf(db, c)
+    svc.archive_pdf(db, c, "을 서명본", request, staff.id, name)
     svc.history(db, c, "manager_signed", f"을 서명 완료: {name} (타임스탬프 인증: {c.manager_signed_hash[:16]}...)",
                 request, staff.id, name)
     db.commit()

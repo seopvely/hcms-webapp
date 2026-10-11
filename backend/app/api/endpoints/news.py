@@ -8,6 +8,7 @@ from app.core.deps import get_current_user
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import News, news_companies
+from app.utils.html_sanitize import sanitize_html
 
 router = APIRouter(prefix="/news", tags=["news"])
 
@@ -131,7 +132,7 @@ def get_news_detail(
     return {
         "id": item.seq,
         "title": item.title,
-        "content": item.content,
+        "content": sanitize_html(item.content),
         "category": item.category,
         "writer_name": item.writer.name if item.writer else None,
         "views": item.views,

@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -202,7 +203,7 @@ export default function ProjectBoardDetailPage() {
           <CardContent className="p-4">
             <div
               className="prose prose-sm max-w-none text-muted-foreground leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: data.content || "" }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.content || "") }}
             />
           </CardContent>
         </Card>
@@ -263,7 +264,7 @@ export default function ProjectBoardDetailPage() {
                   <h4 className="text-sm font-medium mb-1">{reply.title}</h4>
                   <div
                     className="prose prose-sm max-w-none text-sm text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: reply.content || "" }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(reply.content || "") }}
                   />
                   {reply.attachments.length > 0 && (
                     <div className="mt-2 space-y-1">

@@ -13,17 +13,18 @@ from typing import Optional
 from datetime import datetime
 
 from app.core.config import settings
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_estimate_actor
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.customer import CustomAuthUser, Estimate, EstimateItem, EstimateContract, EstimateStatusHistory, EstimateRevisionRequest
 from app.models.company import Company
 from app.models.manager import Manager as HcmsManager
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_document_token
 from app.utils.pdf_generator import generate_estimate_pdf, generate_contract_pdf
 from app.services.notify import emit
 from app.services.email import notify_manager_estimate_action
 from app.services.contracts import build_pdf_data as build_contract_pdf_data
+from app.services.estimate_calc import amounts as estimate_amounts
 
 logger = logging.getLogger(__name__)
 
@@ -337,22 +338,9 @@ def verify_estimate_token(
 	if not manager:
 		raise HTTPException(status_code=404, detail="해당 업체의 등록된 관리자가 없습니다.")
 
-	# 5. JWT 토큰 생성
-	token_data = {"sub": str(manager.seq), "login_id": manager.login_id}
-	access_token = create_access_token(token_data)
-	refresh_token = create_refresh_token(token_data)
-
+	# 5. 이 견적 1건만 다룰 수 있는 문서 토큰(계정 로그인·refresh 를 주지 않는다 — SPEC 08 §7)
 	return {
-		"access_token": access_token,
-		"refresh_token": refresh_token,
-		"user": {
-			"seq": manager.seq,
-			"login_id": manager.login_id,
-			"name": manager.name,
-			"email": manager.email,
-			"company_name": company.name if company else None,
-			"company_id": manager.company_id,
-		},
+		"document_token": create_document_token(manager.seq, estimate_id),
 		"estimate_id": estimate_id,
 		"estimate_status": str(estimate.estimate_status) if estimate.estimate_status else "1",
 	}
@@ -407,25 +395,13 @@ def verify_contract_token(
 	if not manager:
 		raise HTTPException(status_code=404, detail="해당 업체의 등록된 관리자가 없습니다.")
 
-	# 5. JWT 토큰 생성
-	token_data = {"sub": str(manager.seq), "login_id": manager.login_id}
-	access_token = create_access_token(token_data)
-	refresh_token = create_refresh_token(token_data)
-
-	# 연결된 견적서 ID 찾기
+	# 5. 연결된 견적서 1건만 다룰 수 있는 문서 토큰(계약서는 견적 상세에서 본다)
 	estimate_id = contract.estimate_id
+	if not estimate_id:
+		raise HTTPException(status_code=404, detail="연결된 견적서가 없습니다. 로그인 후 확인해 주세요.")
 
 	return {
-		"access_token": access_token,
-		"refresh_token": refresh_token,
-		"user": {
-			"seq": manager.seq,
-			"login_id": manager.login_id,
-			"name": manager.name,
-			"email": manager.email,
-			"company_name": company.name if company else None,
-			"company_id": manager.company_id,
-		},
+		"document_token": create_document_token(manager.seq, estimate_id),
 		"contract_id": contract_id,
 		"estimate_id": estimate_id,
 		"contract_status": contract.status or "1",
@@ -435,7 +411,7 @@ def verify_contract_token(
 @router.get("/{estimate_id}")
 def get_estimate_detail(
 	estimate_id: int,
-	current_user: Manager = Depends(get_current_user),
+	current_user: Manager = Depends(get_estimate_actor),
 	db: Session = Depends(get_db),
 ):
 	company_id = current_user.company_id
@@ -481,24 +457,9 @@ def get_estimate_detail(
 
 	separate_item_count = sum(1 for ei in item.items if ei.is_separate)
 
-	# Amount breakdown (별도 항목 제외 합산)
-	supply_amount = item.estimate_amount if item.estimate_amount else sum(
-		(ei.quantity or 0) * (ei.unit_price or 0) for ei in item.items if not ei.is_separate
-	)
-
-	# Discount calculation
-	discount = 0
-	if item.discount_type == '1' and item.discount_rate:
-		discount = int(supply_amount * (item.discount_rate / 100))
-	elif item.discount_type == '2' and item.discount_amount:
-		discount = item.discount_amount
-
-	after_discount = supply_amount - discount
-	tax_rate = item.tax_rate or 10.0
-	tax_amount = int(after_discount * (tax_rate / 100))
-	total_amount = after_discount + tax_amount
-	if estimate_id == 19:
-		total_amount = 10000000
+	# 금액은 직원 화면·PDF 와 같은 계산(PACMS Estimate.get_*: 별도 항목 0, 세율 NULL 이면 0)
+	amt = estimate_amounts(item)
+	supply_amount, discount, tax_amount, total_amount = amt["subtotal"], amt["discount"], amt["tax"], amt["total"]
 
 	return {
 		"id": item.seq,
@@ -622,7 +583,7 @@ def build_estimate_pdf_data(db: Session, item: Estimate) -> dict:
 @router.get("/{estimate_id}/pdf")
 def download_estimate_pdf(
 	estimate_id: int,
-	current_user: Manager = Depends(get_current_user),
+	current_user: Manager = Depends(get_estimate_actor),
 	db: Session = Depends(get_db),
 ):
 	company_id = current_user.company_id
@@ -656,7 +617,7 @@ def download_estimate_pdf(
 @router.get("/{estimate_id}/contract-pdf")
 def download_contract_pdf(
 	estimate_id: int,
-	current_user: Manager = Depends(get_current_user),
+	current_user: Manager = Depends(get_estimate_actor),
 	db: Session = Depends(get_db),
 ):
 	company_id = current_user.company_id
@@ -723,7 +684,7 @@ def _notify_estimate_manager(db: Session, estimate: Estimate, action: str, actor
 def approve_estimate(
 	estimate_id: int,
 	body: ApproveRequest = ApproveRequest(),
-	current_user: Manager = Depends(get_current_user),
+	current_user: Manager = Depends(get_estimate_actor),
 	db: Session = Depends(get_db),
 ):
 	"""고객이 견적서를 승인"""
@@ -792,7 +753,7 @@ def approve_estimate(
 def reject_estimate(
 	estimate_id: int,
 	body: RejectRequest,
-	current_user: Manager = Depends(get_current_user),
+	current_user: Manager = Depends(get_estimate_actor),
 	db: Session = Depends(get_db),
 ):
 	"""고객이 견적서를 거절"""
@@ -847,7 +808,7 @@ def reject_estimate(
 def request_revision(
 	estimate_id: int,
 	body: RevisionRequest,
-	current_user: Manager = Depends(get_current_user),
+	current_user: Manager = Depends(get_estimate_actor),
 	db: Session = Depends(get_db),
 ):
 	"""고객이 견적서 수정요청"""

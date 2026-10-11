@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
@@ -111,7 +112,7 @@ export default function TaskDetailPage() {
         )}
 
         <Card className="rounded-2xl"><CardHeader className="pb-2"><h2 className="text-sm font-semibold">작업 내용</h2></CardHeader>
-          <CardContent><div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: data.content }} /></CardContent>
+          <CardContent><div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.content) }} /></CardContent>
         </Card>
 
         {data.attachments && data.attachments.length > 0 && (

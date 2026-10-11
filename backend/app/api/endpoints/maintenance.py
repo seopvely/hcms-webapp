@@ -26,6 +26,7 @@ from app.models.customer import (
     Payment,
     PointHistory,
 )
+from app.utils.html_sanitize import sanitize_html
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
@@ -306,7 +307,7 @@ async def create_maintenance(
         company_id=company_id,
         project_id=project_id,
         title=title,
-        contents=contents,
+        contents=sanitize_html(contents),
         writer_id=current_user.seq,
         request_date=datetime.now(),
         status=1,  # 접수
@@ -394,7 +395,7 @@ async def create_maintenance_comment(
 
     # Prefix customer name to content
     customer_name = current_user.name or "고객"
-    prefixed_content = f"[고객: {customer_name}] {content}"
+    prefixed_content = f"[고객: {customer_name}] {sanitize_html(content)}"
 
     # Create comment
     new_comment = ManagelistComment(
@@ -642,7 +643,7 @@ def get_maintenance_detail(
                 "id": c.seq,
                 "author": c.writer.name if c.writer else None,
                 "role": "manager" if c.writer_id else "customer",
-                "content": c.content,
+                "content": sanitize_html(c.content),
                 "status": c.status,
                 "point": c.point,
                 "point_executed": c.point_executed,
@@ -680,7 +681,7 @@ def get_maintenance_detail(
     return {
         "id": item.seq,
         "title": item.title,
-        "content": item.contents,
+        "content": sanitize_html(item.contents),
         "status": item.status,
         "status_label": STATUS_LABELS.get(item.status, ""),
         "request_date": item.request_date.isoformat() if item.request_date else None,

@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     TAX_SYNC_START_DATE: str = "2026-07-01"
     # 유지보수 프로젝트 정기 충전: 이 날짜 이전 회차는 따라잡기 대상에서 뺀다(과거 회차 일괄 충전 방지)
     POINT_CHARGE_CATCHUP_FROM: str = ""
+    # 미팅 장소검색(카카오 지역검색). 비우면 주소 직접 입력
+    KAKAO_REST_API_KEY: str = ""
 
     @property
     def managed_write_areas(self) -> set[str]:

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearImpersonation, getAccessToken, getImpersonationToken } from "@/lib/auth-token";
+import { clearDocumentToken, clearImpersonation, documentTokenFor, getAccessToken, getImpersonationToken } from "@/lib/auth-token";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -9,7 +9,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = getAccessToken();
+  // 메일 링크 문서 토큰은 그 견적 API 에만 쓴다(로그인 세션보다 우선 — 다른 회사로 로그인해 있어도 열리게)
+  const token = documentTokenFor(config.url) || getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,6 +29,7 @@ api.interceptors.response.use(
           window.location.href = "/managed/customers";
           return Promise.reject(error);
         }
+        clearDocumentToken();
         localStorage.removeItem("access_token");
         window.location.href = "/login";
       }

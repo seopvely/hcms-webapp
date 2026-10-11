@@ -5,13 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/auth-store";
+import { setDocumentToken } from "@/lib/auth-token";
 import api from "@/lib/axios";
 
 function ContractAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setUser } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,18 +29,10 @@ function ContractAuthContent() {
         params: { token, contract_id: contractId },
       })
       .then((response) => {
-        const { access_token, refresh_token, user, estimate_id } = response.data;
-
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", refresh_token);
-        setUser(user);
-
-        // Redirect to estimate detail page (which shows contract info)
-        if (estimate_id) {
-          router.replace(`/estimates/${estimate_id}`);
-        } else {
-          router.replace("/estimates");
-        }
+        const { document_token, estimate_id } = response.data;
+        setDocumentToken(Number(estimate_id), document_token);
+        // 계약서는 연결된 견적 상세 화면에서 본다
+        router.replace(`/estimates/${estimate_id}`);
       })
       .catch((err) => {
         const detail =
@@ -49,7 +40,7 @@ function ContractAuthContent() {
         setError(detail);
         setLoading(false);
       });
-  }, [searchParams, router, setUser]);
+  }, [searchParams, router]);
 
   if (loading && !error) {
     return (

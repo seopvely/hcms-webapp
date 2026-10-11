@@ -5,13 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, AlertCircle, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/auth-store";
+import { setDocumentToken } from "@/lib/auth-token";
 import api from "@/lib/axios";
 
 function EstimateAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setUser } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,18 +25,14 @@ function EstimateAuthContent() {
       return;
     }
 
-    // Call backend to verify token and get JWT
+    // 링크 토큰을 검증하고 이 견적 1건만 볼 수 있는 문서 토큰을 받는다(계정 로그인은 하지 않는다)
     api
       .get("/estimates/auth/verify-token", {
         params: { token, estimate_id: estimateId },
       })
       .then((response) => {
-        const { access_token, refresh_token, user, estimate_id: eid } = response.data;
-
-        // Store auth tokens
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", refresh_token);
-        setUser(user);
+        const { document_token, estimate_id: eid } = response.data;
+        setDocumentToken(Number(eid), document_token);
 
         // 승인 액션은 PACMS 승인 웹훅 호출 시 원본 이메일 토큰이 필요하므로 세션에 임시 보관
         if (action === "approve") {
@@ -57,7 +52,7 @@ function EstimateAuthContent() {
         setError(detail);
         setLoading(false);
       });
-  }, [searchParams, router, setUser]);
+  }, [searchParams, router]);
 
   if (loading && !error) {
     return (

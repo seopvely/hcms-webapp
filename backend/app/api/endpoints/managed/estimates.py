@@ -16,6 +16,8 @@ from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.endpoints.estimates import WITHDRAW_REASON_PREFIX, build_estimate_pdf_data
+from app.services.estimate_calc import amounts
+from app.db.locks import hold_lock
 from app.api.endpoints.managed.common import page_response, require_write, verify_step_up, write_enabled
 from app.core.deps import get_current_staff
 from app.db.session import get_db
@@ -58,22 +60,10 @@ def _iso(v):
     return v.isoformat() if v else None
 
 
-def amounts(e: Estimate) -> dict:
-    """PACMS Estimate.get_* 와 같은 금액 계산(별도 항목 0, 세율 NULL 이면 0)."""
-    subtotal = sum(0 if i.is_separate else (i.quantity or 0) * (i.unit_price or 0) for i in e.items)
-    discount = 0
-    if e.discount_type == "1" and e.discount_rate:
-        discount = int(subtotal * (float(e.discount_rate) / 100))
-    elif e.discount_type == "2" and e.discount_amount:
-        discount = e.discount_amount
-    discounted = subtotal - discount
-    tax = int(discounted * (float(e.tax_rate) / 100)) if e.tax_rate else 0
-    return {"subtotal": subtotal, "discount": discount, "discounted": discounted, "tax": tax, "total": discounted + tax}
-
-
 def next_estimate_number(db: Session, on: date | None = None) -> str:
     """EST-YYYYMMDD-NNNN — 그날 마지막 번호 + 1 (cms 와 같은 규칙)."""
     day = (on or date.today()).strftime("%Y%m%d")
+    hold_lock(db, "hcms_estimate_number")  # 커밋까지 다른 생성이 같은 번호를 읽지 못하게
     rows = db.query(Estimate.estimate_number).filter(Estimate.estimate_number.like(f"EST-{day}-%")).all()
     last = max((int(m.group(2)) for (n,) in rows if n and (m := NUMBER_RE.match(n))), default=0)
     return f"EST-{day}-{last + 1:04d}"

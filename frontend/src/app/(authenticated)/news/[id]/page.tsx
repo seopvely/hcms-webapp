@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
@@ -54,7 +55,7 @@ export default function NewsDetailPage() {
           </CardHeader>
           <Separator />
           <CardContent className="pt-4">
-            <div className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: data.content }} />
+            <div className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.content) }} />
           </CardContent>
         </Card>
 

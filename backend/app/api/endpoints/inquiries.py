@@ -21,6 +21,7 @@ from app.models.customer import (
     InquiryAnswer,
     InquiryAttachment,
 )
+from app.utils.html_sanitize import sanitize_html
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 
@@ -142,7 +143,7 @@ async def create_inquiry(
         company_id=company_id,
         writer_id=current_user.seq,
         title=title,
-        contents=contents,
+        contents=sanitize_html(contents),
         inquiry_type=inquiry_type,
         status=1,  # 대기중
         priority="medium",  # DB NOT NULL·기본값 없음 — 빠지면 STRICT 모드에서 INSERT 실패
@@ -284,7 +285,7 @@ def get_inquiry_detail(
                 "id": ans.seq,
                 "author": author,
                 "role": role,
-                "content": ans.content,
+                "content": sanitize_html(ans.content),
                 "parent_answer_id": ans.parent_answer_id,
                 "created_at": ans.created_at.isoformat() if ans.created_at else None,
             }
@@ -293,7 +294,7 @@ def get_inquiry_detail(
     return {
         "id": item.seq,
         "title": item.title,
-        "content": item.contents,
+        "content": sanitize_html(item.contents),
         "status": item.status,
         "status_label": INQUIRY_STATUS_LABELS.get(item.status, ""),
         "inquiry_type": item.inquiry_type,
@@ -347,7 +348,7 @@ async def create_inquiry_answer(
     # Create answer
     new_answer = InquiryAnswer(
         inquiry_id=inquiry_id,
-        content=content,
+        content=sanitize_html(content),
         writer_type=2,  # 고객
         customer_writer_id=current_user.seq,
         parent_answer_id=parent_answer_id,

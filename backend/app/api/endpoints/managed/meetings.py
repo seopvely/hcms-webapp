@@ -141,7 +141,7 @@ def calendar(start: date, end: date, db: Session = Depends(get_db)):
 def options(db: Session = Depends(get_db)):
     agents = [{"id": u.id, "name": u.name or u.username} for u in db.query(CustomAuthUser).filter(
         CustomAuthUser.group == "agent", CustomAuthUser.is_active == True).order_by(CustomAuthUser.name)]  # noqa: E712
-    return {"types": TYPES, "agents": agents, "place_search": bool(os.environ.get("KAKAO_REST_API_KEY"))}
+    return {"types": TYPES, "agents": agents, "place_search": bool(settings.KAKAO_REST_API_KEY)}
 
 
 @router.get("/sales-search")
@@ -164,7 +164,7 @@ def place_search(body: PlaceQuery):
     import json
     import urllib.request
 
-    key = os.environ.get("KAKAO_REST_API_KEY")
+    key = settings.KAKAO_REST_API_KEY
     if not key:
         raise HTTPException(501, "장소검색 키(KAKAO_REST_API_KEY)가 설정되지 않았습니다. 주소를 직접 입력해주세요.")
     q = body.query.strip()

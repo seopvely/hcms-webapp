@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -189,7 +190,7 @@ export default function ReplyProjectBoardPage() {
                 <Separator className="my-3" />
                 <div
                   className="prose prose-sm max-w-none text-sm text-muted-foreground leading-relaxed max-h-[300px] overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: parentData.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(parentData.content) }}
                 />
               </>
             )}

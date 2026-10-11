@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.customer import CustomAuthUser, EstimateContractHistory
 from app.services.notify import emit
@@ -19,6 +20,12 @@ from app.services.staff_auth import client_ip
 
 router = APIRouter(prefix="/public/contracts", tags=["public-contracts"])
 EXPIRED = "링크가 만료되었습니다. (24시간 초과) 담당자에게 계약서 재발송을 요청해 주세요."
+NOT_YET = "이 계약서는 메일로 받은 기존 서명 링크에서 서명해 주세요."
+
+
+def _hcms_signs() -> bool:
+    """계약 영역을 hcms 가 맡은 뒤에만 서명·조회 이력을 쓴다(cms 서명과 동시에 열지 않는다)."""
+    return "contracts" in settings.managed_write_areas
 
 
 class TokenBody(BaseModel):
@@ -37,7 +44,7 @@ def view(body: TokenBody, request: Request, db: Session = Depends(get_db)):
         EstimateContractHistory.contract_id == c.seq, EstimateContractHistory.action == "viewed",
         EstimateContractHistory.ip_address == ip, EstimateContractHistory.created_at >= datetime.now() - timedelta(minutes=10),
     ).first()
-    if not recent:
+    if not recent and _hcms_signs():
         svc.history(db, c, "viewed", "고객 계약서 조회", request, None, c.party_a_name)
         db.commit()
     return {
@@ -48,7 +55,7 @@ def view(body: TokenBody, request: Request, db: Session = Depends(get_db)):
         "contract_amount": c.contract_amount,
         "status": status,
         "status_label": svc.STATUS_LABELS.get(status, "-"),
-        "can_sign": status == "3",
+        "can_sign": status == "3" and _hcms_signs(),
         "customer_signed_at": c.customer_signed_at.isoformat() if c.customer_signed_at else None,
         "customer_signed_name": c.customer_signed_name,
     }
@@ -76,6 +83,8 @@ def sign(body: SignBody, request: Request, background: BackgroundTasks, db: Sess
         raise HTTPException(status_code=400, detail="서명자 이름을 입력해주세요.")
     if not body.agree:
         raise HTTPException(status_code=400, detail="계약 내용에 동의해야 서명할 수 있습니다.")
+    if not _hcms_signs():
+        raise HTTPException(status_code=409, detail=NOT_YET)
     c = svc.find_by_token(db, body.token, lock=True)
     status = svc.status_of(c)
     if status != "3":
@@ -91,7 +100,7 @@ def sign(body: SignBody, request: Request, background: BackgroundTasks, db: Sess
     c.customer_signed_hash = svc.sign_hash(c, signer, now, ip)
     c.status = "4"
     c.updated_at = now
-    svc.archive_pdf(db, c)
+    svc.archive_pdf(db, c, "고객 서명본", request, None, signer)
     # action 'signed' + 서명자 이름 — 맥미니 iMessage 전달기가 이 행을 읽는다(형식 유지)
     svc.history(db, c, "signed", f"고객 서명 완료: {signer} (타임스탬프 인증: {c.customer_signed_hash[:16]}...)", request, None, signer)
     emit(db, "contract.signed_by_customer", f"[계약 서명] {c.contract_number or ''} {c.contract_title or ''} 서명자 {signer}", "estimate_contract", c.seq)

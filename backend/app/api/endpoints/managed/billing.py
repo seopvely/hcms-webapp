@@ -226,9 +226,12 @@ def _apply_payment(p: Payment, body: PaymentBody) -> None:
     pp = str(body.production_price if body.production_price is not None else "").replace(",", "").strip()
     p.production_price = _to_int(pp) if pp else None
     for f in ("company_id", "project_id", "project_type", "payment_type", "payment_method", "payment_status", "invoice_tf",
-              "history_remarks", "payment_alarm_id"):
+              "history_remarks"):
         v = getattr(body, f)
         setattr(p, f, v if v not in ("",) else None)
+    # 결제일알람 연결은 화면이 보내지 않는 값 — 보낸 경우에만 바꾼다(수정 저장 때 FK 가 지워지던 문제, SPEC 05 B1)
+    if "payment_alarm_id" in body.model_fields_set:
+        p.payment_alarm_id = body.payment_alarm_id
     p.payment_date = datetime.combine(body.payment_date, time.min) if body.payment_date else None
     for f, allowed in (("project_type", PROJECT_TYPES), ("payment_type", bl.PAYMENT_TYPES), ("payment_method", PAYMENT_METHODS),
                        ("payment_status", PAYMENT_STATUS), ("invoice_tf", {"1": 1, "2": 2})):

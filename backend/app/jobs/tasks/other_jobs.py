@@ -129,7 +129,7 @@ def run_purchase_budget_check(ctx: JobContext) -> None:
 # ── 만료 알림 ────────────────────────────────────────────────────────────
 
 def run_estimate_expiry(ctx: JobContext) -> None:
-    from app.api.endpoints.managed.estimates import amounts
+    from app.services.estimate_calc import amounts
     db, today = ctx.db, ctx.now.date()
     sent = 0
     for e in db.query(Estimate).filter(Estimate.estimate_status == 2, Estimate.validity_period.isnot(None)).all():

@@ -1,4 +1,5 @@
 "use client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -160,7 +161,7 @@ export default function InquiryDetailPage() {
           <CardContent>
             <div
               className="prose prose-sm max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: data.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.content) }}
             />
           </CardContent>
         </Card>
@@ -234,7 +235,7 @@ export default function InquiryDetailPage() {
                     </div>
                     <div
                       className="prose prose-sm max-w-none text-sm text-muted-foreground whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: answer.content }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(answer.content) }}
                     />
                   </div>
                 ))}

@@ -47,3 +47,14 @@ def decode_customer_token(token: str, token_use: str) -> dict | None:
     if not isinstance(sub, str) or not sub.isdigit():
         return None
     return payload
+
+
+DOCUMENT_TOKEN_HOURS = 24
+
+
+def create_document_token(manager_seq: int, estimate_id: int) -> str:
+    """메일 링크용 문서 토큰 — 견적 1건(과 그 계약서)만 보고 응답할 수 있다. refresh 없음."""
+    expire = datetime.utcnow() + timedelta(hours=DOCUMENT_TOKEN_HOURS)
+    to_encode = {"sub": str(manager_seq), "doc_estimate": estimate_id, "exp": expire,
+                 "typ": CUSTOMER_TOKEN_TYPE, "token_use": "doc"}
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
