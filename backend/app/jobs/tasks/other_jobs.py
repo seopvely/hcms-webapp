@@ -43,6 +43,16 @@ def _staff_emails(db) -> list[str]:
     return [u.email for u in db.query(CustomAuthUser).filter(CustomAuthUser.is_active == True) if u.email and "@" in u.email]  # noqa: E712
 
 
+def _admin_emails(db, *extra_ids) -> list[str]:
+    """관리자(슈퍼유저·권한 1) + 지정한 직원(담당자). 비활성·메일 없는 계정은 뺀다."""
+    ids = [i for i in extra_ids if i]
+    cond = or_(CustomAuthUser.is_superuser == True, CustomAuthUser.previlege == "1")  # noqa: E712
+    if ids:
+        cond = or_(cond, CustomAuthUser.id.in_(ids))
+    return sorted({u.email for u in db.query(CustomAuthUser).filter(CustomAuthUser.is_active == True, cond)  # noqa: E712
+                   if u.email and "@" in u.email})
+
+
 # ── 세금계산서 동기화 ─────────────────────────────────────────────────────
 
 def run_tax_sales_sync(ctx: JobContext) -> None:
@@ -134,13 +144,15 @@ def run_estimate_expiry(ctx: JobContext) -> None:
     sent = 0
     for e in db.query(Estimate).filter(Estimate.estimate_status == 2, Estimate.validity_period.isnot(None)).all():
         left = (to_date(e.validity_period) - today).days
-        if left not in (3, 1, 0):
+        # 단계별 1회(D-3·D-1·당일). 하루 빠져도 같은 단계 안이면 다음 실행에서 보낸다
+        stage = 0 if left == 0 else 1 if left == 1 else 3 if 2 <= left <= 3 else None
+        if stage is None:
             continue
         manager = db.query(CustomAuthUser).filter(CustomAuthUser.id == e.estimate_manager_id).first() if e.estimate_manager_id else None
         if not manager or not manager.email:
             ctx.log(f"견적 {e.estimate_number}: 수신자 없음")
             continue
-        if not ctx.claim("estimate_expiry", f"{e.seq}:{to_date(e.validity_period)}:D-{left}"):
+        if not ctx.claim("estimate_expiry", f"{e.seq}:{to_date(e.validity_period)}:D-{stage}"):
             continue
         urgency = "오늘" if left == 0 else "내일" if left == 1 else f"{left}일 후"
         subject = (f"[긴급] 견적서 유효기간 만료 당일 - {e.estimate_number}" if left == 0 else f"[알림] 견적서 유효기간 {left}일 남음 - {e.estimate_number}")
@@ -154,7 +166,7 @@ def run_estimate_expiry(ctx: JobContext) -> None:
             ctx.send([manager.email], subject, html)
             sent += 1
         except Exception as ex:  # noqa: BLE001
-            ctx.mark("estimate_expiry", f"{e.seq}:{to_date(e.validity_period)}:D-{left}", "failed")
+            ctx.mark("estimate_expiry", f"{e.seq}:{to_date(e.validity_period)}:D-{stage}", "failed")
             ctx.log(f"✗ {e.estimate_number}: {ex}")
     ctx.log(f"견적 유효기간 알림 {sent}건")
 
@@ -162,11 +174,12 @@ def run_estimate_expiry(ctx: JobContext) -> None:
 def run_contract_expiry(ctx: JobContext) -> None:
     db, today = ctx.db, ctx.now.date()
     limit = today + timedelta(days=30)
-    emails = _staff_emails(db)
     sent = 0
     for p in db.query(Project).filter(Project.point > 0, Project.contract_termination_date >= datetime.combine(today, time.min),
                                       Project.contract_termination_date <= datetime.combine(limit, time.max)).all():
         end = to_date(p.contract_termination_date)
+        # 수신: 계약·유지보수 담당자 + 관리자(SPEC 10 W3 — 전 직원 발송 중단)
+        emails = _admin_emails(db, p.manager_select_contract_seq_id, p.manager_select_maintenance_seq_id)
         if not emails or not ctx.claim("contract_expiry", f"{p.seq}:{end}"):
             continue
         company = db.query(Company).filter(Company.seq == p.company_id).first()
@@ -246,7 +259,11 @@ def run_domain_expiry(ctx: JobContext) -> None:
     for d in db.query(Domain).all():
         label = (d.all_urls() or [None])[0] if hasattr(d, "all_urls") else None
         label = label or getattr(d, "domain_url", None) or f"도메인 #{d.seq}"
-        for kind, field, active in (("도메인", "domain_end_date", True), ("호스팅", "hosting_end_date", d.hosting_type == "I")):
+        # 사용중('A') 도메인만(SPEC 03 §3). SSL 은 사용(Y)일 때, 호스팅은 자체(I)일 때. 하위 상태가 비어 있으면 사용중으로 본다
+        live = d.domain_status == "A"
+        for kind, field, active in (("도메인", "domain_end_date", live),
+                                    ("SSL", "domain_ssl_end_date", live and d.domain_ssl_tf == "Y" and d.domain_ssl_status in (None, "", "A")),
+                                    ("호스팅", "hosting_end_date", live and d.hosting_type == "I" and d.hosting_status in (None, "", "A"))):
             end = to_date(getattr(d, field, None))
             if not end or not active:
                 continue
@@ -257,7 +274,7 @@ def run_domain_expiry(ctx: JobContext) -> None:
             if not emails or not ctx.claim("domain_expiry", f"{d.seq}:{kind}:{end}:{stage}"):
                 continue
             try:
-                ctx.send(emails, f"[{kind} 만료 {stage}] {label} ({end})", pre(f"{kind} 만료일: {end} (남은 {left}일)\n\n{settings.STAFF_BASE_URL}/managed/domain/{d.seq}"))
+                ctx.send(emails, f"[{kind} 만료 {stage}] {label} ({end})", pre(f"{kind} 만료일: {end} (남은 {left}일)\n\n{settings.STAFF_BASE_URL}/managed/domain_update/{d.seq}/"))
                 sent += 1
             except Exception as ex:  # noqa: BLE001
                 ctx.mark("domain_expiry", f"{d.seq}:{kind}:{end}:{stage}", "failed")
@@ -277,9 +294,13 @@ def run_fde_notice_check(ctx: JobContext) -> None:
         if not emails or not ctx.claim("fde_notice_check", f"{e.id}:{target}"):
             continue
         company = db.query(Company).filter(Company.seq == e.company_id).first()
-        ctx.send(emails, f"[FDE] {company.name if company else ''} 상주 계약 종료 예정 {target} — 연장/종료 확인",
-                 pre(f"상주 계약 #{e.id} 의 (최소)종료일이 {target} 입니다. 종료 통보가 기록되지 않았습니다.\n\n{settings.PUBLIC_BASE_URL}/managed/fde/{e.id}"))
-        n += 1
+        try:
+            ctx.send(emails, f"[FDE] {company.name if company else ''} 상주 계약 종료 예정 {target} — 연장/종료 확인",
+                     pre(f"상주 계약 #{e.id} 의 (최소)종료일이 {target} 입니다. 종료 통보가 기록되지 않았습니다.\n\n{settings.STAFF_BASE_URL}/managed/fde/{e.id}"))
+            n += 1
+        except Exception as ex:  # noqa: BLE001
+            ctx.mark("fde_notice_check", f"{e.id}:{target}", "failed")
+            ctx.log(f"  FDE #{e.id} 발송 실패: {ex}")
     ctx.log(f"FDE 종료 확인 알림 {n}건")
 
 

@@ -8,10 +8,11 @@
 from datetime import date, datetime, time, timedelta
 
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from app.core.config import settings
 from app.jobs.core import JobContext
+from app.models.jobs import JobRun
 from app.models.customer import ContractHistory, DevSubscription, MaintSubscription, PointHistory, Project
 from app.services.subscriptions import DEV_PLAN_LABELS, months_between, to_date
 from app.utils.maint_plans import PLAN_LABELS as MAINT_PLAN_LABELS
@@ -95,9 +96,17 @@ def _monthly_point(db, project: Project, charge: date) -> int:
     return project.point
 
 
+def _catchup_floor(db, today: date) -> date:
+    """따라잡기 시작일: 설정값, 없으면 이 job 을 처음 실제로 돌린 날(그 뒤 놓친 회차는 다음 실행이 채운다)."""
+    if settings.POINT_CHARGE_CATCHUP_FROM:
+        return date.fromisoformat(settings.POINT_CHARGE_CATCHUP_FROM)
+    first = db.query(func.min(JobRun.started_at)).filter(JobRun.job == "charge_maint_projects", JobRun.dry_run == False).scalar()  # noqa: E712
+    return first.date() if first else today
+
+
 def run_charge_maint_projects(ctx: JobContext) -> None:
     db, today = ctx.db, ctx.now.date()
-    floor = date.fromisoformat(settings.POINT_CHARGE_CATCHUP_FROM) if settings.POINT_CHARGE_CATCHUP_FROM else today
+    floor = _catchup_floor(db, today)
     n = 0
     projects = db.query(Project).filter(Project.project_type == "9", Project.contract_date.isnot(None), Project.point > 0,
                                         Project.contract_date <= datetime.combine(today, time.max),

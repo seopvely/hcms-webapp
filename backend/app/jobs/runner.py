@@ -19,7 +19,7 @@ from sqlalchemy import text
 
 import app.models  # noqa: F401
 from app.core.config import settings
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
 from app.jobs.core import JobContext
 from app.jobs.tasks import charge_jobs as cj
 from app.jobs.tasks import notify_jobs as nj
@@ -68,8 +68,10 @@ def run_job(name: str, dry_run: bool = False, now: datetime | None = None) -> Re
     func, _ = JOBS[name]
     db = SessionLocal()
     lock = f"hcms_job_{name}"
+    # 잠금은 전용 연결에 — job 세션은 중간 커밋 때 연결을 풀에 돌려줘서 다른 연결에서 RELEASE 하게 된다
+    lock_conn = engine.connect()
     try:
-        if not db.execute(text("SELECT GET_LOCK(:n, 0)"), {"n": lock}).scalar():
+        if not lock_conn.execute(text("SELECT GET_LOCK(:n, 0)"), {"n": lock}).scalar():
             logger.info(f"[{name}] 다른 실행이 잡고 있어 건너뜀")
             return Result("skipped")
         log_db = SessionLocal()
@@ -92,9 +94,10 @@ def run_job(name: str, dry_run: bool = False, now: datetime | None = None) -> Re
         return Result(status, summary, error)
     finally:
         try:
-            db.execute(text("SELECT RELEASE_LOCK(:n)"), {"n": lock})
+            lock_conn.execute(text("SELECT RELEASE_LOCK(:n)"), {"n": lock})
         except Exception:  # noqa: BLE001
             pass
+        lock_conn.close()
         db.close()
 
 

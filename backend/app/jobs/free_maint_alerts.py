@@ -95,12 +95,15 @@ def run(today: date, dry_run: bool = False) -> int:
         )
         for project in projects:
             for kind in _due_kind(project, today):
+                # '시작' 알림은 시작일 기준 1회 — 종료일이 바뀌어도(연장) 다시 보내지 않는다(G-18)
+                target = project.free_maint_start_date if kind == "started" else project.free_maint_end_date
                 exists = (
                     db.query(FreeMaintAlertLog.id)
                     .filter(
                         FreeMaintAlertLog.project_id == project.seq,
                         FreeMaintAlertLog.kind == kind,
-                        FreeMaintAlertLog.target_date == project.free_maint_end_date,
+                        # 예전 '시작' 로그는 종료일로 남아 있다 — 같은 기간(시작일 이후 키)이면 보낸 것으로 본다
+                        FreeMaintAlertLog.target_date >= target if kind == "started" else FreeMaintAlertLog.target_date == target,
                     )
                     .first()
                 )
@@ -138,7 +141,7 @@ def run(today: date, dry_run: bool = False) -> int:
                     logger.error(f"email failed project={project.seq} kind={kind}: {e}")
 
                 db.add(FreeMaintAlertLog(
-                    project_id=project.seq, kind=kind, target_date=project.free_maint_end_date,
+                    project_id=project.seq, kind=kind, target_date=target,
                     push_sent=push_sent, sent_at=datetime.now(),
                 ))
                 db.commit()
