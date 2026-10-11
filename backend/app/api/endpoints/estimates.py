@@ -340,7 +340,7 @@ def verify_estimate_token(
 
 	# 5. 이 견적 1건만 다룰 수 있는 문서 토큰(계정 로그인·refresh 를 주지 않는다 — SPEC 08 §7)
 	return {
-		"document_token": create_document_token(manager.seq, estimate_id),
+		"document_token": create_document_token(manager.seq, manager.login_id, estimate_id),
 		"estimate_id": estimate_id,
 		"estimate_status": str(estimate.estimate_status) if estimate.estimate_status else "1",
 	}
@@ -401,7 +401,7 @@ def verify_contract_token(
 		raise HTTPException(status_code=404, detail="연결된 견적서가 없습니다. 로그인 후 확인해 주세요.")
 
 	return {
-		"document_token": create_document_token(manager.seq, estimate_id),
+		"document_token": create_document_token(manager.seq, manager.login_id, estimate_id),
 		"contract_id": contract_id,
 		"estimate_id": estimate_id,
 		"contract_status": contract.status or "1",

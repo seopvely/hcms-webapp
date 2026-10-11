@@ -52,9 +52,13 @@ def decode_customer_token(token: str, token_use: str) -> dict | None:
 DOCUMENT_TOKEN_HOURS = 24
 
 
-def create_document_token(manager_seq: int, estimate_id: int) -> str:
-    """메일 링크용 문서 토큰 — 견적 1건(과 그 계약서)만 보고 응답할 수 있다. refresh 없음."""
+def create_document_token(manager_seq: int, login_id: str | None, estimate_id: int) -> str:
+    """메일 링크용 문서 토큰 — 견적 1건(과 그 계약서)만 보고 응답할 수 있다. refresh 없음.
+
+    login_id 는 hcms 에서 쓰지 않지만 넣어 둔다: Hub 가 같은 키로 이 토큰을 받아 login_id 로 회사를 찾고,
+    없으면 전체 사이트를 돌려주는 fail-open 이라(인계) 빼면 노출이 넓어진다.
+    """
     expire = datetime.utcnow() + timedelta(hours=DOCUMENT_TOKEN_HOURS)
-    to_encode = {"sub": str(manager_seq), "doc_estimate": estimate_id, "exp": expire,
+    to_encode = {"sub": str(manager_seq), "login_id": login_id, "doc_estimate": estimate_id, "exp": expire,
                  "typ": CUSTOMER_TOKEN_TYPE, "token_use": "doc"}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

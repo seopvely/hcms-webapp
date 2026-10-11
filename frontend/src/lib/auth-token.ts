@@ -57,11 +57,27 @@ export interface DocumentToken {
   token: string;
 }
 
+function tokenExpired(token: string): boolean {
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), "=")));
+    return typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
+
+/** 만료된 문서 토큰은 없는 것으로 본다(로그인한 고객이 같은 탭에서 나중에 그 견적을 열 때 세션을 지우지 않게). */
 export function getDocumentToken(): DocumentToken | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(DOCUMENT_TOKEN_KEY);
-    return raw ? (JSON.parse(raw) as DocumentToken) : null;
+    const doc = raw ? (JSON.parse(raw) as DocumentToken) : null;
+    if (doc && tokenExpired(doc.token)) {
+      sessionStorage.removeItem(DOCUMENT_TOKEN_KEY);
+      return null;
+    }
+    return doc;
   } catch {
     return null;
   }
