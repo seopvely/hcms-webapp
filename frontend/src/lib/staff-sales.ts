@@ -89,7 +89,7 @@ export function useEstimateDashboard(months: number) {
 export function useSalesMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ method = "post", url, body }: { method?: "post" | "patch"; url: string; body?: Dict | FormData }) =>
+    mutationFn: async ({ method = "post", url, body }: { method?: "post" | "patch" | "put"; url: string; body?: Dict | FormData }) =>
       (await staffApi[method](`/managed${url}`, body ?? {}, body instanceof FormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined)).data,
     onSuccess: () => {
       ["estimates", "contracts", "sales", "dashboard"].forEach((k) => queryClient.invalidateQueries({ queryKey: ["staff", k] }));

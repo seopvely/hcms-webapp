@@ -15,7 +15,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { CONTRACT_STATUS_COLORS } from "@/components/managed/contract-status";
 import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
-import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/managed/form-grid";
+import { ContractEditor } from "@/components/managed/contract-editor";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
@@ -25,27 +25,6 @@ import { staffFileUrl } from "@/lib/staff-maintenance";
 import { useContractPrefill, useSalesMutation, useStaffContract, useWithdrawInfo } from "@/lib/staff-sales";
 import { useStaffMe } from "@/lib/staff-hooks";
 
-const FIELDS: FieldSpec[] = [
-  { key: "contract_title", label: "계약명 *", wide: true },
-  { key: "contract_amount", label: "계약금액(원)", type: "number" },
-  { key: "contract_date", label: "계약일", type: "date" },
-  { key: "contract_start_date", label: "시작일", type: "date" },
-  { key: "contract_end_date", label: "종료일", type: "date" },
-  { key: "contract_period", label: "계약기간" },
-  { key: "maintenance_point", label: "유지보수 포인트", type: "number" },
-  { key: "free_maint_months", label: "무상 유지보수 개월", type: "number" },
-  { key: "free_maint_scope", label: "무상 유지보수 범위" },
-  { key: "party_a_name", label: "갑 상호" }, { key: "party_a_ceo", label: "갑 대표자" },
-  { key: "party_a_business_number", label: "갑 사업자번호" }, { key: "party_a_email", label: "갑 이메일" },
-  { key: "party_a_address", label: "갑 주소", wide: true },
-  { key: "party_b_name", label: "을 상호" }, { key: "party_b_ceo", label: "을 대표자" },
-  { key: "party_b_business_number", label: "을 사업자번호" }, { key: "party_b_email", label: "을 이메일" },
-  { key: "party_b_address", label: "을 주소", wide: true },
-  { key: "project_description", label: "프로젝트 설명", type: "textarea" },
-  { key: "service_scope", label: "서비스 범위", type: "textarea" },
-  { key: "payment_terms", label: "지불조건", type: "textarea" },
-  { key: "special_terms", label: "특약", type: "textarea" },
-];
 
 export default function StaffContractPage() {
   return <Suspense fallback={<PageSpinner />}><ContractPageInner /></Suspense>;
@@ -67,42 +46,7 @@ function NewContract() {
   const { data } = useContractPrefill(estimateId);
   if (!estimateId) return <p className="text-sm text-muted-foreground">견적서 상세에서 &quot;계약서 작성&quot;으로 들어와 주세요.</p>;
   if (!data) return <DetailSkeleton />;
-  return <ContractForm initial={data} estimateId={estimateId} seq={null} onDone={() => undefined} />;
-}
-
-function ContractForm({ initial, estimateId, seq, onDone }: { initial: Record<string, unknown>; estimateId: number | null; seq: number | null; onDone: () => void }) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const mutate = useSalesMutation();
-  const [values, setValues] = useState(() => toValues(FIELDS, initial));
-  const save = async (review: boolean) => {
-    const body = { ...toPayload(FIELDS, values), review };
-    try {
-      if (seq) {
-        await mutate.mutateAsync({ method: "patch", url: `/contracts/${seq}`, body });
-        toast("success", "저장했습니다.");
-        onDone();
-      } else {
-        const res = await mutate.mutateAsync({ url: "/contracts", body: { ...body, estimate_id: estimateId } });
-        toast("success", "계약서를 만들었습니다.");
-        router.replace(`/managed/contracts/${res.seq}`);
-      }
-    } catch (err) {
-      toast("error", apiErrorDetail(err, "저장에 실패했습니다."));
-    }
-  };
-  return (
-    <PageTransition>
-      <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
-        <FormGrid fields={FIELDS} values={values} onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))} />
-        <div className="flex justify-end gap-2">
-          {seq && <Button variant="outline" className="rounded-xl" onClick={onDone}>취소</Button>}
-          <Button variant="outline" className="rounded-xl" onClick={() => save(false)} disabled={mutate.isPending}>작성중으로 저장</Button>
-          <Button className="rounded-xl" onClick={() => save(true)} disabled={mutate.isPending}>검토대기로 저장</Button>
-        </div>
-      </CardContent></Card>
-    </PageTransition>
-  );
+  return <PageTransition><ContractEditor initial={data} estimateId={estimateId} seq={null} onDone={() => undefined} /></PageTransition>;
 }
 
 function ContractView({ seq }: { seq: number }) {
@@ -122,7 +66,7 @@ function ContractView({ seq }: { seq: number }) {
   }, [pageTitle, setPageTitle]);
   if (error) return <LoadFailed error={error} />;
   if (isLoading || !data) return <DetailSkeleton />;
-  if (editing) return <ContractForm initial={data} estimateId={null} seq={seq} onDone={() => setEditing(false)} />;
+  if (editing) return <PageTransition><ContractEditor initial={data} estimateId={null} seq={seq} onDone={() => setEditing(false)} /></PageTransition>;
   const canWrite = data.write_enabled;
   const s = data.status;
 

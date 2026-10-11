@@ -449,6 +449,43 @@ class Reorder(BaseModel):
     item_ids: list[int]
 
 
+class ItemSetRow(ItemBody):
+    seq: int | None = None
+
+
+class ItemSetBody(BaseModel):
+    items: list[ItemSetRow]
+
+
+@router.put("/{seq}/items", dependencies=[WRITE])
+def replace_items(seq: int, body: ItemSetBody, db: Session = Depends(get_db)):
+    """작성 화면의 항목 표를 한 번에 저장(한 트랜잭션): 없어진 항목 삭제, 있는 항목 수정, 새 항목 추가, 화면 순서대로 번호."""
+    e = _editable(db, seq)
+    if any(not r.item_name.strip() for r in body.items):
+        raise HTTPException(status_code=400, detail="항목명이 빈 행이 있습니다.")
+    existing = {i.seq: i for i in e.items}
+    keep = {r.seq for r in body.items if r.seq}
+    if keep - set(existing):
+        raise HTTPException(status_code=400, detail="이 견적서의 항목이 아닌 행이 있습니다.")
+    now = datetime.now()
+    for item_id, item in existing.items():
+        if item_id not in keep:
+            db.delete(item)
+    for order, r in enumerate(body.items, start=1):
+        data = r.model_dump(exclude={"seq"}) | {"unit": r.unit or "식", "item_name": r.item_name.strip()}
+        if r.seq:
+            item = existing[r.seq]
+            for key, value in data.items():
+                setattr(item, key, value)
+            item.item_order = order
+            item.updated_at = now
+        else:
+            db.add(EstimateItem(estimate_id=seq, item_order=order, created_at=now, updated_at=now, **data))
+    e.updated_at = now
+    db.commit()
+    return {"ok": True, "count": len(body.items)}
+
+
 @router.post("/{seq}/items/reorder", dependencies=[WRITE])
 def reorder_items(seq: int, body: Reorder, db: Session = Depends(get_db)):
     e = _editable(db, seq)

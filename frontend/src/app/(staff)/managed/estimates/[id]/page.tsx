@@ -15,7 +15,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { ESTIMATE_STATUS_COLORS } from "@/components/managed/estimate-status";
 import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
-import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/managed/form-grid";
+import { EstimateEditor } from "@/components/managed/estimate-editor";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
@@ -23,54 +23,9 @@ import { CMS_BASE } from "@/components/managed/staff-nav";
 import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import staffApi from "@/lib/staff-api";
-import { staffFileUrl, useLookupCompanies } from "@/lib/staff-maintenance";
+import { staffFileUrl } from "@/lib/staff-maintenance";
 import { type EstimateDetail, type EstimateItemRow, useSalesMutation, useStaffEstimate } from "@/lib/staff-sales";
 import { useStaffMe } from "@/lib/staff-hooks";
-
-const PROJECT_TYPES: [string, string][] = [
-  ["1", "웹사이트"], ["2", "모바일앱"], ["3", "웹앱"], ["4", "웹+앱"], ["5", "도메인"], ["6", "보안서버"], ["7", "쇼핑몰"], ["8", "운영"],
-  ["9", "유지보수"], ["10", "서버관리"], ["11", "서버마이그레이션"], ["12", "호스팅"], ["13", "개발구독"], ["15", "유지보수구독"], ["16", "FDE"],
-];
-
-function fieldsFor(companies: [string, string][]): FieldSpec[] {
-  return [
-    { key: "company_id", label: "업체 *", type: "select", options: companies },
-    { key: "estimate_title", label: "제목 *", wide: true },
-    { key: "estimate_number", label: "견적번호" },
-    { key: "estimate_type", label: "견적유형" },
-    { key: "written_date", label: "작성일", type: "date" },
-    { key: "validity_period", label: "유효기간", type: "datetime-local" },
-    { key: "tax_rate", label: "세율(%)", type: "number" },
-    { key: "deposit_pct", label: "착수금 %", type: "number" },
-    { key: "deposit_due_date", label: "착수금 납부예정일", type: "date" },
-    { key: "progress_pct", label: "중도금 %", type: "number" },
-    { key: "progress_due_date", label: "중도금 납부예정일", type: "date" },
-    { key: "balance_pct", label: "잔금 %", type: "number" },
-    { key: "balance_due_date", label: "잔금 납부예정일", type: "date" },
-    { key: "discount_type", label: "할인", type: "select", options: [["1", "정률(%)"], ["2", "정액(원)"]] },
-    { key: "discount_rate", label: "할인율(%)", type: "number" },
-    { key: "discount_amount", label: "할인액(원)", type: "number" },
-    { key: "discount_description", label: "할인 사유" },
-    { key: "project_type", label: "프로젝트 유형(전환)", type: "select", options: PROJECT_TYPES },
-    { key: "contract_date", label: "계약일(전환)", type: "date" },
-    { key: "contract_termination_date", label: "계약종료일(전환)", type: "date" },
-    { key: "contract_period_range", label: "계약기간(전환)" },
-    { key: "contract_deposit", label: "계약금(전환)", type: "number" },
-    { key: "point", label: "월 유지보수 포인트(전환)", type: "number" },
-    { key: "dev_subscription_plan", label: "개발구독 플랜(유형 13)", type: "select", options: [["starter", "STARTER"], ["growth", "GROWTH"], ["scale", "SCALE"]] },
-    { key: "maint_subscription_plan", label: "유지보수구독 요금제(유형 15)", type: "select", options: [["basic", "BASIC"], ["growth", "GROWTH"], ["business", "BUSINESS"]] },
-    { key: "maint_hosting_type", label: "호스팅 구분(유형 15)", type: "select", options: [["I", "한결랩 호스팅"], ["E", "외부 호스팅"]] },
-    { key: "maint_hosting_provider", label: "외부 호스팅 업체(유형 15)" },
-    { key: "maint_hosting_start_date", label: "호스팅 시작일(유형 15)", type: "date" },
-    { key: "maint_hosting_end_date", label: "호스팅 종료일(유형 15)", type: "date" },
-    { key: "free_maint_months", label: "무상 유지보수 개월", type: "number" },
-    { key: "free_maint_scope", label: "무상 유지보수 범위", wide: true },
-    { key: "payment_terms", label: "지불조건", type: "textarea" },
-    { key: "delivery_terms", label: "납품조건", type: "textarea" },
-    { key: "estimate_content", label: "내용(비고)", type: "textarea" },
-    { key: "requirements", label: "요구사항", type: "textarea" },
-  ];
-}
 
 export default function StaffEstimatePage() {
   const { id } = useParams<{ id: string }>();
@@ -82,49 +37,7 @@ export default function StaffEstimatePage() {
   }, [setPageTitle, isNew, data?.estimate_title, data?.estimate_number]);
   if (!isNew && error) return <LoadFailed error={error} />;
   if (!isNew && (isLoading || !data)) return <DetailSkeleton />;
-  return isNew ? <EstimateForm detail={null} onDone={() => undefined} /> : <EstimateView detail={data!} />;
-}
-
-function EstimateForm({ detail, onDone }: { detail: EstimateDetail | null; onDone: () => void }) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const mutate = useSalesMutation();
-  const { data: companies } = useLookupCompanies();
-  const fields = fieldsFor((companies?.items ?? []).map((c) => [String(c.id), c.name]));
-  const [values, setValues] = useState<Record<string, string>>(() => (detail ? toValues(fields, detail) : { tax_rate: "10" }));
-
-  useEffect(() => {
-    if (!detail) staffApi.get("/managed/estimates/next-number").then((r) => setValues((v) => ({ ...v, estimate_number: v.estimate_number || r.data.estimate_number })));
-  }, [detail]);
-
-  const save = async () => {
-    try {
-      const body = toPayload(fields, values);
-      if (detail) {
-        await mutate.mutateAsync({ method: "patch", url: `/estimates/${detail.seq}`, body });
-        toast("success", "저장했습니다.");
-        onDone();
-      } else {
-        const res = await mutate.mutateAsync({ url: "/estimates", body });
-        toast("success", "견적서를 만들었습니다. 항목을 추가하세요.");
-        router.replace(`/managed/estimates/${res.seq}`);
-      }
-    } catch (err) {
-      toast("error", apiErrorDetail(err, "저장에 실패했습니다."));
-    }
-  };
-
-  return (
-    <Card className="rounded-2xl">
-      <CardContent className="space-y-4 pt-5 pb-5">
-        <FormGrid fields={fields} values={values} onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))} />
-        <div className="flex justify-end gap-2">
-          {detail && <Button variant="outline" className="rounded-xl" onClick={onDone}>취소</Button>}
-          <Button className="rounded-xl" onClick={save} disabled={mutate.isPending}>저장</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return isNew ? <EstimateEditor detail={null} onDone={() => undefined} /> : <EstimateView detail={data!} />;
 }
 
 function EstimateView({ detail }: { detail: EstimateDetail }) {
@@ -161,7 +74,7 @@ function EstimateView({ detail }: { detail: EstimateDetail }) {
     call(`/estimates/${detail.seq}/items/reorder`, { item_ids: ids }, "순서를 바꿨습니다.");
   };
 
-  if (editing) return <PageTransition><EstimateForm detail={detail} onDone={() => setEditing(false)} /></PageTransition>;
+  if (editing) return <PageTransition><EstimateEditor detail={detail} onDone={() => setEditing(false)} /></PageTransition>;
 
   return (
     <PageTransition>
