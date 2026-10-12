@@ -79,7 +79,7 @@ export default function StaffMaintenanceNewPage() {
           <Field label="제목 *">
             <Input className="rounded-xl" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
-          <SimpleEditor value={contents} onChange={setContents} placeholder="요청 내용" />
+          <SimpleEditor imageUpload="staff" value={contents} onChange={setContents} placeholder="요청 내용" />
           <Input type="file" multiple className="rounded-xl" onChange={(e) => setFiles(e.target.files)} />
           <div className="flex justify-end gap-2">
             <Button variant="outline" className="rounded-xl" onClick={() => router.back()}>

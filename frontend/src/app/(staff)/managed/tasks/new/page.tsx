@@ -93,7 +93,7 @@ export default function StaffTaskNewPage() {
             <Field label="예산(원)"><Input type="number" min={0} className="rounded-xl" value={form.budget ?? ""} onChange={set("budget")} /></Field>
           </div>
           <Field label="제목 *"><Input className="rounded-xl" value={form.title ?? ""} onChange={set("title")} /></Field>
-          <SimpleEditor value={content} onChange={setContent} placeholder="작업 내용" />
+          <SimpleEditor imageUpload="staff" value={content} onChange={setContent} placeholder="작업 내용" />
           <Input type="file" className="rounded-xl" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           <div className="flex justify-end gap-2">
             <Button variant="outline" className="rounded-xl" onClick={() => router.back()}>취소</Button>

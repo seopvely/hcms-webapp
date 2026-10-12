@@ -361,6 +361,7 @@ function MaintenanceNewContent() {
             </CardHeader>
             <CardContent>
               <SimpleEditor
+                imageUpload="customer"
                 value={contents}
                 onChange={setContents}
                 placeholder="요청 내용을 상세히 작성해주세요"

@@ -108,7 +108,7 @@ function NewsEditor({ news, canWrite }: { news: NewsItem | null; canWrite: boole
                   </select>
                 </Field>
               </div>
-              <SimpleEditor value={content} onChange={setContent} />
+              <SimpleEditor imageUpload="staff" value={content} onChange={setContent} />
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground">공개 대상 (선택하지 않으면 전체 공개)</p>
                 <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-xl border p-2">

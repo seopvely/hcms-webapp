@@ -242,6 +242,7 @@ export default function TaskCreatePage() {
             </CardHeader>
             <CardContent>
               <SimpleEditor
+                imageUpload="customer"
                 value={content}
                 onChange={setContent}
                 placeholder="작업 내용을 상세히 작성해주세요"

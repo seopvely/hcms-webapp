@@ -241,6 +241,7 @@ function CreateInquiryForm() {
                   내용 <span className="text-red-500">*</span>
                 </label>
                 <SimpleEditor
+                  imageUpload="customer"
                   value={contents}
                   onChange={setContents}
                   placeholder="문의 내용을 입력해주세요"

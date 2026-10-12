@@ -107,7 +107,7 @@ export default function StaffTaskDetailPage() {
               <Card className="rounded-2xl">
                 <CardContent className="space-y-3 pt-5 pb-5">
                   <h2 className="font-semibold">코멘트 작성</h2>
-                  <SimpleEditor key={editorKey} value={content} onChange={setContent} />
+                  <SimpleEditor imageUpload="staff" key={editorKey} value={content} onChange={setContent} />
                   <div className="flex items-end gap-3">
                     <Field label="상태 변경" className="w-48">
                       <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)}>

@@ -228,7 +228,7 @@ function EditPost({ post, projectId, onCancel, onSave }: { post: BoardPost; proj
           </div>
         )}
         <Field label="제목 *"><Input className="rounded-xl" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-        <SimpleEditor value={content} onChange={setContent} />
+        <SimpleEditor imageUpload="staff" value={content} onChange={setContent} />
         <label className="flex items-center gap-2 text-sm"><Checkbox checked={notice} onCheckedChange={(v) => setNotice(v === true)} /> 공지</label>
         <div className="flex justify-end gap-2">
           <Button variant="outline" className="rounded-xl" onClick={onCancel}>취소</Button>
@@ -264,7 +264,7 @@ function ReplyBox({ onSubmit }: { onSubmit: (title: string, content: string) => 
       <CardContent className="space-y-3 pt-5 pb-5">
         <h2 className="font-semibold">답글 작성</h2>
         <Input className="rounded-xl" placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <SimpleEditor key={key} value={content} onChange={setContent} />
+        <SimpleEditor imageUpload="staff" key={key} value={content} onChange={setContent} />
         <div className="flex justify-end">
           <Button className="rounded-xl" disabled={!title.trim()} onClick={async () => { if (await onSubmit(title, content)) { setTitle(""); setContent(""); setKey((k) => k + 1); } }}>등록</Button>
         </div>
@@ -329,7 +329,7 @@ function NewPost() {
             </div>
           )}
           <Field label="제목 *"><Input className="rounded-xl" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-          <SimpleEditor value={content} onChange={setContent} />
+          <SimpleEditor imageUpload="staff" value={content} onChange={setContent} />
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-2"><Checkbox checked={notice} onCheckedChange={(v) => setNotice(v === true)} /> 공지</label>
             <Input type="file" multiple className="max-w-xs rounded-xl" onChange={(e) => setFiles(e.target.files)} />

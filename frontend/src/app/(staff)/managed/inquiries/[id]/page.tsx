@@ -106,7 +106,7 @@ export default function StaffInquiryDetailPage() {
               <Card className="rounded-2xl">
                 <CardContent className="space-y-3 pt-5 pb-5">
                   <h2 className="font-semibold">답변 작성</h2>
-                  <SimpleEditor key={editorKey} value={content} onChange={setContent} placeholder="답변 내용" />
+                  <SimpleEditor imageUpload="staff" key={editorKey} value={content} onChange={setContent} placeholder="답변 내용" />
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="문의 상태">
                       <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)}>

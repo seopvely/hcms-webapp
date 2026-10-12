@@ -371,7 +371,7 @@ function CommentForm({ detail, replyTo, onClearReply }: { detail: MaintDetail; r
             </button>
           </div>
         )}
-        <SimpleEditor key={editorKey} value={content} onChange={setContent} placeholder="처리 내용을 입력하세요" />
+        <SimpleEditor imageUpload="staff" key={editorKey} value={content} onChange={setContent} placeholder="처리 내용을 입력하세요" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="상태">
             <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -442,7 +442,7 @@ function EditRequestDialog({ detail, onClose }: { detail: MaintDetail; onClose: 
         <Field label="완료 예정일">
           <Input type="date" className="rounded-xl" value={completion} onChange={(e) => setCompletion(e.target.value)} />
         </Field>
-        <SimpleEditor value={contents} onChange={setContents} />
+        <SimpleEditor imageUpload="staff" value={contents} onChange={setContents} />
         <DialogFooter>
           <Button className="rounded-xl" onClick={save} disabled={saving}>
             저장
