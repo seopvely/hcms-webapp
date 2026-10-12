@@ -27,8 +27,11 @@ interface SimpleEditorProps {
   imageUpload?: "customer" | "staff";
 }
 
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-const MAX_IMAGE_MB = 10;
+// HEIC(아이폰 사진)는 서버가 JPG 로 바꿔 저장한다. 브라우저에 따라 type 이 비어 오므로 확장자도 본다.
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif"];
+const IMAGE_ACCEPT = [...IMAGE_TYPES, ".heic", ".heif"].join(",");
+const MAX_IMAGE_MB = 20;
+const isImage = (f: File) => IMAGE_TYPES.includes(f.type) || /\.(heic|heif)$/i.test(f.name);
 
 /** 이미지 1장을 올리고 공개 주소를 받는다(서버가 검사·EXIF 제거·축소). */
 async function uploadImage(target: "customer" | "staff", file: File): Promise<string> {
@@ -59,9 +62,9 @@ export function SimpleEditor({
   const insertImages = async (ed: Editor, files: File[], pos?: number) => {
     const target = targetRef.current;
     if (!target) return;
-    const images = files.filter((f) => IMAGE_TYPES.includes(f.type));
+    const images = files.filter(isImage);
     if (!images.length) {
-      setImageError("JPG·PNG·GIF·WEBP 이미지만 넣을 수 있습니다.");
+      setImageError("JPG·PNG·GIF·WEBP·HEIC 이미지만 넣을 수 있습니다.");
       return;
     }
     setImageError(null);
@@ -74,8 +77,8 @@ export function SimpleEditor({
       try {
         const src = await uploadImage(target, file);
         const chain = ed.chain().focus();
-        if (pos !== undefined) chain.insertContentAt(pos, [{ type: "image", attrs: { src, alt: file.name } }, { type: "paragraph" }]);
-        else chain.insertContent([{ type: "image", attrs: { src, alt: file.name } }, { type: "paragraph" }]);
+        if (pos !== undefined) chain.insertContentAt(pos, [{ type: "image", attrs: { src, alt: file.name.replace(/\.(heic|heif)$/i, ".jpg") } }, { type: "paragraph" }]);
+        else chain.insertContent([{ type: "image", attrs: { src, alt: file.name.replace(/\.(heic|heif)$/i, ".jpg") } }, { type: "paragraph" }]);
         chain.run();
         pos = undefined; // 두 번째부터는 앞 이미지 뒤(현재 커서)에 붙인다
       } catch (err) {
@@ -106,14 +109,14 @@ export function SimpleEditor({
       },
       // 붙여넣기·끌어다 놓기 이미지 — 이미지 업로드를 켠 화면만. base64 로 본문에 박히지 않게 기본 동작을 막는다.
       handlePaste: (view, event) => {
-        const files = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        const files = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/") || isImage(f));
         if (!files.length || !targetRef.current || !editorRef.current) return false;
         event.preventDefault();
         void insertImages(editorRef.current, files);
         return true;
       },
       handleDrop: (view, event, _slice, moved) => {
-        const files = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        const files = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith("image/") || isImage(f));
         if (moved || !files.length || !targetRef.current || !editorRef.current) return false;
         event.preventDefault();
         const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
@@ -213,7 +216,7 @@ export function SimpleEditor({
             <input
               ref={fileInput}
               type="file"
-              accept={IMAGE_TYPES.join(",")}
+              accept={IMAGE_ACCEPT}
               multiple
               className="hidden"
               onChange={(e) => {

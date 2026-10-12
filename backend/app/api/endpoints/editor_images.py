@@ -1,6 +1,7 @@
 """에디터 본문 이미지 — 업로드(고객·직원)와 공개 제공.
 
-- 업로드: 고객 POST /api/editor-images, 직원 POST /api/managed/editor-images. 10MB 이하 JPEG·PNG·GIF·WEBP 만.
+- 업로드: 고객 POST /api/editor-images, 직원 POST /api/managed/editor-images. 20MB 이하 JPEG·PNG·GIF·WEBP·HEIC.
+  HEIC/HEIF(아이폰 사진)는 브라우저가 못 보여 줘서 JPEG 로 바꿔 저장한다(pillow-heif).
   Pillow 로 실제 이미지인지 확인하고, GIF 외에는 다시 인코딩한다(EXIF·위치정보 제거, 이미지로 위장한 파일 무력화).
   긴 변이 2400px 를 넘으면 줄인다.
 - 제공: GET /api/public/editor-images/YYYY/MM/<uuid>.<ext> — 본문 <img> 는 인증 헤더를 못 보내고 cms·앱에서도
@@ -16,13 +17,14 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
+from pillow_heif import register_heif_opener
 
 from app.core.config import settings
 from app.core.deps import get_current_staff, get_current_user
 from app.utils.media import MEDIA_ROOT
 
 PURPOSE = "editor_images"
-MAX_BYTES = 10 * 1024 * 1024
+MAX_BYTES = 20 * 1024 * 1024  # 아이폰 HEIC·고해상도 사진
 MAX_SIDE = 2400
 _FORMATS = {"JPEG": ("jpg", "image/jpeg"), "PNG": ("png", "image/png"), "GIF": ("gif", "image/gif"), "WEBP": ("webp", "image/webp")}
 _MEDIA_TYPES = {ext: mt for ext, mt in _FORMATS.values()}
@@ -32,21 +34,26 @@ router = APIRouter(tags=["editor-images"])
 staff_router = APIRouter(tags=["managed-editor-images"])  # /api/managed 아래(직원 인증은 managed 라우터가 건다)
 
 Image.MAX_IMAGE_PIXELS = 50_000_000  # 압축 폭탄 방지
+register_heif_opener()  # Image.open 이 HEIC/HEIF 를 읽게
 
 
 def save_editor_image(upload: UploadFile) -> dict:
     data = upload.file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
-        raise HTTPException(400, "이미지가 너무 큽니다(최대 10MB).")
+        raise HTTPException(400, "이미지가 너무 큽니다(최대 20MB).")
     try:
         with Image.open(io.BytesIO(data)) as probe:
             probe.verify()
         img = Image.open(io.BytesIO(data))
         fmt = img.format
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError, SyntaxError):
-        raise HTTPException(400, "이미지 파일이 아닙니다(JPG·PNG·GIF·WEBP).")
+        raise HTTPException(400, "이미지 파일이 아닙니다(JPG·PNG·GIF·WEBP·HEIC).")
+    if fmt in ("HEIF", "HEIC"):
+        fmt = "JPEG"  # 저장 형식 — 아래에서 다시 인코딩한다
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
     if fmt not in _FORMATS:
-        raise HTTPException(400, f"지원하지 않는 이미지 형식입니다({fmt}). JPG·PNG·GIF·WEBP 로 올려 주세요.")
+        raise HTTPException(400, f"지원하지 않는 이미지 형식입니다({fmt}). JPG·PNG·GIF·WEBP·HEIC 로 올려 주세요.")
     ext, _ = _FORMATS[fmt]
 
     if fmt == "GIF":

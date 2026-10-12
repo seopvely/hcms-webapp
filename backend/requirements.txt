@@ -43,3 +43,5 @@ firebase-admin==6.6.0
 pyotp==2.10.0
 qrcode==8.2
 nh3==0.3.7
+Pillow==12.1.0
+pillow-heif==1.1.1
