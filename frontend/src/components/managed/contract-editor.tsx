@@ -2,12 +2,13 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/common/app-toast";
+import { AiProgress, useAiJob } from "@/components/managed/ai-assist";
 import { Field, apiErrorDetail } from "@/components/managed/field";
 import { type FieldSpec, toPayload, toValues } from "@/components/managed/form-grid";
 import { FormSection, MoneyInput, SummaryRow, useUnsavedGuard } from "@/components/managed/form-kit";
@@ -78,6 +79,23 @@ export function ContractEditor({
     setV((s) => ({ ...s, [k]: val }));
     setDirty(true);
   };
+  // AI 초안 — 계약 정보·연결 견적으로 계약 내용 4칸을 채운다(빈 칸이 아니면 덮어쓸지 묻는다)
+  const ai = useAiJob<Record<string, string>>();
+  const AI_KEYS = ["project_description", "service_scope", "payment_terms", "special_terms"];
+  const runAi = () => {
+    if (AI_KEYS.some((k) => (v[k] ?? "").trim()) && !confirm("AI 결과가 나오면 계약 내용 4칸을 덮어씁니다. 진행할까요?")) return;
+    ai.start("/ai/contract-draft", {
+      contract_seq: seq, estimate_id: estimateId ?? (initial.estimate_id as number | null) ?? null,
+      contract_title: v.contract_title ?? "", company_name: v.party_a_name ?? "", contract_amount: v.contract_amount ?? "", contract_period: v.contract_period ?? "",
+      maintenance_point: v.maintenance_point ?? "", free_maint_months: v.free_maint_months ?? "", free_maint_scope: v.free_maint_scope ?? "",
+      project_description: v.project_description ?? "",
+    }, (d) => {
+      setV((s) => ({ ...s, ...Object.fromEntries(AI_KEYS.filter((k) => d[k]).map((k) => [k, d[k]])) }));
+      setDirty(true);
+      toast("success", "AI 초안을 넣었습니다. 내용을 확인하고 저장하세요.");
+    });
+  };
+
   const months = monthsBetween(v.contract_start_date ?? "", v.contract_end_date ?? "");
   const linkedEstimate = estimateId ?? (initial.estimate_id as number | null) ?? null;
   const checks = useMemo(() => [
@@ -184,7 +202,17 @@ export function ContractEditor({
             <FormSection title="을 (한결랩)" description="기본값이 채워져 있습니다." collapsible defaultOpen={false}>{party("b")}</FormSection>
           </div>
 
-          <FormSection title="계약 내용" description="계약서 본문에 들어갑니다. 고객 서명 후에는 바꿀 수 없습니다.">
+          <FormSection
+            title="계약 내용"
+            description="계약서 본문에 들어갑니다. 고객 서명 후에는 바꿀 수 없습니다."
+            aside={
+              <Button type="button" size="sm" variant="outline" className="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={runAi} disabled={ai.running}>
+                {ai.running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} AI 초안
+              </Button>
+            }
+          >
+            <AiProgress running={ai.running} elapsed={ai.job?.elapsed ?? 0} model={ai.job?.model} />
+            {ai.error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{ai.error}</p>}
             <div className="space-y-3">
               {area("project_description", "프로젝트 설명", "무엇을 만드는지 한두 문단으로", 5)}
               {area("service_scope", "서비스 범위", "포함·제외 범위를 항목별로", 6)}

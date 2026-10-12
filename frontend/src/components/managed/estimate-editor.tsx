@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowDown, ArrowUp, Copy, Loader2, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, Copy, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/common/app-toast";
+import { type AiItem, EstimateAiDialog } from "@/components/managed/ai-assist";
 import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
 import { type FieldSpec, toPayload, toValues } from "@/components/managed/form-grid";
 import { FormSection, MoneyInput, SummaryRow, useUnsavedGuard } from "@/components/managed/form-kit";
@@ -112,6 +113,7 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const lastInput = useRef<HTMLInputElement | null>(null);
   useUnsavedGuard(dirty);
 
@@ -145,6 +147,18 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
       return out;
     });
     setDirty(true);
+  };
+
+  // AI 제안 반영 — 빈 행만 있으면 대체와 같다. 요구사항 메모도 같이 남긴다.
+  const applyAi = (items: AiItem[], mode: "append" | "replace", requirements: string) => {
+    const added = items.map((i) => newRow({ category: i.category, item_name: i.item_name, specification: i.specification, quantity: String(i.quantity), unit: i.unit || "식", unit_price: String(i.unit_price) }));
+    setRows((rs) => {
+      const kept = mode === "replace" ? [] : rs.filter((r) => r.item_name.trim() || n(r.unit_price));
+      return [...kept, ...added];
+    });
+    if (requirements.trim() && requirements !== (v.requirements ?? "")) setV((s) => ({ ...s, requirements }));
+    setDirty(true);
+    toast("success", `AI 항목 ${added.length}개를 넣었습니다. 확인 후 저장하세요.`);
   };
 
   const sums = calc(rows, v);
@@ -244,13 +258,18 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
           <FormSection
             title={`견적 항목 (${usedRows.length})`}
             description="표에서 바로 입력합니다. Enter 로 다음 칸, 마지막 칸에서 Enter 면 새 행. '별도'는 합계에서 빠집니다."
-            aside={<Button type="button" size="sm" variant="outline" className="rounded-xl" onClick={() => addRow()}><Plus className="mr-1 h-4 w-4" /> 행 추가</Button>}
+            aside={
+              <div className="flex gap-1">
+                <Button type="button" size="sm" variant="outline" className="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => setAiOpen(true)}><Sparkles className="mr-1 h-4 w-4" /> AI 제안</Button>
+                <Button type="button" size="sm" variant="outline" className="rounded-xl" onClick={() => addRow()}><Plus className="mr-1 h-4 w-4" /> 행 추가</Button>
+              </div>
+            }
           >
             {err(errors.items) && <p className="flex items-center gap-1 text-xs text-red-600"><AlertTriangle className="h-3.5 w-3.5" /> 항목명이 빈 행이 있습니다(금액만 있고 이름이 없음).</p>}
             <div className="-mx-5 overflow-x-auto px-5">
               <table className="w-full min-w-[720px] table-fixed text-sm">
                 <colgroup>
-                  <col className="w-24" /><col /><col className="w-16" /><col className="w-20" /><col className="w-28" /><col className="w-24" /><col className="w-10" /><col className="w-[104px]" />
+                  <col className="w-24" /><col /><col className="w-16" /><col className="w-[88px]" /><col className="w-28" /><col className="w-24" /><col className="w-10" /><col className="w-[104px]" />
                 </colgroup>
                 <thead className="text-xs text-muted-foreground">
                   <tr className="border-b">
@@ -309,6 +328,17 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
             <button type="button" onClick={() => addRow()} className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed py-2 text-sm text-muted-foreground hover:bg-muted/40">
               <Plus className="h-4 w-4" /> 행 추가
             </button>
+            {aiOpen && (
+              <EstimateAiDialog
+                open
+                onClose={() => setAiOpen(false)}
+                context={{
+                  requirements: v.requirements ?? "", estimate_title: v.estimate_title ?? "", estimate_type: v.estimate_type ?? "", project_type: v.project_type ?? "",
+                  company_name: companies?.items.find((c) => String(c.id) === v.company_id)?.name ?? "",
+                }}
+                onApply={applyAi}
+              />
+            )}
           </FormSection>
 
           <FormSection title="할인·세율">

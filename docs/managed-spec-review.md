@@ -25,7 +25,7 @@ SPEC 원본: iCloud `work/cms/SPEC/`(16개, 2026-10-10 기준, 원본은 수정�
 | 05 §7.8 | 유형 16 견적에서 plan_id·옵션 선택 | Estimate 에 칸이 없어(Django 마이그레이션) FDE 계약을 '연결 견적 #'으로 먼저 등록 → 전환 시 프로젝트 연결·진행, 상주는 전환 납부 생성 안 함 |
 
 ## 2. 제외(이번 이관 범위 밖)
-- AI 게이트웨이·견적 AI 탭·AI 계약데이터·레퍼런스 AI 설명/파일검색(06 §8, D18 결정 전 — cms 유지)
+- AI 게이트웨이·AI 계약데이터·레퍼런스 AI 설명/파일검색(06 §8 — cms 유지). 견적 항목 제안·계약 내용 초안은 10-12 D18 = 서버 claude CLI 로 hcms 에 반영(`managed/ai.py`, `services/claude_cli.py`, `AI_ENABLED`)
 - 십일조 화면·메일(D13), 고객 메일 발송(03 §10, 폐기 권고)
 - 영업접수 서버 임시저장(브라우저 저장으로 대체), 메일·푸시 outbox 경유(iMessage 이벤트만 outbox)
 - Alembic baseline(Django 은퇴 시점)
@@ -37,7 +37,7 @@ SPEC 원본: iCloud `work/cms/SPEC/`(16개, 2026-10-10 기준, 원본은 수정�
 - **기능**: 업체 등록, 처리내역 템플릿 화면, 구축게시판 글 수정·카테고리, 유지보수 소식 노출 규칙, 영업활동 패널·할일 등록, 레퍼런스 사이트, 웹훅 설정, 을 서명·철회 알림, 옛 경로 redirect 보완, AI 개발팀 고객 화면 폐기, 요금 상수 단일화
 
 ## 4. 남은 결정
-- D5 `login_permit_tf='0'` 의미, D13 십일조, D18 AI 실행 방식, D14 FDE 미결 항목
+- D5 `login_permit_tf='0'` 의미, D13 십일조, D14 FDE 미결 항목
 - `charge_maint_projects` 과거 회차 정책(SPEC 05 R6) — 런북 §3
 
 ## 5. 인계(이 repo 밖)

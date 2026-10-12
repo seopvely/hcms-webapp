@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.deps import get_current_staff
 from app.api.endpoints.managed.accounts import router as accounts_router
+from app.api.endpoints.managed.ai import router as ai_router
 from app.api.endpoints.managed.ai_prompts import router as ai_prompts_router
 from app.api.endpoints.managed.alarms import router as alarms_router
 from app.api.endpoints.managed.billing import router as billing_router
@@ -69,4 +70,5 @@ router.include_router(todos_router)
 router.include_router(meetings_router)
 router.include_router(tax_router)
 router.include_router(ai_prompts_router)
+router.include_router(ai_router)
 router.include_router(jobs_router)

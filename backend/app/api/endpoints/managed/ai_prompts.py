@@ -1,7 +1,7 @@
 """AI 프롬프트 템플릿 (/api/managed/ai-prompts) — 견적·계약 AI 모달이 쓰는 템플릿 관리(SPEC 06 §9).
 
-AI 실행(공용 AI 질의)은 D18(AI 게이트웨이 vs API 키) 결정 전까지 cms 에 남는다 — 여기서는 템플릿·평점만 관리한다.
-temperature·session_id 는 cms 처럼 저장만 한다(AI 호출에 쓰이지 않음).
+AI 실행은 managed/ai.py(서버 claude CLI, D18 = 로컬 CLI)가 이 템플릿을 읽어 쓴다 — 여기서는 템플릿·평점만 관리한다.
+temperature·session_id 는 cms 처럼 저장만 한다(CLI 는 temperature 를 받지 않는다).
 """
 from datetime import datetime
 from decimal import Decimal

@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     REFERENCE_SITE_API_KEY: str = ""
     # 미팅 장소검색(카카오 지역검색). 비우면 주소 직접 입력
     KAKAO_REST_API_KEY: str = ""
+    # 견적·계약 AI 초안 — 서버 hcms 계정의 claude CLI(claude.ai 구독 로그인)로 실행. 끄려면 AI_ENABLED=false
+    AI_ENABLED: bool = True
+    AI_CLI_BIN: str = "/home/hcms/.local/bin/claude"
 
     @property
     def managed_write_areas(self) -> set[str]:
