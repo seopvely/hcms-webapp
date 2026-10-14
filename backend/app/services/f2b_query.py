@@ -23,9 +23,10 @@ REASON_LABELS = {
     "smtp_scan": "SMTP 스캔",
     "imap_auth_fail": "IMAP 인증실패",
     "ssh_bruteforce": "SSH 무차별대입",
+    "repeat_offender": "반복 차단(재범)",
     "unknown": "미상",
 }
-JAILS = ["nginx-404", "nginx-flood", "nginx-malicious", "nginx-botsearch", "postfix-auth", "postfix-auth-slow", "dovecot", "sshd"]
+JAILS = ["nginx-404", "nginx-flood", "nginx-malicious", "nginx-botsearch", "postfix-auth", "postfix-auth-slow", "dovecot", "sshd", "recidive"]
 MAX_DAYS = 92
 
 

@@ -77,7 +77,13 @@ class ApplyFiltersTest(unittest.TestCase):
 
 class LabelsTest(unittest.TestCase):
     def test_all_reasons_labeled(self):
-        self.assertEqual(len(q.REASON_LABELS), 14)
+        self.assertEqual(len(q.REASON_LABELS), 15)
+        self.assertEqual(q.REASON_LABELS["repeat_offender"], "반복 차단(재범)")
+        self.assertEqual(list(q.REASON_LABELS)[-1], "unknown")
+
+    def test_recidive_jail_allowed(self):
+        f = q.make_filters(date(2026, 10, 1), date(2026, 10, 1), jails="recidive", reasons="repeat_offender")
+        self.assertEqual((f.jails, f.reasons), (("recidive",), ("repeat_offender",)))
         self.assertEqual(q.REASON_LABELS["smtp_reject"], "SMTP 수신거부")
         self.assertEqual(q.REASON_LABELS["smtp_scan"], "SMTP 스캔")
         self.assertEqual(list(q.REASON_LABELS)[0], "wp_probe")
