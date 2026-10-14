@@ -1,6 +1,6 @@
 // frontend/src/app/(staff)/managed/security-bans/page.tsx
 "use client";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, RotateCcw, Search, ShieldAlert, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,8 @@ export default function SecurityBansPage() {
   const [review, setReview] = useState<Review | null>(null);
   const [reviewNote, setReviewNote] = useState<string | null>(null);
   const ai = useAiJob<Review>();
+  // 검색 순번 — 늦게 도착한 이전 검색의 조회·AI 결과가 새 검색 화면을 덮지 않게 한다
+  const seq = useRef(0);
 
   useEffect(() => { setPageTitle("차단 분석(Fail2Ban)"); }, [setPageTitle]);
   useEffect(() => { staffApi.get("/managed/f2b/options").then((r) => setOpts(r.data)).catch(() => setOpts({ jails: [], reasons: [] })); }, []);
@@ -101,34 +103,51 @@ export default function SecurityBansPage() {
   }, [opts]);
   const labelOf = (code: string) => opts?.reasons.find((r) => r.code === code)?.label ?? code;
 
-  const startReview = async (params: Params, force: boolean) => {
+  const startReview = async (params: Params, force: boolean, mySeq = seq.current) => {
     ai.reset(); setReview(null); setReviewNote(null);
+    const current = () => mySeq === seq.current;
     if (!force) {
-      try { setReview((await staffApi.get("/managed/f2b/ai-review/cached", { params })).data); return; } catch { /* 404 → 새로 평가 */ }
+      try {
+        const r = await staffApi.get("/managed/f2b/ai-review/cached", { params });
+        if (current()) setReview(r.data);
+        return;
+      } catch { /* 404 → 새로 평가 */ }
     }
-    ai.start("/f2b/ai-review", params, (d) => setReview(d));
+    if (!current()) return;
+    ai.start("/f2b/ai-review", params, (d) => { if (current()) setReview(d); });
   };
 
+  const fetchPage = async (params: Params, page: number): Promise<BanList> =>
+    (await staffApi.get("/managed/f2b/bans", { params: { ...params, page } })).data;
+
   const loadPage = async (params: Params, page: number) => {
-    const r = await staffApi.get("/managed/f2b/bans", { params: { ...params, page } });
-    setList(r.data);
+    const mySeq = seq.current;
+    try {
+      const data = await fetchPage(params, page);
+      if (mySeq === seq.current) setList(data);
+    } catch (e) {
+      if (mySeq === seq.current) setError(apiErrorDetail(e, "목록을 불러오지 못했습니다."));
+    }
   };
 
   const runSearch = async (f: Form) => {
+    const mySeq = ++seq.current;
     const params = toParams(f);
     setApplied(params); setLoading(true); setError(null); setOpen(null);
     let total = 0;
     try {
-      const [s] = await Promise.all([staffApi.get("/managed/f2b/summary", { params }), loadPage(params, 1)]);
-      setSummary(s.data); total = s.data.total;
+      const [s, l] = await Promise.all([staffApi.get("/managed/f2b/summary", { params }), fetchPage(params, 1)]);
+      if (mySeq !== seq.current) return;
+      setSummary(s.data); setList(l); total = s.data.total;
     } catch (e) {
+      if (mySeq !== seq.current) return;
       setError(apiErrorDetail(e, "조회에 실패했습니다.")); setSummary(null); setList(null);
       setLoading(false);
       return;
     }
     setLoading(false);
     if (total === 0) { ai.reset(); setReview(null); setReviewNote(EMPTY_TEXT); return; }
-    startReview(params, false);
+    startReview(params, false, mySeq);
   };
 
   const toggleRow = async (id: number) => {
@@ -192,7 +211,7 @@ export default function SecurityBansPage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               <div className="rounded-2xl border p-3"><p className="text-xs text-muted-foreground">전체</p><p className="text-2xl font-semibold">{summary.total}</p></div>
               {summary.by_reason.map((r) => (
-                <button key={r.reason} type="button" className="rounded-2xl border p-3 text-left hover:bg-muted"
+                <button key={r.reason} type="button" disabled={loading} className="rounded-2xl border p-3 text-left hover:bg-muted disabled:opacity-60"
                   onClick={() => { const f = { ...form, reasons: [r.reason] }; setForm(f); runSearch(f); }}>
                   <p className="flex items-center gap-1 text-xs text-muted-foreground"><span className={`h-2 w-2 rounded-full ${colorOf(r.reason)}`} />{r.label}</p>
                   <p className="text-2xl font-semibold">{r.count}<span className="ml-1 text-xs text-muted-foreground">{summary.total ? Math.round((r.count / summary.total) * 100) : 0}%</span></p>

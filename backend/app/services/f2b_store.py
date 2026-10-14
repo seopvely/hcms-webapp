@@ -67,12 +67,13 @@ def upsert_bans(db: Session, bans: list[BanIn]) -> tuple[int, int]:
 
 
 def apply_unbans(db: Session, unbans: list[UnbanIn]) -> int:
+    """unban 은 그 시각 직전의 가장 최근 ban 에만 붙인다. 이미 해제된 행이면 아무것도 안 한다(재전송 멱등)."""
     n = 0
     for u in unbans:
         row = (db.query(F2bBan)
-               .filter(F2bBan.jail == u.jail, F2bBan.ip == u.ip, F2bBan.banned_at <= u.unbanned_at, F2bBan.unbanned_at.is_(None))
+               .filter(F2bBan.jail == u.jail, F2bBan.ip == u.ip, F2bBan.banned_at <= u.unbanned_at)
                .order_by(F2bBan.banned_at.desc()).first())
-        if row:
+        if row is not None and row.unbanned_at is None:
             row.unbanned_at = u.unbanned_at
             n += 1
     return n
