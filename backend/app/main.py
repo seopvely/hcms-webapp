@@ -27,6 +27,7 @@ from app.api.endpoints.invite import router as invite_router
 from app.api.endpoints.public_contracts import router as public_contracts_router
 from app.api.endpoints.managed import router as managed_router
 from app.api.endpoints.internal import router as internal_router
+from app.api.endpoints.internal_f2b import router as internal_f2b_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -52,6 +53,7 @@ def health_check():
 
 api_router.include_router(auth_router)
 api_router.include_router(internal_router)
+api_router.include_router(internal_f2b_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(maintenance_router)
 api_router.include_router(news_router)

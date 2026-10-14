@@ -24,6 +24,7 @@ from app.jobs.core import JobContext
 from app.jobs.tasks import charge_jobs as cj
 from app.jobs.tasks import notify_jobs as nj
 from app.jobs.tasks import other_jobs as oj
+from app.jobs.tasks import f2b_jobs as fj
 from app.models.jobs import JobRun
 
 # 이름: (함수, 일정) — 일정은 ("every",) 또는 ("daily", "HH:MM")
@@ -44,6 +45,7 @@ JOBS = {
     "free_maint_alerts": (oj.run_free_maint_alerts, ("daily", "09:00")),
     "fde_notice_check": (oj.run_fde_notice_check, ("daily", "09:05")),
     "session_cleanup": (oj.run_session_cleanup, ("daily", "03:00")),
+    "f2b_daily_review": (fj.run_f2b_daily_review, ("daily", "08:30")),
 }
 LOG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "logs", "jobs.log")
 logger = logging.getLogger("hcms.jobs")

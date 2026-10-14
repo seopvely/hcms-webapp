@@ -90,11 +90,16 @@ export const STAFF_NAV: StaffNavGroup[] = [
     ],
   },
   {
+    title: "보안",
+    items: [{ label: "차단 분석(Fail2Ban)", href: "/managed/security-bans", adminOnly: true }],
+  },
+  {
     title: "설정·외부",
     items: [
       { label: "직원 계정", href: "/managed/staff", adminOnly: true },
       { label: "처리내역 템플릿", href: "/managed/settings/comment-templates" },
       { label: "AI 프롬프트", href: "/managed/settings/ai-prompts" },
+      { label: "매입 공급자", href: "/managed/settings/suppliers", adminOnly: true },
       { label: "연동(웹훅) 설정", href: "/managed/settings/webhooks", adminOnly: true },
       { label: "이관 상태·배치", href: "/managed/settings/jobs", adminOnly: true },
       { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },

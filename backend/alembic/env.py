@@ -32,6 +32,9 @@ HCMS_OWNED_TABLES = {
     "job_run",
     "job_claim",
     "notification_event",
+    "f2b_ban",
+    "f2b_ban_evidence",
+    "f2b_ai_review",
 }
 
 
