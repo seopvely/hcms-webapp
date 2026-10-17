@@ -36,6 +36,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
       { label: "계약 달력", href: "/managed/projects/calendar" },
       { label: "도메인", href: "/managed/domains" },
       { label: "프로젝트구축진행", href: "/managed/project-board" },
+      { label: "프로젝트메모", href: "/managed/project-memos" },
       { label: "외주관리", href: "/managed/outsourcing" },
       { label: "외주 달력", href: "/managed/outsourcing/calendar" },
     ],

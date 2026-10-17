@@ -35,6 +35,9 @@ HCMS_OWNED_TABLES = {
     "f2b_ban",
     "f2b_ban_evidence",
     "f2b_ai_review",
+    "project_memo",
+    "project_memo_project",
+    "project_memo_attachment",
 }
 
 

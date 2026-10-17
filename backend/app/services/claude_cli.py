@@ -103,6 +103,56 @@ def run_claude(prompt: str, *, model: str | None = None, system_prompt: str | No
     return out
 
 
+def run_claude_vision(prompt: str, images: list[tuple[str, str]], *, model: str | None = "haiku", system_prompt: str | None = None,
+                      timeout: int = 90) -> dict:
+    """이미지(media_type, base64) + 글을 stream-json 으로 넘겨 1회 실행(도구 없음). 반환은 run_claude 와 같다."""
+    content = [{"type": "image", "source": {"type": "base64", "media_type": mt, "data": data}} for mt, data in images]
+    content.append({"type": "text", "text": prompt})
+    message = json.dumps({"type": "user", "message": {"role": "user", "content": content}}, ensure_ascii=False)
+    argv = [settings.AI_CLI_BIN, "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+            "--model", normalize_model(model), "--tools", "", "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence"]
+    system_text = sanitize_system_prompt(system_prompt)
+    if system_text:
+        argv += ["--system-prompt", system_text]
+    os.makedirs(_CWD, mode=0o700, exist_ok=True)
+
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(argv, input=message + "\n", capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              timeout=timeout, cwd=_CWD, env=_env())
+    except FileNotFoundError:
+        return _error("서버에 claude CLI 가 없습니다.")
+    except subprocess.TimeoutExpired:
+        return _error(f"AI 응답 시간이 초과되었습니다({timeout}초).", int((time.monotonic() - started) * 1000))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("claude CLI(이미지) 실행 예외: %s", e)
+        return _error("AI 실행 중 오류가 발생했습니다.")
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+
+    payload = None
+    for line in (proc.stdout or "").splitlines():
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and obj.get("type") == "result":
+            payload = obj
+    if payload is None:
+        detail = ((proc.stderr or "") + (proc.stdout or "")).strip()[-500:]
+        logger.warning("claude CLI(이미지) 응답 해석 실패(exit=%s): %s", proc.returncode, detail[:300])
+        return _error(detail or "AI 응답을 해석할 수 없습니다.", elapsed_ms, _is_auth_error(detail))
+    result = payload.get("result") or ""
+    ok = proc.returncode == 0 and not payload.get("is_error") and (payload.get("subtype") or "success") == "success"
+    out = {"ok": ok, "result": result if ok else "", "error": "", "auth_error": False,
+           "duration_ms": int(payload.get("duration_ms") or elapsed_ms), "num_turns": int(payload.get("num_turns") or 0),
+           "cost_usd": float(payload.get("total_cost_usd") or 0.0)}
+    if not ok:
+        detail = (result or proc.stderr or "").strip()[-500:]
+        out["error"] = detail or f"AI 실행 실패(exit={proc.returncode})"
+        out["auth_error"] = _is_auth_error(detail)
+    return out
+
+
 def _strip_fences(text: str) -> str:
     return str(text or "").replace("```json", "").replace("```", "").strip()
 

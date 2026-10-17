@@ -6,12 +6,13 @@ import type { Paged } from "@/lib/staff-maintenance";
 type Dict = Record<string, unknown>;
 export type ListResult = Paged<Dict> & { write_enabled: boolean; choices?: Record<string, Record<string, string>> };
 
-export function useStaffGet<T = Dict>(key: unknown[], url: string | null, params?: Dict) {
+export function useStaffGet<T = Dict>(key: unknown[], url: string | null, params?: Dict, opts?: { refetchInterval?: (data: T | undefined) => number | false }) {
   return useQuery({
     queryKey: ["staff", ...key, params ?? {}],
     queryFn: async (): Promise<T> => (await staffApi.get(`/managed${url}`, { params })).data,
     enabled: !!url,
     placeholderData: keepPreviousData,
+    refetchInterval: opts?.refetchInterval ? (q) => opts.refetchInterval!(q.state.data as T | undefined) : undefined,
   });
 }
 

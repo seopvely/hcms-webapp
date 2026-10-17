@@ -6,7 +6,7 @@ import { fmtDateTime } from "@/components/managed/field";
 import { cn } from "@/lib/utils";
 import { useStaffGet } from "@/lib/staff-ops";
 
-type Item = {
+export type SalesActivityItem = {
   lead: { seq: number; title: string | null; status_label: string | null };
   projects: { seq: number; title: string | null }[];
   activities: { id: number; type: string; type_label: string; content: string | null; created_by: string | null; created_at: string | null }[];
@@ -14,12 +14,17 @@ type Item = {
 
 const PAGE = 10;
 
-// 업체 프로젝트에 연결된 영업접수 활동 이력(읽기 전용) — 유지보수·건별작업 상세 하단(SPEC 02 §2.5). 유형 칩으로 거른다.
-export function SalesActivityPanel({ companyId }: { companyId: number | null | undefined }) {
-  const { data } = useStaffGet<{ items: Item[] }>(["sales", "company-activities", companyId], companyId ? `/sales/company/${companyId}/activities` : null);
+export function useCompanySalesActivities(companyId: number | null | undefined) {
+  return useStaffGet<{ items: SalesActivityItem[] }>(["sales", "company-activities", companyId], companyId ? `/sales/company/${companyId}/activities` : null);
+}
+
+// 업체 프로젝트에 연결된 영업접수 활동 이력(읽기 전용) — 요청 상세 하단 탭(SPEC 02 §2.5). 유형 칩으로 거른다.
+// bare: 탭 안에 넣을 때 — 카드·제목 없이, 비어 있어도 안내를 보여 준다.
+export function SalesActivityPanel({ companyId, bare = false }: { companyId: number | null | undefined; bare?: boolean }) {
+  const { data } = useCompanySalesActivities(companyId);
   const [type, setType] = useState("");
   const [shown, setShown] = useState<Record<number, number>>({});
-  if (!data?.items.length) return null;
+  if (!data?.items.length) return bare ? <p className="py-2 text-xs text-muted-foreground">{data ? "이 업체 프로젝트에 연결된 영업접수가 없습니다." : companyId ? "불러오는 중…" : "업체 정보가 없습니다."}</p> : null;
   // 유형별 개수(모든 영업접수 합산, 많은 순)
   const counts = new Map<string, { label: string; n: number }>();
   data.items.forEach((it) => it.activities.forEach((a) => {
@@ -35,10 +40,8 @@ export function SalesActivityPanel({ companyId }: { companyId: number | null | u
       {label} <span className="tabular-nums opacity-70">{n}</span>
     </button>
   );
-  return (
-    <Card className="min-w-0 rounded-2xl">
-      <CardContent className="min-w-0 space-y-3 pt-5 pb-5 text-sm">
-        <h2 className="font-semibold">영업 활동</h2>
+  const body = (
+      <>
         {types.length > 1 && (
           <div className="flex flex-wrap gap-1.5">
             {chip("", "전체", total)}
@@ -78,6 +81,14 @@ export function SalesActivityPanel({ companyId }: { companyId: number | null | u
           </div>
           );
         })}
+      </>
+  );
+  if (bare) return <div className="min-w-0 space-y-3 text-sm">{body}</div>;
+  return (
+    <Card className="min-w-0 rounded-2xl">
+      <CardContent className="min-w-0 space-y-3 pt-5 pb-5 text-sm">
+        <h2 className="font-semibold">영업 활동</h2>
+        {body}
       </CardContent>
     </Card>
   );

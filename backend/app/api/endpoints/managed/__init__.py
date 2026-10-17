@@ -29,6 +29,7 @@ from app.api.endpoints.managed.news import router as news_router
 from app.api.endpoints.managed.outsourcing import router as outsourcing_router
 from app.api.endpoints.managed.points import router as points_router
 from app.api.endpoints.managed.project_board import router as project_board_router
+from app.api.endpoints.managed.project_memos import router as project_memos_router
 from app.api.endpoints.managed.projects import router as projects_router
 from app.api.endpoints.managed.reference_sites import router as reference_sites_router
 from app.api.endpoints.managed.settings import router as settings_router
@@ -61,6 +62,7 @@ router.include_router(sales_router)
 router.include_router(contracts_router)
 router.include_router(conversion_router)
 router.include_router(projects_router)
+router.include_router(project_memos_router)
 router.include_router(domains_router)
 router.include_router(outsourcing_router)
 router.include_router(billing_router)

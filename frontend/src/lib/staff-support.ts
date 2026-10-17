@@ -80,6 +80,7 @@ export interface TaskListItem {
 export interface TaskDetail extends TaskListItem {
   content: string;
   company_id: number | null;
+  project_id: number | null;
   project_title: string | null;
   task_type: string | null;
   work_started_at: string | null;

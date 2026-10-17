@@ -18,6 +18,7 @@ import { SearchSelect, toCompanyItems } from "@/components/managed/search-select
 import { Field, apiErrorDetail, fmtDateTime } from "@/components/managed/field";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { PageActions } from "@/components/managed/page-actions";
+import { ProjectContextTabs } from "@/components/managed/project-context-tabs";
 import { useNavigationStore } from "@/store/navigation-store";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { type BoardFile, type BoardPost, useBoardCategories, useBoardMutation, useBoardProjects, useStaffBoardPost } from "@/lib/staff-content";
@@ -185,6 +186,7 @@ function PostView({ seq }: { seq: number }) {
             ) : (
               renderPost(data, true)
             )}
+            <ProjectContextTabs companyId={data.company_id} projectId={data.project_id} />
             {data.replies.map((r) => renderPost(r, false))}
             {canWrite && (
               <ReplyBox

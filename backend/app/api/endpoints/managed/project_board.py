@@ -130,6 +130,7 @@ def get_post(seq: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다.")
     return {
         **_post_detail(b),
+        "company_id": b.company_id,
         "company_name": b.company.name if b.company else None,
         "project_id": b.project_id,
         "project_title": b.project.title if b.project else None,

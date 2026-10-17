@@ -163,7 +163,7 @@ export function useStaffBoard(params: { project_id?: number; status?: string; so
 export function useStaffBoardPost(id: number) {
   return useQuery({
     queryKey: ["staff", "board", "detail", id],
-    queryFn: async (): Promise<BoardPost & { company_name: string | null; project_id: number; project_title: string | null; replies: BoardPost[]; write_enabled: boolean }> =>
+    queryFn: async (): Promise<BoardPost & { company_id: number | null; company_name: string | null; project_id: number; project_title: string | null; replies: BoardPost[]; write_enabled: boolean }> =>
       (await staffApi.get(`/managed/project-board/${id}`)).data,
   });
 }

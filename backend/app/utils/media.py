@@ -57,7 +57,7 @@ def file_download_response(stored: str | None, filename: str | None = None) -> F
 
 ALLOWED_UPLOAD_EXTENSIONS = {
     "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic",
-    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx", "txt", "csv",
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx", "txt", "csv", "md", "json",
     "zip", "rar", "7z", "mp4", "mov",
 }
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024

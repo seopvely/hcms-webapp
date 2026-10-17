@@ -19,7 +19,7 @@ import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
 import { CMS_BASE } from "@/components/managed/staff-nav";
-import { SalesActivityPanel } from "@/components/managed/sales-activity-panel";
+import { ProjectContextTabs } from "@/components/managed/project-context-tabs";
 import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
 import staffApi from "@/lib/staff-api";
@@ -205,6 +205,8 @@ export default function StaffMaintenanceDetailPage() {
               </CardContent>
             </Card>
 
+            <ProjectContextTabs companyId={data.company_id} projectId={data.project_id} />
+
             <Card className="rounded-2xl">
               <CardContent className="space-y-3 pt-5 pb-5">
                 <h2 className="font-semibold">처리 내역 ({data.comments.length})</h2>
@@ -268,7 +270,6 @@ export default function StaffMaintenanceDetailPage() {
               </Card>
             )}
 
-            <SalesActivityPanel companyId={data.company_id} />
           </div>
         </div>
       </div>
