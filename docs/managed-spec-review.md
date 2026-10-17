@@ -16,7 +16,7 @@ SPEC 원본: iCloud `work/cms/SPEC/`(16개, 2026-10-10 기준, 원본은 수정�
 | D3 | 직원 2FA 전원 필수 | 차단 대신 로그인 후 `/managed/mfa-setup` 안내. 등록 전 세션은 직원 계정 관리·wealthreach SSO 불가 |
 | 08 §7, 12 C4 | 메일 토큰 → 회사 첫 담당자 access+refresh | 견적 1건 전용 문서 토큰(24h)으로 교체(운영 반영). pacms `estimate_update` 무인증은 인계 |
 | 08 §6.1 | 고객 토큰 `aud` | Hub 가 같은 키로 고객 토큰을 검증 → `aud` 를 넣으면 Hub 가 거부. Hub 와 같은 날 바꾸도록 인계 |
-| 08 §6.1 | 직원 JWT(access 15분+refresh) | 불투명 쿠키 세션(DQ1) + 유휴 1시간·절대 12시간. 동등 처리 |
+| 08 §6.1 | 직원 JWT(access 15분+refresh) | 불투명 쿠키 세션(DQ1) + 로그인 후 24시간(유휴 만료 동일, 2026-10-13 운영 요청으로 유휴 1시간·절대 12시간에서 변경) |
 | 12 M12 | 9011/8011 0.0.0.0 바인딩 해제 | nginx 가 외부 서버라 불가 → 방화벽 허용목록으로(인계) |
 | 12 A8 | CORS 운영 도메인만 | 고객 CORS 는 앱(capacitor·localhost) 때문에 유지, **직원 쿠키 세션 Origin 은 웹 도메인만**(`staff_origins`). dev(localhost:8011)에서 직원 쓰기는 403 |
 | 런북 §1 | `KAKAO_REST_API_KEY` 를 `.env` 에 | 원래 코드로는 `.env` 에 넣으면 기동 실패(extra=forbid) → Settings 필드로 고침 |

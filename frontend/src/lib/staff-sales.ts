@@ -143,6 +143,11 @@ export function useContractPrefill(estimateId: number | null) {
   });
 }
 
+/** 견적 없이 직접 등록할 때 — 고른 업체로 갑(+을 기본값)을 채운다. */
+export async function fetchContractCompanyPrefill(companyId: number) {
+  return (await staffApi.get("/managed/contracts/prefill", { params: { company_id: companyId } })).data as Dict;
+}
+
 export function useWithdrawInfo(id: number, enabled: boolean) {
   return useQuery({
     queryKey: ["staff", "contracts", "withdraw-info", id],

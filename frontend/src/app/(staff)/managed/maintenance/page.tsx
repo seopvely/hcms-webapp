@@ -1,6 +1,7 @@
 "use client";
 import { FilterCard } from "@/components/managed/filter-card";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import Link from "next/link";
 import { CalendarDays, Coins, Plus, Search, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +30,9 @@ export default function StaffMaintenanceListPage() {
   const [keyword, setKeyword] = useState("");
   const [pendingOpen, setPendingOpen] = useState(false);
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const { data: projects } = useLookupProjects(params.company_id);
+  const projectItems = useMemo(() => toCompanyItems(projects?.items), [projects]);
   const { data, isLoading } = useStaffMaintenanceList(params);
 
   useEffect(() => {
@@ -46,16 +49,12 @@ export default function StaffMaintenanceListPage() {
 
         <FilterCard className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="업체">
-              <select className={selectClass} value={params.company_id ?? ""} onChange={(e) => set({ company_id: num(e.target.value), project_id: undefined })}>
-                <option value="">전체</option>
-                {companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <SearchSelect items={companyItems} value={params.company_id ? String(params.company_id) : ""} emptyOption="전체" searchPlaceholder="업체명·사업자번호 (초성 가능)"
+                onChange={(id) => set({ company_id: num(id), project_id: undefined })} />
             </Field>
             <Field label="프로젝트">
-              <select className={selectClass} value={params.project_id ?? ""} onChange={(e) => set({ project_id: num(e.target.value) })}>
-                <option value="">전체</option>
-                {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <SearchSelect items={projectItems} value={params.project_id ? String(params.project_id) : ""} emptyOption="전체" searchPlaceholder="프로젝트명 (초성 가능)"
+                onChange={(id) => set({ project_id: num(id) })} />
             </Field>
             <Field label="상태">
               <select className={selectClass} value={params.status ?? ""} onChange={(e) => set({ status: e.target.value || undefined })}>

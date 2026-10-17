@@ -10,6 +10,7 @@ import { AppAlertDialog } from "@/components/common/app-alert-dialog";
 import { DetailSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
+import { SearchSelect } from "@/components/managed/search-select";
 import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
 import { BillingShell, useBillingOptions, useBillingWritable, won } from "@/components/managed/billing-ui";
 import { PageActions } from "@/components/managed/page-actions";
@@ -99,14 +100,12 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
       <Card className="rounded-2xl"><CardContent className="space-y-4 pt-5 pb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="업체">
-            <select className={selectClass} disabled={!canWrite} value={v.company_id} onChange={(e) => setV((s) => ({ ...s, company_id: e.target.value, project_id: "", payment_id: "", payment_alarm_seq: "" }))}>
-              <option value="">선택</option>{o?.companies.map((c) => <option key={c.seq} value={c.seq}>{c.name}</option>)}
-            </select>
+            <SearchSelect items={(o?.companies ?? []).map((c) => ({ value: String(c.seq), label: c.name }))} value={v.company_id} emptyOption="선택" disabled={!canWrite} searchPlaceholder="업체명·사업자번호 (초성 가능)"
+              onChange={(id) => setV((s) => ({ ...s, company_id: id, project_id: "", payment_id: "", payment_alarm_seq: "" }))} />
           </Field>
           <Field label="프로젝트">
-            <select className={selectClass} disabled={!canWrite} value={v.project_id} onChange={(e) => setV((s) => ({ ...s, project_id: e.target.value, payment_id: "", payment_alarm_seq: "" }))}>
-              <option value="">선택</option>{projects?.map((p) => <option key={p.seq} value={p.seq}>{p.title}</option>)}
-            </select>
+            <SearchSelect items={(projects ?? []).map((p) => ({ value: String(p.seq), label: p.title }))} value={v.project_id} emptyOption="선택" disabled={!canWrite} searchPlaceholder="프로젝트명 (초성 가능)"
+              onChange={(id) => setV((s) => ({ ...s, project_id: id, payment_id: "", payment_alarm_seq: "" }))} />
           </Field>
           <Field label="결제정보">
             <select className={selectClass} disabled={!canWrite || !!v.payment_alarm_seq} value={v.payment_id} onChange={(e) => set("payment_id", e.target.value)}>

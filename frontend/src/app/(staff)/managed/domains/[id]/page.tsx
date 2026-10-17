@@ -44,7 +44,7 @@ function DomainEditor({ id, data }: { id: string; data: Dict | null }) {
   const { data: companies } = useLookupCompanies();
   const write = useStaffWrite(["domains", "projects"]);
   const fields: FieldSpec[] = useMemo(() => [
-    { key: "company_id", label: "업체 *", type: "select", options: (companies?.items ?? []).map((c) => [String(c.id), c.name]) },
+    { key: "company_id", label: "업체 *", type: "select", search: true, options: (companies?.items ?? []).map((c) => [String(c.id), c.name]) },
     { key: "domain_status", label: "도메인 상태", type: "select", options: ST },
     { key: "domain_start_date", label: "도메인 시작", type: "date" }, { key: "domain_end_date", label: "도메인 만료", type: "date" },
     { key: "domain_ssl_tf", label: "SSL", type: "select", options: [["Y", "사용"]] },

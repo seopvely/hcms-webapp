@@ -1,4 +1,4 @@
-"""직원 SSO 티켓 발급 (createsite, wealthreach).
+"""직원 SSO 티켓 발급 (createsite, wealthreach, searching).
 
 형식은 cms(api/views.py sso_createsite / sso_wealthreach)와 같다 — 수신측을 고치지 않기 위해
 iss="cms.hankyeul.com", sub=str(직원 id), aud, HS256, 120초, jti 를 그대로 유지한다.
@@ -34,6 +34,15 @@ RELYING_PARTIES = {
         "callback": lambda: settings.WEALTHREACH_SSO_CALLBACK_URL,
         # 운영사 최고권한 — 2단계 인증을 실제로 통과한 세션에만 발급
         "require_mfa": True,
+        "label": "wealthreach 관리자",
+    },
+    "searching": {
+        "aud": "searching.hankyeul.com",
+        "secret_file": lambda: settings.SEARCHING_SSO_SECRET_FILE,
+        "callback": lambda: settings.SEARCHING_SSO_CALLBACK_URL,
+        # 영업 리드 수집·메일 발송 도구 — 2단계 인증을 통과한 세션에만(사용자 결정 2026-10-12, 수신측은 kks@ 만 허용). incident-hub JOB-2026-10-12-007
+        "require_mfa": True,
+        "label": "searching",
     },
 }
 
@@ -77,7 +86,7 @@ def issue_sso_ticket(
         if not staff.two_factor_enabled or "otp" not in session_amr.split(","):
             raise HTTPException(
                 status_code=403,
-                detail="wealthreach 관리자 로그인은 2단계 인증을 통과한 로그인에서만 사용할 수 있습니다.",
+                detail=f"{conf.get('label', rp)} 로그인은 2단계 인증을 통과한 로그인에서만 사용할 수 있습니다.",
             )
         payload["amr"] = ["pwd", "otp", "mfa"]
 

@@ -21,7 +21,7 @@ type Dict = Record<string, unknown>;
 type Extra = { name: string; amount: string; month: string };
 const opts = (m?: Record<string, string>) => Object.entries(m ?? {}) as [string, string][];
 const BASE: FieldSpec[] = [
-  { key: "company_id", label: "업체", type: "select" }, { key: "project_id", label: "프로젝트", type: "select" },
+  { key: "company_id", label: "업체", type: "select", search: true }, { key: "project_id", label: "프로젝트", type: "select", search: true },
   { key: "project_type", label: "프로젝트 구분", type: "select" }, { key: "payment_type", label: "결제구분", type: "select" },
   { key: "payment_method", label: "결제수단", type: "select" }, { key: "payment_status", label: "결제상태", type: "select" },
   { key: "payment_date", label: "결제일", type: "date" }, { key: "invoice_tf", label: "계산서 발행", type: "select" },

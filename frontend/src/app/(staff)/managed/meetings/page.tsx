@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarRange, MapPin, Plus, Search, Users } from "lucide-react";
+import { CalendarRange, Copy, MapPin, Plus, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/common/empty-state";
@@ -69,6 +69,7 @@ export default function MeetingsPage() {
                 { key: "next_alarm", header: "다음 알람", hideOnMobile: true, className: "w-36 whitespace-nowrap text-xs text-muted-foreground", cell: (m) => fmtDateTime(m.next_alarm as string) },
                 { key: "map", header: "지도", align: "center", hideOnMobile: true, className: "w-16", cell: (m) => <MapLink m={m} /> },
                 { key: "valid_status", header: "상태", sort: "valid_status", align: "center", className: "w-20", cell: (m) => <ValidBadge m={m} /> },
+                ...(data.write_enabled ? [{ key: "copy", header: "복사", align: "center" as const, className: "w-16", cell: (m: Row) => <CopyLink m={m} /> }] : []),
               ]}
               mobile={(m) => (
                 <div className="flex items-center gap-3">
@@ -78,6 +79,7 @@ export default function MeetingsPage() {
                   </div>
                   <MapLink m={m} />
                   <ValidBadge m={m} />
+                  {data.write_enabled && <CopyLink m={m} />}
                 </div>
               )}
             />
@@ -92,6 +94,14 @@ export default function MeetingsPage() {
 function MapLink({ m }: { m: Row }) {
   if (!m.map_url) return null;
   return <a href={m.map_url as string} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-xs text-emerald-700"><MapPin className="inline h-3 w-3" /> 지도</a>;
+}
+
+/** 이 약속을 복사해 새 일정으로 등록 */
+function CopyLink({ m }: { m: Row }) {
+  return (
+    <Link href={`/managed/meetings/new?copy=${m.seq}`} title="복사해서 새 일정 등록" aria-label="복사해서 새 일정 등록"
+      className="inline-flex rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><Copy className="h-4 w-4" /></Link>
+  );
 }
 
 function ValidBadge({ m }: { m: Row }) {

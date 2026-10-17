@@ -1,6 +1,6 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Field, apiErrorDetail, fmtDate, selectClass } from "@/components/manage
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { won } from "@/components/managed/billing-ui";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import { useLookupCompanies } from "@/lib/staff-maintenance";
 import { useStaffMe } from "@/lib/staff-hooks";
 import { PageActions } from "@/components/managed/page-actions";
@@ -44,6 +45,7 @@ function DevCreate() {
   const { data: me } = useStaffMe();
   const { data: plans } = useStaffGet<Plans>(["subscriptions", "plans"], "/subscriptions/plans");
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const write = useStaffWrite(["subscriptions"]);
   const [v, setV] = useState({ company_id: "", plan_type: "growth", start_date: new Date().toISOString().slice(0, 10), is_beta: false, notes: "" });
   const p = plans?.dev[v.plan_type];
@@ -62,9 +64,8 @@ function DevCreate() {
       {!canWrite && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/dev-subscription/register/`} />}
       <Card className="rounded-2xl"><CardContent className="grid gap-3 pt-5 pb-5 sm:grid-cols-2">
         <Field label="업체 *">
-          <select className={selectClass} value={v.company_id} onChange={(e) => setV({ ...v, company_id: e.target.value })}>
-            <option value="">선택</option>{companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <SearchSelect items={companyItems} value={v.company_id} placeholder="선택" searchPlaceholder="업체명·사업자번호 (초성 가능)"
+            onChange={(id) => setV({ ...v, company_id: id })} />
         </Field>
         <Field label="플랜 *">
           <select className={selectClass} value={v.plan_type} onChange={(e) => setV({ ...v, plan_type: e.target.value })}>

@@ -18,28 +18,25 @@ export function useNavigationSpinner() {
 
 export function NavigationSpinnerProvider({ children }: { children: React.ReactNode }) {
   const [isNavigating, setIsNavigating] = useState(false);
-  const [showSpinner, setShowSpinner] = useState(false);
+  const [delayPassed, setDelayPassed] = useState(false);
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
   const startNavigation = useCallback(() => {
+    setDelayPassed(false);
     setIsNavigating(true);
   }, []);
 
-  // When pathname changes, navigation is complete
-  useEffect(() => {
+  // When pathname changes, navigation is complete (state adjusted during render, not in an effect)
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setIsNavigating(false);
-    setShowSpinner(false);
-  }, [pathname]);
+  }
 
   // Delay showing spinner to avoid flash on fast navigations
   useEffect(() => {
-    if (!isNavigating) {
-      setShowSpinner(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setShowSpinner(true);
-    }, 150);
+    if (!isNavigating) return;
+    const timer = setTimeout(() => setDelayPassed(true), 150);
     return () => clearTimeout(timer);
   }, [isNavigating]);
 
@@ -62,28 +59,32 @@ export function NavigationSpinnerProvider({ children }: { children: React.ReactN
         return;
       }
 
-      // Skip hash links, blob links, new-tab links, and same-page navigation
+      // Skip hash links, blob links, new-tab links, same-page navigation, and
+      // file downloads (/api/* such as ICS·첨부 — the pathname never changes, so the spinner would never stop)
       if (
         href.startsWith("#") ||
         href.startsWith("blob:") ||
+        href.startsWith("/api/") ||
+        anchor.hasAttribute("download") ||
         anchor.getAttribute("target") === "_blank" ||
+        e.ctrlKey || e.metaKey || e.shiftKey ||
         href === pathname
       ) {
         return;
       }
 
       // Internal navigation detected
-      setIsNavigating(true);
+      startNavigation();
     };
 
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
-  }, [pathname]);
+  }, [pathname, startNavigation]);
 
   return (
     <NavigationSpinnerContext.Provider value={{ startNavigation }}>
       {children}
-      <PageSpinner show={showSpinner} />
+      <PageSpinner show={isNavigating && delayPassed} />
     </NavigationSpinnerContext.Provider>
   );
 }

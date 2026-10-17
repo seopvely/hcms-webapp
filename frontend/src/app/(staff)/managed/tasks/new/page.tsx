@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +24,9 @@ export default function StaffTaskNewPage() {
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const { data: projects } = useLookupProjects(companyId);
+  const projectItems = useMemo(() => toCompanyItems(projects?.items), [projects]);
   const { data: managers } = useLookupManagers(companyId);
 
   useEffect(() => {
@@ -57,16 +60,12 @@ export default function StaffTaskNewPage() {
         <CardContent className="space-y-4 pt-5 pb-5">
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="업체 *">
-              <select className={selectClass} value={companyId ?? ""} onChange={(e) => setCompanyId(e.target.value ? Number(e.target.value) : undefined)}>
-                <option value="">선택</option>
-                {companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <SearchSelect items={companyItems} value={companyId ? String(companyId) : ""} placeholder="선택" searchPlaceholder="업체명·사업자번호 (초성 가능)"
+                onChange={(id) => setCompanyId(id ? Number(id) : undefined)} />
             </Field>
             <Field label="프로젝트">
-              <select className={selectClass} value={form.project_id ?? ""} onChange={set("project_id")} disabled={!companyId}>
-                <option value="">선택 안 함</option>
-                {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <SearchSelect items={projectItems} value={form.project_id ?? ""} emptyOption="선택 안 함" disabled={!companyId} searchPlaceholder="프로젝트명 (초성 가능)"
+                onChange={(id) => setForm((f) => ({ ...f, project_id: id }))} />
             </Field>
             <Field label="요청자(고객)">
               <select className={selectClass} value={form.writer_seq ?? ""} onChange={set("writer_seq")} disabled={!companyId}>

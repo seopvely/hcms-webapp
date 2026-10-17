@@ -2,7 +2,7 @@
 
 - 인증은 hcms 계정의 claude.ai 구독 로그인(~/.claude/.credentials.json)을 그대로 쓴다. 만료되면
   서버에서 hcms 계정으로 `claude` 를 한 번 실행해 다시 로그인해야 한다.
-- 격리: 도구 없음(`--tools ""`), MCP·설정 파일 미사용, 세션 저장 안 함, 빈 작업 디렉터리(CLAUDE.md 를 줍지 않게).
+- 격리: 도구 없음(`--tools ""`, 장소찾기만 WebSearch·WebFetch), MCP·설정 파일 미사용, 세션 저장 안 함, 빈 작업 디렉터리(CLAUDE.md 를 줍지 않게).
 - 프롬프트는 stdin 으로만 넘긴다(명령행 인자 금지). 명령행에 들어가는 모델·system 은 정규화·정리 후 쓴다.
 - 예외를 밖으로 던지지 않고 결과 dict 를 돌려준다.
 """
@@ -52,10 +52,17 @@ def _is_auth_error(text: str) -> bool:
     return any(k in t for k in ("login", "log in", "oauth", "authenticat", "credential", "api key", "401"))
 
 
-def run_claude(prompt: str, *, model: str | None = None, system_prompt: str | None = None, timeout: int = 150) -> dict:
-    """`claude -p` 1회 실행. 반환: {ok, result, error, auth_error, duration_ms, num_turns, cost_usd}"""
+def run_claude(prompt: str, *, model: str | None = None, system_prompt: str | None = None, timeout: int = 150,
+               tools: list[str] | None = None) -> dict:
+    """`claude -p` 1회 실행. 반환: {ok, result, error, auth_error, duration_ms, num_turns, cost_usd}
+
+    tools: 켤 내장 도구(코드 고정값만 — 예: 장소찾기의 WebSearch·WebFetch). 없으면 도구 없음.
+    """
+    tool_list = ",".join(tools or [])
     argv = [settings.AI_CLI_BIN, "-p", "--output-format", "json", "--model", normalize_model(model),
-            "--tools", "", "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence"]
+            "--tools", tool_list, "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence"]
+    if tool_list:
+        argv += ["--allowedTools", tool_list]
     system_text = sanitize_system_prompt(system_prompt)
     if system_text:
         argv += ["--system-prompt", system_text]

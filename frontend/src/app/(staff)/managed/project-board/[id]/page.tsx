@@ -14,7 +14,8 @@ import { SimpleEditor } from "@/components/common/simple-editor";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { BOARD_STATUS_COLORS } from "@/components/managed/board-status";
-import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
+import { Field, apiErrorDetail, fmtDateTime } from "@/components/managed/field";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -314,10 +315,8 @@ function NewPost() {
       <Card className="mx-auto max-w-3xl rounded-2xl">
         <CardContent className="space-y-4 pt-5 pb-5">
           <Field label="프로젝트 *">
-            <select className={selectClass} value={projectId ?? ""} onChange={(e) => { setProjectId(e.target.value ? Number(e.target.value) : undefined); setCats([]); }}>
-              <option value="">선택</option>
-              {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <SearchSelect items={toCompanyItems(projects?.items)} value={projectId ? String(projectId) : ""} placeholder="선택" searchPlaceholder="프로젝트명 (초성 가능)"
+              onChange={(id) => { setProjectId(id ? Number(id) : undefined); setCats([]); }} />
           </Field>
           {!!categories?.items.length && (
             <div className="flex flex-wrap gap-2 text-xs">

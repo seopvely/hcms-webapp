@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { TableSkeleton } from "@/components/common/loading-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
 import { DataTable } from "@/components/managed/data-table";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import { Field, fmtDate, meta, selectClass } from "@/components/managed/field";
 import { PageActions } from "@/components/managed/page-actions";
 import { BOARD_STATUS_COLORS } from "@/components/managed/board-status";
@@ -35,10 +36,8 @@ export default function StaffBoardPage() {
         {data && !data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/project-board/`} />}
         <FilterCard className="grid gap-3 sm:grid-cols-3">
             <Field label="프로젝트">
-              <select className={selectClass} value={params.project_id ?? ""} onChange={(e) => setParams({ ...params, page: 1, project_id: e.target.value ? Number(e.target.value) : undefined })}>
-                <option value="">전체</option>
-                {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <SearchSelect items={toCompanyItems(projects?.items)} value={params.project_id ? String(params.project_id) : ""} emptyOption="전체" searchPlaceholder="프로젝트명 (초성 가능)"
+                onChange={(id) => setParams({ ...params, page: 1, project_id: id ? Number(id) : undefined })} />
             </Field>
             <Field label="상태">
               <select className={selectClass} value={params.status ?? ""} onChange={(e) => setParams({ ...params, page: 1, status: e.target.value || undefined })}>

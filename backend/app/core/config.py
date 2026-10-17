@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     PUBLIC_BASE_URL: str = "https://hcms.hankyeul.com"
     STAFF_BASE_URL: str = "https://cms.hankyeul.com"
     # 직원 세션(httpOnly 쿠키). 개발 환경(http)에서만 STAFF_COOKIE_SECURE=False
-    STAFF_SESSION_HOURS: int = 12
+    STAFF_SESSION_HOURS: int = 24
     STAFF_PENDING_MINUTES: int = 10
     STAFF_COOKIE_SECURE: bool = True
     # 대리 로그인(직원 → 고객 화면) 토큰 유효 시간
@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     CREATESITE_SSO_CALLBACK_URL: str = "https://createsite.hankyeul.com/sso/callback"
     WEALTHREACH_SSO_SECRET_FILE: str = "/home/hcms/.secrets/wealthreach_sso_secret"
     WEALTHREACH_SSO_CALLBACK_URL: str = "https://wealthreach.hankyeul.com/sso/callback"
+    # searching.hankyeul.com(영업 리드 수집) — 전용 키. kks@ 만·2단계 인증 필수(수신측에서도 검사). incident-hub JOB-2026-10-12-007
+    SEARCHING_SSO_SECRET_FILE: str = "/home/hcms/.secrets/searching_sso_secret"
+    SEARCHING_SSO_CALLBACK_URL: str = "https://searching.hankyeul.com/sso/callback"
     SSO_TICKET_TTL: int = 120
     # 계약서 을(한결랩) 정보 — cms EstimateContract 모델 기본값과 같은 값(설정값으로 이동)
     CONTRACT_PARTY_B_NAME: str = "한결랩"
@@ -78,7 +81,7 @@ class Settings(BaseSettings):
 
     @property
     def staff_origins(self) -> set[str]:
-        """직원 쿠키 세션의 Origin 허용 — 웹 도메인만(앱·localhost 제외, 직원 화면은 앱에서 막혀 있다)."""
+        """직원 쿠키 세션의 Origin 허용 — 웹 도메인만(localhost 제외). 앱도 이 도메인을 웹뷰로 열어 같은 Origin 이다."""
         origins = {"https://hcms.hankyeul.com"}
         if self.FRONTEND_URL.startswith("https://"):
             origins.add(self.FRONTEND_URL)

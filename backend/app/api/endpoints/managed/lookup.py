@@ -12,8 +12,8 @@ router = APIRouter(prefix="/lookup", tags=["managed-lookup"])
 
 @router.get("/companies")
 def companies(db: Session = Depends(get_db)):
-    rows = db.query(Company.seq, Company.name).order_by(Company.name).all()
-    return {"items": [{"id": seq, "name": name} for seq, name in rows]}
+    rows = db.query(Company.seq, Company.name, Company.business_number).order_by(Company.name).all()
+    return {"items": [{"id": seq, "name": name, "business_number": no or ""} for seq, name, no in rows]}
 
 
 @router.get("/projects")

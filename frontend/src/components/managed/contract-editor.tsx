@@ -8,16 +8,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/common/app-toast";
-import { AiProgress, useAiJob } from "@/components/managed/ai-assist";
-import { Field, apiErrorDetail } from "@/components/managed/field";
+import { ContractAiDialog } from "@/components/managed/ai-assist";
+import { PROJECT_TYPES } from "@/components/managed/estimate-editor";
+import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
 import { type FieldSpec, toPayload, toValues } from "@/components/managed/form-grid";
 import { FormSection, MoneyInput, SummaryRow, useUnsavedGuard } from "@/components/managed/form-kit";
 import { PageActions } from "@/components/managed/page-actions";
 import { cn } from "@/lib/utils";
-import { useSalesMutation } from "@/lib/staff-sales";
+import { fetchContractCompanyPrefill, useSalesMutation } from "@/lib/staff-sales";
+import { useLookupCompanies } from "@/lib/staff-maintenance";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 
 const FIELDS: FieldSpec[] = [
   { key: "contract_title", label: "계약명" },
+  { key: "project_type", label: "계약 유형" },
   { key: "contract_amount", label: "계약금액", type: "number" },
   { key: "contract_date", label: "계약일", type: "date" },
   { key: "contract_start_date", label: "시작일", type: "date" },
@@ -59,12 +63,14 @@ export function monthsBetween(a: string, b: string): number | null {
  * 오른쪽(모바일은 아래)에 요약과 발송 전 확인 목록. 을(한결랩) 정보는 기본값이라 접어 둔다.
  */
 export function ContractEditor({
-  initial, estimateId, seq, onDone,
+  initial, estimateId, seq, onDone, direct = false,
 }: {
   initial: Record<string, unknown>;
   estimateId: number | null;
   seq: number | null;
   onDone: () => void;
+  /** 견적 없이 직접 등록 — 업체 선택칸을 보여 주고 고르면 갑·을 기본값을 채운다 */
+  direct?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -73,42 +79,70 @@ export function ContractEditor({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<null | "draft" | "review">(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [companyId, setCompanyId] = useState("");
+  const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   useUnsavedGuard(dirty);
+
+  const pickCompany = async (id: string) => {
+    setCompanyId(id);
+    setDirty(true);
+    if (!id) return;
+    const filled = PARTY.some(([k]) => (v[`party_a_${k}`] ?? "").trim());
+    if (filled && !confirm("갑(고객) 정보를 선택한 업체 정보로 바꿀까요?")) return;
+    try {
+      const d = await fetchContractCompanyPrefill(Number(id));
+      setV((s) => {
+        const next = { ...s };
+        for (const [k] of PARTY) {
+          next[`party_a_${k}`] = String(d[`party_a_${k}`] ?? "");
+          if (!(s[`party_b_${k}`] ?? "").trim()) next[`party_b_${k}`] = String(d[`party_b_${k}`] ?? "");
+        }
+        return next;
+      });
+    } catch (err) {
+      toast("error", apiErrorDetail(err, "업체 정보를 불러오지 못했습니다."));
+    }
+  };
 
   const set = (k: string, val: string) => {
     setV((s) => ({ ...s, [k]: val }));
     setDirty(true);
   };
-  // AI 초안 — 계약 정보·연결 견적으로 계약 내용 4칸을 채운다(빈 칸이 아니면 덮어쓸지 묻는다)
-  const ai = useAiJob<Record<string, string>>();
+  // AI 초안 — 템플릿·프롬프트를 고르고 고친 뒤 계약 내용 4칸 초안을 받아 넣는다(대화상자에서 확인)
+  const [aiOpen, setAiOpen] = useState(false);
   const AI_KEYS = ["project_description", "service_scope", "payment_terms", "special_terms"];
-  const runAi = () => {
-    if (AI_KEYS.some((k) => (v[k] ?? "").trim()) && !confirm("AI 결과가 나오면 계약 내용 4칸을 덮어씁니다. 진행할까요?")) return;
-    ai.start("/ai/contract-draft", {
-      contract_seq: seq, estimate_id: estimateId ?? (initial.estimate_id as number | null) ?? null,
-      contract_title: v.contract_title ?? "", company_name: v.party_a_name ?? "", contract_amount: v.contract_amount ?? "", contract_period: v.contract_period ?? "",
-      maintenance_point: v.maintenance_point ?? "", free_maint_months: v.free_maint_months ?? "", free_maint_scope: v.free_maint_scope ?? "",
-      project_description: v.project_description ?? "",
-    }, (d) => {
-      setV((s) => ({ ...s, ...Object.fromEntries(AI_KEYS.filter((k) => d[k]).map((k) => [k, d[k]])) }));
-      setDirty(true);
-      toast("success", "AI 초안을 넣었습니다. 내용을 확인하고 저장하세요.");
-    });
+  const aiContext = {
+    contract_seq: seq, estimate_id: estimateId ?? (initial.estimate_id as number | null) ?? null,
+    contract_title: v.contract_title ?? "", company_name: v.party_a_name ?? "", contract_amount: v.contract_amount ?? "", contract_period: v.contract_period ?? "",
+    project_type: v.project_type ?? "", maintenance_point: v.maintenance_point ?? "", free_maint_months: v.free_maint_months ?? "", free_maint_scope: v.free_maint_scope ?? "",
+    project_description: v.project_description ?? "",
+  };
+  const applyAi = (d: Record<string, string>) => {
+    setV((s) => ({ ...s, ...Object.fromEntries(AI_KEYS.filter((k) => d[k]).map((k) => [k, d[k]])) }));
+    setDirty(true);
+    toast("success", "AI 초안을 넣었습니다. 내용을 확인하고 저장하세요.");
   };
 
   const months = monthsBetween(v.contract_start_date ?? "", v.contract_end_date ?? "");
   const linkedEstimate = estimateId ?? (initial.estimate_id as number | null) ?? null;
   const checks = useMemo(() => [
+    ...(direct ? [{ ok: !!companyId, label: "업체", required: true }] : []),
     { ok: !!(v.contract_title ?? "").trim(), label: "계약명", required: true },
+    { ok: !!v.project_type, label: "계약 유형(계약서 조항이 달라짐)" },
     { ok: !!(v.contract_amount ?? "").trim(), label: "계약금액" },
     { ok: !!(v.contract_start_date && v.contract_end_date), label: "계약 시작·종료일" },
     { ok: !!(v.party_a_name && v.party_a_ceo), label: "갑 상호·대표자" },
     { ok: /\S+@\S+/.test(v.party_a_email ?? ""), label: "갑 이메일(발송 받는 주소)" },
     { ok: !!(v.party_b_name && v.party_b_business_number), label: "을 상호·사업자번호" },
-  ], [v]);
+  ], [v, direct, companyId]);
 
   const save = async (review: boolean) => {
     setShowErrors(true);
+    if (direct && !companyId) {
+      toast("warning", "업체를 선택하세요.");
+      return;
+    }
     if (!(v.contract_title ?? "").trim()) {
       toast("warning", "계약명을 입력하세요.");
       return;
@@ -122,7 +156,7 @@ export function ContractEditor({
         toast("success", "저장했습니다.");
         onDone();
       } else {
-        const res = await mutate.mutateAsync({ url: "/contracts", body: { ...body, estimate_id: estimateId } });
+        const res = await mutate.mutateAsync({ url: "/contracts", body: { ...body, estimate_id: estimateId, company_id: direct ? Number(companyId) : null } });
         setDirty(false);
         toast("success", "계약서를 만들었습니다.");
         router.replace(`/managed/contracts/${res.seq}`);
@@ -168,8 +202,20 @@ export function ContractEditor({
         <div className="min-w-0 space-y-4">
           <FormSection title="계약 기본">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="계약명 *" className="sm:col-span-2 lg:col-span-3">
+              {direct && (
+                <Field label="업체 *" className="sm:col-span-2 lg:col-span-3">
+                  <SearchSelect items={companyItems} value={companyId} onChange={pickCompany} placeholder="업체 선택 — 고르면 갑(고객) 정보가 채워집니다"
+                    searchPlaceholder="업체명·사업자번호 (초성 가능)" className={cn(showErrors && !companyId && "border-red-400")} />
+                </Field>
+              )}
+              <Field label="계약명 *" className="sm:col-span-2">
                 <Input className={cn("rounded-xl", showErrors && !(v.contract_title ?? "").trim() && "border-red-400")} value={v.contract_title ?? ""} onChange={(e) => set("contract_title", e.target.value)} />
+              </Field>
+              <Field label="계약 유형">
+                <select className={selectClass} value={v.project_type ?? ""} onChange={(e) => set("project_type", e.target.value)}>
+                  <option value="">선택(미선택 시 &apos;IT 서비스&apos; 일반 조항)</option>
+                  {PROJECT_TYPES.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                </select>
               </Field>
               <Field label="계약금액(부가세 포함)"><MoneyInput value={v.contract_amount ?? ""} onChange={(d) => set("contract_amount", d)} /></Field>
               <Field label="계약일"><Input type="date" className="rounded-xl" value={v.contract_date ?? ""} onChange={(e) => set("contract_date", e.target.value)} /></Field>
@@ -206,13 +252,13 @@ export function ContractEditor({
             title="계약 내용"
             description="계약서 본문에 들어갑니다. 고객 서명 후에는 바꿀 수 없습니다."
             aside={
-              <Button type="button" size="sm" variant="outline" className="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={runAi} disabled={ai.running}>
-                {ai.running ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1 h-4 w-4" />} AI 초안
+              <Button type="button" size="sm" variant="outline" className="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => setAiOpen(true)}>
+                <Sparkles className="mr-1 h-4 w-4" /> AI 초안
               </Button>
             }
           >
-            <AiProgress running={ai.running} elapsed={ai.job?.elapsed ?? 0} model={ai.job?.model} />
-            {ai.error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{ai.error}</p>}
+            <ContractAiDialog open={aiOpen} onClose={() => setAiOpen(false)} context={aiContext}
+              overwrite={AI_KEYS.some((k) => (v[k] ?? "").trim())} onApply={applyAi} />
             <div className="space-y-3">
               {area("project_description", "프로젝트 설명", "무엇을 만드는지 한두 문단으로", 5)}
               {area("service_scope", "서비스 범위", "포함·제외 범위를 항목별로", 6)}

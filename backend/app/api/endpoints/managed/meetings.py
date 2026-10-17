@@ -1,8 +1,8 @@
 """미팅약속 (/api/managed/meetings) — 목록·달력·등록/수정·알람일시·수신자·첨부·ICS·결과기록 (SPEC 06 §3).
 
 cms 와 다른 점:
-- 장소검색은 서버 키 기반 카카오 지역검색만(KAKAO_REST_API_KEY 가 있을 때). claude 웹검색·Nominatim·백그라운드 스레드는 옮기지 않는다
-  (키가 없으면 주소·좌표 직접 입력). 좌표가 없으면 네이버 지도는 주소 검색 URL 로 연다.
+- 장소검색: 카카오 지역검색(KAKAO_REST_API_KEY 가 있을 때) + AI 찾기(/api/managed/ai/place-search — claude 웹검색, 좌표는
+  Nominatim 보완, services/place_geo). 저장 시 좌표를 자동 보완하는 백그라운드 스레드는 옮기지 않는다. 좌표가 없으면 네이버 지도는 주소 검색 URL 로 연다.
 - 알람 발송·만료 처리는 cms cron 이 계속 한다(P6). 메일·활동이력 링크는 STAFF_BASE_URL.
 """
 import math
@@ -146,17 +146,24 @@ def calendar(start: date, end: date, db: Session = Depends(get_db)):
 def options(db: Session = Depends(get_db)):
     agents = [{"id": u.id, "name": u.name or u.username} for u in db.query(CustomAuthUser).filter(
         CustomAuthUser.group == "agent", CustomAuthUser.is_active == True).order_by(CustomAuthUser.name)]  # noqa: E712
-    return {"types": TYPES, "agents": agents, "place_search": bool(settings.KAKAO_REST_API_KEY)}
+    return {"types": TYPES, "agents": agents, "place_search": bool(settings.KAKAO_REST_API_KEY), "ai_place_search": settings.AI_ENABLED}
+
+
+SALES_PICK_MAX = 1000
 
 
 @router.get("/sales-search")
 def sales_search(q: str = "", db: Session = Depends(get_db)):
+    """연결 후보. q 가 없으면 최근 SALES_PICK_MAX 건 전체 — 화면이 받아서 초성·글자 검색한다."""
+    from app.api.endpoints.managed.sales import STATUS
+
     query = db.query(SalesLead).filter(SalesLead.is_draft == False)  # noqa: E712
     if q:
         like = f"%{q}%"
         query = query.filter(or_(SalesLead.title.like(like), SalesLead.client_company.like(like), SalesLead.client_name.like(like)))
-    return [{"seq": s.seq, "title": s.title, "client_company": s.client_company, "status": s.status}
-            for s in query.order_by(SalesLead.created_at.desc()).limit(20)]
+    return [{"seq": s.seq, "title": s.title, "client_company": s.client_company, "client_name": s.client_name,
+             "status": s.status, "status_label": STATUS.get(s.status or "", s.status or "")}
+            for s in query.order_by(SalesLead.created_at.desc()).limit(20 if q else SALES_PICK_MAX)]
 
 
 class PlaceQuery(BaseModel):

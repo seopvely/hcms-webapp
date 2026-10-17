@@ -288,6 +288,7 @@ def add_activity(
 
 class ActivityUpdate(BaseModel):
     content: str
+    activity_type: str | None = None
 
 
 def _own_activity(db: Session, activity_id: int, staff: CustomAuthUser) -> SalesLeadActivity:
@@ -307,7 +308,33 @@ def update_activity(activity_id: int, body: ActivityUpdate, staff: CustomAuthUse
     a = _own_activity(db, activity_id, staff)
     if not body.content.strip():
         raise HTTPException(status_code=400, detail="내용을 입력하세요.")
+    if body.activity_type is not None:
+        if body.activity_type not in USER_ACTIVITY:
+            raise HTTPException(status_code=400, detail="잘못된 활동 유형입니다.")
+        a.activity_type = body.activity_type
     a.content = body.content.strip()
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/activities/{activity_id}/attachments", dependencies=[WRITE])
+def add_activity_attachments(activity_id: int, attachments: list[UploadFile] = File(default=[]),
+                             staff: CustomAuthUser = Depends(get_current_staff), db: Session = Depends(get_db)):
+    a = _own_activity(db, activity_id, staff)
+    for path, name in [save_upload(f, "sales_activity_files") for f in attachments if f.filename]:
+        db.add(SalesLeadActivityAttachment(activity_id=a.seq, file=path, filename=name, uploaded_at=datetime.now()))
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/activities/{activity_id}/attachments/{attachment_id}/delete", dependencies=[WRITE])
+def delete_activity_attachment(activity_id: int, attachment_id: int, staff: CustomAuthUser = Depends(get_current_staff),
+                               db: Session = Depends(get_db)):
+    _own_activity(db, activity_id, staff)
+    n = db.query(SalesLeadActivityAttachment).filter(SalesLeadActivityAttachment.seq == attachment_id,
+                                                     SalesLeadActivityAttachment.activity_id == activity_id).delete(synchronize_session=False)
+    if not n:
+        raise HTTPException(status_code=404, detail="첨부를 찾을 수 없습니다.")
     db.commit()
     return {"ok": True}
 

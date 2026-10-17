@@ -15,7 +15,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { ESTIMATE_STATUS_COLORS } from "@/components/managed/estimate-status";
 import { Field, apiErrorDetail, fmtDateTime, selectClass } from "@/components/managed/field";
-import { EstimateEditor } from "@/components/managed/estimate-editor";
+import { CATEGORIES, EstimateEditor, PresetSelect, UNITS } from "@/components/managed/estimate-editor";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { StepUpDialog } from "@/components/managed/step-up-dialog";
@@ -235,7 +235,12 @@ function ItemDialog({ estimateId, item, onClose }: { estimateId: number; item: E
         <DialogHeader><DialogTitle>{item ? "항목 수정" : "항목 추가"}</DialogTitle></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           {([["category", "분류"], ["item_name", "항목명 *"], ["quantity", "수량"], ["unit", "단위"], ["unit_price", "단가"], ["specification", "규격"], ["remarks", "비고"]] as const).map(([k, l]) => (
-            <Field key={k} label={l}><Input className="rounded-xl" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>
+            <Field key={k} label={l}>
+              {k === "category" || k === "unit"
+                ? <PresetSelect label={l} className="h-10 rounded-xl" value={v[k]} options={k === "category" ? CATEGORIES : UNITS}
+                    placeholder={k === "category" ? "선택" : undefined} onChange={(x) => setV((p) => ({ ...p, [k]: x }))} />
+                : <Input className="rounded-xl" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} />}
+            </Field>
           ))}
           <label className="flex items-center gap-2 text-sm"><Checkbox checked={separate} onCheckedChange={(c) => setSeparate(c === true)} /> 금액 별도(합계 제외)</label>
         </div>

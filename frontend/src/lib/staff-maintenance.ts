@@ -15,13 +15,23 @@ export interface Option {
   name: string;
 }
 
+/** /lookup/companies 항목 — 사업자번호는 검색 상자(초성·번호 검색)용 */
+export interface CompanyOption extends Option {
+  business_number?: string;
+}
+
+/** /lookup/projects 항목 */
+export interface ProjectOption extends Option {
+  company_id: number | null;
+}
+
 export const staffFileUrl = (path: string) => `${process.env.NEXT_PUBLIC_API_URL ?? "/api"}/managed${path}`;
 
 // ── 선택 목록 ──
 export function useLookupCompanies() {
   return useQuery({
     queryKey: ["staff", "lookup", "companies"],
-    queryFn: async (): Promise<{ items: Option[] }> => (await staffApi.get("/managed/lookup/companies")).data,
+    queryFn: async (): Promise<{ items: CompanyOption[] }> => (await staffApi.get("/managed/lookup/companies")).data,
     staleTime: 10 * 60 * 1000,
   });
 }
@@ -29,7 +39,7 @@ export function useLookupCompanies() {
 export function useLookupProjects(companyId?: number) {
   return useQuery({
     queryKey: ["staff", "lookup", "projects", { companyId }],
-    queryFn: async (): Promise<{ items: Option[] }> =>
+    queryFn: async (): Promise<{ items: ProjectOption[] }> =>
       (await staffApi.get("/managed/lookup/projects", { params: companyId ? { company_id: companyId } : undefined })).data,
     staleTime: 10 * 60 * 1000,
   });

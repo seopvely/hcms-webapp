@@ -34,7 +34,7 @@ function useFields(): FieldSpec[] {
   return useMemo(() => {
     const staffOpts: [string, string][] = (staff?.items ?? []).map((u) => [String(u.id), u.name || u.username]);
     return [
-      { key: "company_id", label: "업체 *", type: "select", options: (companies?.items ?? []).map((c) => [String(c.id), c.name]) },
+      { key: "company_id", label: "업체 *", type: "select", search: true, options: (companies?.items ?? []).map((c) => [String(c.id), c.name]) },
       { key: "title", label: "프로젝트명 *", wide: true },
       { key: "project_type", label: "유형", type: "select", options: TYPES },
       { key: "project_status", label: "상태", type: "select", options: [["1", "진행중"], ["2", "완료"], ["3", "중지"]] },

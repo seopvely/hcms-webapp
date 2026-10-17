@@ -30,7 +30,8 @@ MFA_MAX_ATTEMPTS = 5
 LOGIN_FAIL_LIMIT = 5
 LOGIN_FAIL_WINDOW = timedelta(minutes=15)
 LOGIN_FAIL_IP_LIMIT = 20
-SESSION_IDLE = timedelta(hours=1)  # SPEC 08 §6.1 유휴 1시간(절대 수명은 STAFF_SESSION_HOURS)
+# SPEC 08 §6.1 은 유휴 1시간·절대 12시간이었으나 운영 요청(2026-10-13)으로 로그인 후 24시간 유지 — 유휴 만료도 절대 수명과 같게 둔다
+SESSION_IDLE = timedelta(hours=settings.STAFF_SESSION_HOURS)
 
 STAGE_PENDING = "pending"
 STAGE_ACTIVE = "active"

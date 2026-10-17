@@ -18,6 +18,7 @@ export interface CalEvent {
   color: string; // tailwind bg-* 클래스
   muted?: boolean; // 무효·완료 등 흐리게
   alert?: boolean; // 기한 초과 등 빨간 테두리
+  action?: React.ReactNode; // 선택한 날 목록에서 항목 오른쪽에 붙는 버튼(복사 등)
 }
 
 export interface LegendItem {
@@ -179,14 +180,15 @@ export function MonthCalendar({
           ) : (
             <ul className="space-y-1.5">
               {selEvents.map((e) => (
-                <li key={e.key}>
-                  <Link href={e.href} className={cn("flex gap-2 rounded-xl border p-2 text-sm hover:bg-muted/40", e.muted && "opacity-60", e.alert && "border-red-300")}>
+                <li key={e.key} className="flex items-center gap-1">
+                  <Link href={e.href} className={cn("flex min-w-0 flex-1 gap-2 rounded-xl border p-2 text-sm hover:bg-muted/40", e.muted && "opacity-60", e.alert && "border-red-300")}>
                     <span className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", e.color)} />
                     <span className="min-w-0">
                       <span className="block font-medium">{e.time && <span className="mr-1 text-indigo-600">{e.time}</span>}{e.title}</span>
                       {e.sub && <span className="block text-xs text-muted-foreground">{e.sub}</span>}
                     </span>
                   </Link>
+                  {e.action}
                 </li>
               ))}
             </ul>

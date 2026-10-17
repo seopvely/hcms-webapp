@@ -16,13 +16,40 @@ import { PageActions } from "@/components/managed/page-actions";
 import { cn } from "@/lib/utils";
 import staffApi from "@/lib/staff-api";
 import { useLookupCompanies } from "@/lib/staff-maintenance";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import { type EstimateDetail, useSalesMutation } from "@/lib/staff-sales";
 
 export const PROJECT_TYPES: [string, string][] = [
   ["1", "웹사이트"], ["2", "모바일앱"], ["3", "웹앱"], ["4", "웹+앱"], ["5", "도메인"], ["6", "보안서버"], ["7", "쇼핑몰"], ["8", "운영"],
   ["9", "유지보수"], ["10", "서버관리"], ["11", "서버마이그레이션"], ["12", "호스팅"], ["13", "개발구독"], ["15", "유지보수구독"], ["16", "FDE"],
 ];
-const UNITS = ["식", "페이지", "개월", "시간", "일", "개", "건", "회", "년", "명"];
+export const UNITS = ["식", "페이지", "개월", "시간", "일", "개", "건", "회", "년", "명"];
+// 항목 분류 — 기존 견적에서 많이 쓴 순. 목록에 없으면 "직접 입력"으로 적는다.
+export const CATEGORIES = ["기획", "디자인", "퍼블리싱", "프론트엔드", "백엔드", "개발", "인프라", "테스트", "유지보수", "호스팅", "서버", "기타"];
+const CUSTOM = "__custom__";
+
+/** 정해진 값 중에서 고르는 칸 — "직접 입력…"을 고르면 입력칸으로 바뀌고, 비운 채 벗어나면 다시 선택칸이 된다
+ * (placeholder 가 없으면 첫 값으로 돌아간다 — 단위는 비울 수 없다).
+ * 목록에 없는 기존 값(예전 견적)은 입력칸으로 그대로 보여 준다. */
+export function PresetSelect({ value, options, onChange, placeholder, label, className = "h-9 rounded-lg" }: {
+  value: string; options: string[]; onChange: (v: string) => void; placeholder?: string; label: string; className?: string;
+}) {
+  const [typing, setTyping] = useState(false);
+  if (typing || (value && !options.includes(value))) {
+    return (
+      <Input data-cell autoFocus={typing} className={className} value={value} aria-label={label} placeholder="직접 입력"
+        onChange={(e) => onChange(e.target.value)} onBlur={() => { if (!value.trim()) { onChange(placeholder !== undefined ? "" : options[0]); setTyping(false); } }} />
+    );
+  }
+  return (
+    <select className={cn(selectClass, "px-2", className)} value={value} aria-label={label}
+      onChange={(e) => (e.target.value === CUSTOM ? (onChange(""), setTyping(true)) : onChange(e.target.value))}>
+      {placeholder !== undefined && <option value="">{placeholder}</option>}
+      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      <option value={CUSTOM}>직접 입력…</option>
+    </select>
+  );
+}
 
 // 저장 시 형 변환에 쓰는 필드 목록(화면 배치는 아래 JSX 가 정한다)
 const FIELDS: FieldSpec[] = [
@@ -103,6 +130,7 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
   const { toast } = useToast();
   const mutate = useSalesMutation();
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const initialValues = useMemo(() => (detail ? toValues(FIELDS, detail) : { tax_rate: "10", written_date: new Date().toISOString().slice(0, 10) }), [detail]);
   const [v, setV] = useState<Record<string, string>>(initialValues);
   const [rows, setRows] = useState<Row[]>(() =>
@@ -225,15 +253,14 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
         </Button>
       </PageActions>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      {/* 요약은 2xl 에서만 오른쪽에 둔다 — 그보다 좁으면 항목 표가 잘려 별도·순서 칸이 가로 스크롤 뒤로 숨었다 */}
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
           <FormSection title="기본 정보">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="업체 *" className="lg:col-span-1">
-                <select className={cn(selectClass, err(errors.company) && "border-red-400")} value={v.company_id ?? ""} onChange={(e) => set("company_id", e.target.value)}>
-                  <option value="">업체 선택</option>
-                  {companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <SearchSelect items={companyItems} value={v.company_id ?? ""} onChange={(id) => set("company_id", id)} placeholder="업체 선택"
+                  searchPlaceholder="업체명·사업자번호 (초성 가능)" className={cn(err(errors.company) && "border-red-400")} />
               </Field>
               <Field label="제목 *" className="sm:col-span-2">
                 <Input className={cn("rounded-xl", err(errors.title) && "border-red-400")} value={v.estimate_title ?? ""} onChange={(e) => set("estimate_title", e.target.value)} placeholder="예: 2026 OO 홈페이지 리뉴얼" />
@@ -298,14 +325,14 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
                     const bad = err(!r.item_name.trim() && !!n(r.unit_price));
                     return (
                       <tr key={r.key} className={cn("align-top", r.is_separate && "bg-muted/30")}>
-                        <td className="py-1.5 pr-2"><Input data-cell className="h-9 rounded-lg" value={r.category} onChange={(e) => setRow(r.key, { category: e.target.value })} placeholder="개발" /></td>
+                        <td className="py-1.5 pr-2"><PresetSelect label="분류" value={r.category} options={CATEGORIES} placeholder="선택" onChange={(c) => setRow(r.key, { category: c })} /></td>
                         <td className="space-y-1 py-1.5 pr-2">
                           <Input data-cell ref={i === rows.length - 1 ? lastInput : undefined} className={cn("h-9 rounded-lg", bad && "border-red-400")} value={r.item_name} onChange={(e) => setRow(r.key, { item_name: e.target.value })} placeholder="항목명" />
                           <Input data-cell className="h-8 rounded-lg text-xs text-muted-foreground" value={r.specification} onChange={(e) => setRow(r.key, { specification: e.target.value })} placeholder="규격·설명(선택)" />
                         </td>
                         <td className="py-1.5 pr-2"><Input data-cell inputMode="numeric" className="h-9 rounded-lg text-right tabular-nums" value={r.quantity} onChange={(e) => setRow(r.key, { quantity: e.target.value.replace(/[^\d]/g, "") })} /></td>
                         <td className="py-1.5 pr-2">
-                          <Input data-cell list="estimate-units" className="h-9 rounded-lg" value={r.unit} onChange={(e) => setRow(r.key, { unit: e.target.value })} />
+                          <PresetSelect label="단위" value={r.unit} options={UNITS} onChange={(u) => setRow(r.key, { unit: u })} />
                         </td>
                         <td className="py-1.5 pr-2"><MoneyInput data-cell className="h-9 rounded-lg" suffix="" value={r.unit_price} onChange={(d) => setRow(r.key, { unit_price: d })} /></td>
                         <td className={cn("py-1.5 pr-2 pt-3.5 text-right tabular-nums", r.is_separate && "text-muted-foreground line-through")}>{amount.toLocaleString("ko-KR")}</td>
@@ -323,7 +350,6 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
                   })}
                 </tbody>
               </table>
-              <datalist id="estimate-units">{UNITS.map((u) => <option key={u} value={u} />)}</datalist>
             </div>
             <button type="button" onClick={() => addRow()} className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed py-2 text-sm text-muted-foreground hover:bg-muted/40">
               <Plus className="h-4 w-4" /> 행 추가
@@ -456,8 +482,8 @@ export function EstimateEditor({ detail, onDone }: { detail: EstimateDetail | nu
           </FormSection>
         </div>
 
-        {/* 요약 — 큰 화면은 오른쪽 고정 */}
-        <div className="h-fit space-y-3 lg:sticky lg:top-20">
+        {/* 요약 — 아주 큰 화면은 오른쪽 고정 */}
+        <div className="h-fit space-y-3 2xl:sticky 2xl:top-20">
           <Card className="rounded-2xl">
             <CardContent className="space-y-2 p-5">
               <h2 className="pb-1 text-sm font-semibold">금액 요약</h2>

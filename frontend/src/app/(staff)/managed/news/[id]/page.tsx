@@ -1,8 +1,8 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Paperclip, Trash2 } from "lucide-react";
+import { Paperclip, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,6 +16,7 @@ import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
 import { SafeHtml } from "@/components/managed/safe-html";
 import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
+import { matchScore } from "@/lib/hangul";
 import { staffFileUrl, useLookupCompanies } from "@/lib/staff-maintenance";
 import { type NewsItem, useNewsMutation, useStaffNewsDetail } from "@/lib/staff-content";
 import { useStaffMe } from "@/lib/staff-hooks";
@@ -48,6 +49,19 @@ function NewsEditor({ news, canWrite }: { news: NewsItem | null; canWrite: boole
   const [category, setCategory] = useState(news?.category ?? "general");
   const [published, setPublished] = useState(news?.is_published ?? true);
   const [targets, setTargets] = useState<number[]>(news?.company_ids ?? []);
+  const [targetQ, setTargetQ] = useState("");
+  // 검색어가 있으면 초성·글자·사업자번호로 걸러 일치 순, 없으면 선택한 업체를 앞에
+  const targetList = useMemo(() => {
+    const list = companies?.items ?? [];
+    if (targetQ.trim()) {
+      return list
+        .map((c, i) => ({ c, i, s: matchScore(c.name, targetQ, c.business_number) }))
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s || a.i - b.i)
+        .map((x) => x.c);
+    }
+    return [...list.filter((c) => targets.includes(c.id)), ...list.filter((c) => !targets.includes(c.id))];
+  }, [companies, targetQ, targets]);
   const [file, setFile] = useState<File | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -110,9 +124,17 @@ function NewsEditor({ news, canWrite }: { news: NewsItem | null; canWrite: boole
               </div>
               <SimpleEditor imageUpload="staff" value={content} onChange={setContent} />
               <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground">공개 대상 (선택하지 않으면 전체 공개)</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-muted-foreground">공개 대상 (선택하지 않으면 전체 공개){targets.length > 0 && <> · <span className="font-medium text-foreground">{targets.length}곳 선택</span></>}</p>
+                  {targets.length > 0 && <button type="button" className="text-xs text-blue-600" onClick={() => setTargets([])}>선택 해제</button>}
+                  <div className="relative ml-auto w-full sm:w-64">
+                    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input className="h-9 rounded-xl pl-9" placeholder="업체명·사업자번호 (초성 가능)" value={targetQ} onChange={(e) => setTargetQ(e.target.value)} />
+                  </div>
+                </div>
                 <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-xl border p-2">
-                  {companies?.items.map((c) => (
+                  {targetQ.trim() && !targetList.length && <p className="px-1 text-xs text-muted-foreground">검색 결과가 없습니다</p>}
+                  {targetList.map((c) => (
                     <label key={c.id} className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs">
                       <Checkbox checked={targets.includes(c.id)} onCheckedChange={() => setTargets((t) => (t.includes(c.id) ? t.filter((x) => x !== c.id) : [...t, c.id]))} />
                       {c.name}

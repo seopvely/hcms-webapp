@@ -26,6 +26,11 @@ import { useContractPrefill, useSalesMutation, useStaffContract, useWithdrawInfo
 import { useStaffMe } from "@/lib/staff-hooks";
 
 
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function StaffContractPage() {
   return <Suspense fallback={<PageSpinner />}><ContractPageInner /></Suspense>;
 }
@@ -44,7 +49,8 @@ function NewContract() {
   const params = useSearchParams();
   const estimateId = Number(params.get("estimate")) || null;
   const { data } = useContractPrefill(estimateId);
-  if (!estimateId) return <p className="text-sm text-muted-foreground">견적서 상세에서 &quot;계약서 작성&quot;으로 들어와 주세요.</p>;
+  // 견적 없이 직접 등록(cms contract/register) — 편집기 안에서 업체를 고르면 갑·을이 채워진다
+  if (!estimateId) return <PageTransition><ContractEditor initial={{ contract_date: todayIso() }} estimateId={null} seq={null} direct onDone={() => undefined} /></PageTransition>;
   if (!data) return <DetailSkeleton />;
   return <PageTransition><ContractEditor initial={data} estimateId={estimateId} seq={null} onDone={() => undefined} /></PageTransition>;
 }

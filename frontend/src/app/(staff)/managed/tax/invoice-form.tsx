@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AppAlertDialog } from "@/components/common/app-alert-dialog";
 import { useToast } from "@/components/common/app-toast";
 import { Field, apiErrorDetail, selectClass } from "@/components/managed/field";
+import { type SearchItem, SearchSelect } from "@/components/managed/search-select";
 import { staffFileUrl } from "@/lib/staff-maintenance";
 import { useStaffMe } from "@/lib/staff-hooks";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
@@ -43,6 +44,22 @@ export function InvoiceForm({ kind, id, data }: { kind: Kind; id: string; data: 
   const [files, setFiles] = useState<File[]>([]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const set = (k: string, val: string) => setV((x) => ({ ...x, [k]: val }));
+  const [picked, setPicked] = useState("");
+  // 공급자 선택(cms 의 고객업체·외주업체·자주 쓰는 공급자 탭) — 상호·사업자번호를 채우고, 고객업체면 거래처도 맞춘다
+  const pickSupplier = (val: string) => {
+    setPicked(val);
+    const [src, key] = [val.slice(0, 1), val.slice(2)];
+    const hit = src === "s" ? o?.suppliers.find((s) => String(s.id) === key)
+      : src === "v" ? o?.vendors[Number(key)]
+        : src === "c" ? o?.clients.find((c) => String(c.seq) === key) : undefined;
+    if (!hit) return;
+    setV((x) => ({ ...x, supplier_name: hit.name, supplier_no: hit.business_number || "", ...(src === "c" ? { client_id: key } : {}) }));
+  };
+  const supplierItems = useMemo<SearchItem[]>(() => [
+    ...(o?.suppliers ?? []).map((s) => ({ value: `s:${s.id}`, label: s.name, sub: s.business_number, group: "자주 쓰는 공급자", rank: s.use_count, hint: `${s.use_count}회` })),
+    ...(o?.vendors ?? []).map((s, i) => ({ value: `v:${i}`, label: s.name, sub: s.business_number, group: "외주업체" })),
+    ...(o?.clients ?? []).map((c) => ({ value: `c:${c.seq}`, label: c.name, sub: c.business_number, group: "고객업체(거래처도 선택)" })),
+  ], [o]);
   const nameKey = purchase ? "supplier_name" : "buyer_name";
   const noKey = purchase ? "supplier_no" : "buyer_no";
   const save = async () => {
@@ -96,6 +113,15 @@ export function InvoiceForm({ kind, id, data }: { kind: Kind; id: string; data: 
               {prefill?.map((h) => <option key={h.history_id as number} value={h.history_id as number}>#{h.history_id as number} · {h.buyer_name as string} · {h.item as string} · {Number(h.invoice_amount).toLocaleString()}원 · {(h.date_candidate as string) ?? "-"}</option>)}
             </select>
           </Field>
+        )}
+        {purchase && canWrite && (
+          <div className="flex flex-wrap items-end gap-2">
+            <Field label="공급자 선택" className="min-w-0 flex-1">
+              <SearchSelect items={supplierItems} value={picked} onChange={pickSupplier}
+                placeholder="검색해서 고르면 상호·사업자등록번호가 채워집니다 (직접 입력도 가능)" searchPlaceholder="상호·사업자번호 검색 (초성 가능: ㅌㅆ)" />
+            </Field>
+            {me?.is_admin && <Link href="/managed/settings/suppliers" className="pb-2.5 text-xs text-muted-foreground underline">공급자 목록 관리</Link>}
+          </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {input("issue_date", "작성일자 *", "date")}

@@ -99,16 +99,33 @@ def list_contracts(
     }
 
 
+def _party_a(db: Session, company_id: int | None) -> dict:
+    """갑 기본값 — 업체 정보 + 이메일 있는 담당자(없으면 대표 이메일)."""
+    company = db.query(Company).filter(Company.seq == company_id).first() if company_id else None
+    manager = db.query(Manager).filter(Manager.company_id == company_id, Manager.email.isnot(None)).first() if company_id else None
+    address = " ".join(p for p in ((company.address if company else None), (company.address_de if company else None)) if p)
+    return {
+        "party_a_name": company.name if company else "",
+        "party_a_ceo": company.ceoname if company else "",
+        "party_a_business_number": company.business_number if company else "",
+        "party_a_address": address,
+        "party_a_email": (manager.email if manager else None) or (company.ceo_email if company else "") or "",
+    }
+
+
 @router.get("/prefill")
-def prefill(estimate_id: int, db: Session = Depends(get_db)):
-    """견적 기반 계약서 기본값(cms contract_create GET 과 같은 규칙)."""
+def prefill(estimate_id: int | None = None, company_id: int | None = None, db: Session = Depends(get_db)):
+    """새 계약서 기본값. 견적 기반(cms contract_create GET 과 같은 규칙) 또는 업체만 골라 직접 등록(cms contract_register)."""
     import json
 
+    if not estimate_id:
+        if not company_id or not db.query(Company.seq).filter(Company.seq == company_id).first():
+            raise HTTPException(status_code=404, detail="업체를 찾을 수 없습니다.")
+        return {"estimate_id": None, "company_id": company_id, **_party_a(db, company_id), **svc.party_b_defaults(),
+                "contract_date": date.today().isoformat()}
     e = db.query(Estimate).filter(Estimate.seq == estimate_id).first()
     if e is None:
         raise HTTPException(status_code=404, detail="견적서를 찾을 수 없습니다.")
-    company = db.query(Company).filter(Company.seq == e.company_id).first() if e.company_id else None
-    manager = db.query(Manager).filter(Manager.company_id == e.company_id, Manager.email.isnot(None)).first() if e.company_id else None
     payment_terms = e.payment_terms or ""
     if not payment_terms:
         parts = []
@@ -122,15 +139,11 @@ def prefill(estimate_id: int, db: Session = Depends(get_db)):
         ai = ai if isinstance(ai, dict) else {}
     except ValueError:
         ai = {}
-    address = " ".join(p for p in ((company.address if company else None), (company.address_de if company else None)) if p)
     return {
         "estimate_id": e.seq,
+        "company_id": e.company_id,
         "contract_title": e.estimate_title,
-        "party_a_name": company.name if company else "",
-        "party_a_ceo": company.ceoname if company else "",
-        "party_a_business_number": company.business_number if company else "",
-        "party_a_address": address,
-        "party_a_email": (manager.email if manager else None) or (company.ceo_email if company else "") or "",
+        **_party_a(db, e.company_id),
         **svc.party_b_defaults(),
         "contract_amount": amounts(e)["total"],
         "contract_date": date.today().isoformat(),
@@ -254,7 +267,7 @@ def create_contract(body: ContractBody, request: Request, staff: CustomAuthUser 
     _apply(c, data)
     db.add(c)
     db.flush()
-    svc.history(db, c, "created", "계약서 생성", request, staff.id, staff.name or staff.username)
+    svc.history(db, c, "created", "계약서 생성" if body.estimate_id else "계약서 직접 등록", request, staff.id, staff.name or staff.username)
     db.commit()
     return {"seq": c.seq}
 

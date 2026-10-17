@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CornerDownLeft, ExternalLink, History, LayoutGrid, Plus, Search, Zap } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { CornerDownLeft, ExternalLink, History, Keyboard, LayoutGrid, Plus, Search, Zap } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { STAFF_NAV } from "@/components/managed/staff-nav";
+import { chosung } from "@/lib/hangul";
+import { HOTKEY_HELP } from "@/components/managed/list-hotkeys";
 
 /** 다른 곳(사이드바 버튼 등)에서 팔레트를 열 때 */
 export const OPEN_COMMAND_PALETTE = "hcms:open-command-palette";
@@ -36,15 +38,6 @@ const ACTIONS: { label: string; href: string; keywords?: string }[] = [
 ];
 
 const RECENT_KEY = "hcms_cmdk_recent";
-const CHO = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
-
-/** 한글 초성 문자열(예: 유지보수 → ㅇㅈㅂㅅ) */
-function chosung(s: string): string {
-  return Array.from(s).map((ch) => {
-    const c = ch.charCodeAt(0) - 0xac00;
-    return c >= 0 && c <= 11171 ? CHO[Math.floor(c / 588)] : ch;
-  }).join("");
-}
 
 /** 점수: 0 = 불일치. 앞부분 일치·연속 일치를 우선한다. */
 function score(cmd: Command, q: string): number {
@@ -85,6 +78,7 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const [recent, setRecent] = useState<string[]>([]);
+  const [helpOpen, setHelpOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   const commands = useMemo<Command[]>(() => {
@@ -94,7 +88,9 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
       })),
     );
     const actions: Command[] = ACTIONS.map((a) => ({ id: `action:${a.href}`, label: a.label, group: "바로 실행", kind: "action", href: a.href, keywords: a.keywords }));
-    return [...menus, ...actions, { id: "action:logout", label: "로그아웃", group: "바로 실행", kind: "action", keywords: "logout 종료", run: onLogout }];
+    return [...menus, ...actions,
+      { id: "action:shortcuts", label: "ShortCut Info", group: "바로 실행", kind: "action", keywords: "단축키 핫키 hotkey 키보드 도움말", run: () => setHelpOpen(true) },
+      { id: "action:logout", label: "로그아웃", group: "바로 실행", kind: "action", keywords: "logout 종료", run: onLogout }];
   }, [isAdmin, onLogout]);
 
   const results = useMemo(() => {
@@ -158,6 +154,7 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent showCloseButton={false} className="top-[15%] translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl">
         <DialogTitle className="sr-only">메뉴 검색</DialogTitle>
@@ -177,7 +174,7 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
           {results.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">&ldquo;{q}&rdquo; 에 맞는 메뉴가 없습니다.</p>}
           {results.map((c, i) => {
             const header = i === 0 || results[i - 1].group !== c.group ? c.group : null;
-            const Icon = c.group === "최근 사용" ? History : c.kind === "action" ? (c.run ? Zap : Plus) : LayoutGrid;
+            const Icon = c.id === "action:shortcuts" ? Keyboard : c.group === "최근 사용" ? History : c.kind === "action" ? (c.run ? Zap : Plus) : LayoutGrid;
             return (
               <div key={`${c.group}-${c.id}`}>
                 {header && <p className="px-2 pb-1 pt-2 text-[11px] font-semibold text-muted-foreground">{header}</p>}
@@ -205,5 +202,25 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
         </div>
       </DialogContent>
     </Dialog>
+    <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+      <DialogContent className="rounded-2xl sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>ShortCut Info</DialogTitle>
+          <DialogDescription>직원 화면 단축키입니다. 맥에선 Alt 대신 ⌥(Option)을 누릅니다. 한글 입력 중에도 동작합니다.</DialogDescription>
+        </DialogHeader>
+        <table className="w-full text-sm">
+          <tbody>
+            {HOTKEY_HELP.map((h) => (
+              <tr key={h.keys} className="border-t align-top">
+                <td className="whitespace-nowrap py-2 pr-3"><kbd className="rounded border bg-muted px-1.5 py-0.5 font-sans text-xs">{h.keys}</kbd></td>
+                <td className="py-2 pr-3">{h.label}</td>
+                <td className="py-2 text-xs text-muted-foreground">{h.where}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

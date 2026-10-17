@@ -1,6 +1,6 @@
 "use client";
 import { FilterCard } from "@/components/managed/filter-card";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Coins, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Field, apiErrorDetail, fmtDate, fmtDateTime, meta, selectClass } from "@/components/managed/field";
 import { DataTable } from "@/components/managed/data-table";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import { PageActions } from "@/components/managed/page-actions";
 import { Pager } from "@/components/managed/pager";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -39,7 +40,9 @@ export default function StaffPointsPage() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const { data: balances } = useProjectBalances();
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const { data: projects } = useLookupProjects(params.company_id);
+  const projectItems = useMemo(() => toCompanyItems(projects?.items), [projects]);
   const { data, isLoading } = usePointLedger(params);
 
   useEffect(() => {
@@ -85,16 +88,12 @@ export default function StaffPointsPage() {
 
         <FilterCard className="grid gap-3 sm:grid-cols-3">
             <Field label="업체">
-              <select className={selectClass} value={params.company_id ?? ""} onChange={(e) => set({ company_id: e.target.value ? Number(e.target.value) : undefined, project_id: undefined })}>
-                <option value="">전체</option>
-                {companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <SearchSelect items={companyItems} value={params.company_id ? String(params.company_id) : ""} emptyOption="전체" searchPlaceholder="업체명·사업자번호 (초성 가능)"
+                onChange={(id) => set({ company_id: id ? Number(id) : undefined, project_id: undefined })} />
             </Field>
             <Field label="프로젝트">
-              <select className={selectClass} value={params.project_id ?? ""} onChange={(e) => set({ project_id: e.target.value ? Number(e.target.value) : undefined })}>
-                <option value="">전체</option>
-                {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              <SearchSelect items={projectItems} value={params.project_id ? String(params.project_id) : ""} emptyOption="전체" searchPlaceholder="프로젝트명 (초성 가능)"
+                onChange={(id) => set({ project_id: id ? Number(id) : undefined })} />
             </Field>
             <Field label="유형">
               <select className={selectClass} value={params.point_type ?? ""} onChange={(e) => set({ point_type: e.target.value || undefined })}>
@@ -162,7 +161,9 @@ function AdjustDialog({ onClose }: { onClose: () => void }) {
   const [reason, setReason] = useState("");
   const [password, setPassword] = useState("");
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const { data: projects } = useLookupProjects(companyId);
+  const projectItems = useMemo(() => toCompanyItems(projects?.items), [projects]);
 
   const save = async () => {
     try {
@@ -182,16 +183,12 @@ function AdjustDialog({ onClose }: { onClose: () => void }) {
         </DialogHeader>
         <div className="space-y-3">
           <Field label="업체">
-            <select className={selectClass} value={companyId ?? ""} onChange={(e) => { setCompanyId(e.target.value ? Number(e.target.value) : undefined); setProjectId(""); }}>
-              <option value="">선택</option>
-              {companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <SearchSelect items={companyItems} value={companyId ? String(companyId) : ""} placeholder="선택" searchPlaceholder="업체명·사업자번호 (초성 가능)"
+              onChange={(id) => { setCompanyId(id ? Number(id) : undefined); setProjectId(""); }} />
           </Field>
           <Field label="프로젝트">
-            <select className={selectClass} value={projectId} onChange={(e) => setProjectId(e.target.value)} disabled={!companyId}>
-              <option value="">선택</option>
-              {projects?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <SearchSelect items={projectItems} value={projectId} placeholder="선택" disabled={!companyId} searchPlaceholder="프로젝트명 (초성 가능)"
+              onChange={setProjectId} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="유형">

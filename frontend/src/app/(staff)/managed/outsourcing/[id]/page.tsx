@@ -47,8 +47,8 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   const write = useStaffWrite(["outsourcing"]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const fields: FieldSpec[] = useMemo(() => [
-    { key: "vendor_id", label: "외주업체 *", type: "select", options: (vendors?.items ?? []).map((v) => [String(v.seq), v.name as string]) },
-    { key: "project_id", label: "프로젝트", type: "select", options: (projects?.items ?? []).map((p) => [String(p.id), p.name]) },
+    { key: "vendor_id", label: "외주업체 *", type: "select", search: true, options: (vendors?.items ?? []).map((v) => [String(v.seq), v.name as string]) },
+    { key: "project_id", label: "프로젝트", type: "select", search: true, options: (projects?.items ?? []).map((p) => [String(p.id), p.name]) },
     { key: "work_type", label: "외주 형태 *", type: "select", options: [["planning", "기획"], ["development", "개발"], ["design", "디자인"], ["publishing", "퍼블리싱"], ["frontend", "프론트앤드"], ["backend", "백엔드"]] },
     { key: "status", label: "상태", type: "select", options: [["active", "진행중"], ["completed", "완료"], ["cancelled", "취소"]] },
     { key: "start_date", label: "시작일 *", type: "date" }, { key: "end_date", label: "종료일 *", type: "date" },

@@ -3,7 +3,7 @@ import { LoadFailed } from "@/components/managed/load-failed";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { FileText, Paperclip, Pencil, Trash2 } from "lucide-react";
+import { FileText, Paperclip, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,10 +16,11 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { apiErrorDetail, fmtDate, fmtDateTime, selectCls } from "@/components/managed/field";
 import { type FieldSpec, FormGrid, toPayload, toValues } from "@/components/managed/form-grid";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
+import { type SearchItem, SearchSelect } from "@/components/managed/search-select";
 import { CMS_BASE } from "@/components/managed/staff-nav";
 import { PageActions } from "@/components/managed/page-actions";
 import { useNavigationStore } from "@/store/navigation-store";
-import { staffFileUrl, useLookupCompanies } from "@/lib/staff-maintenance";
+import { staffFileUrl, useLookupCompanies, useLookupProjects } from "@/lib/staff-maintenance";
 import { type SalesChoices, useSalesMutation, useStaffLead, useStaffLeads, useStaffList } from "@/lib/staff-sales";
 import { useStaffMe } from "@/lib/staff-hooks";
 
@@ -31,7 +32,7 @@ function leadFields(choices: SalesChoices | undefined, companies: [string, strin
     { key: "title", label: "건명 *", wide: true },
     { key: "source", label: "유입 채널", type: "select", options: opts(choices?.source) },
     { key: "priority", label: "우선순위", type: "select", options: opts(choices?.priority) },
-    { key: "company_id", label: "기존 업체", type: "select", options: companies },
+    { key: "company_id", label: "기존 업체", type: "select", search: true, options: companies },
     { key: "manager_id", label: "영업 담당자", type: "select", options: staff },
     { key: "client_company", label: "고객사명" }, { key: "client_name", label: "담당자명" },
     { key: "client_phone", label: "연락처" }, { key: "client_email", label: "이메일" }, { key: "client_position", label: "직책" },
@@ -131,7 +132,23 @@ function LeadView({ lead }: { lead: Lead }) {
   const [filter, setFilter] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [projectId, setProjectId] = useState("");
+  const [edit, setEdit] = useState<{ seq: number; type: string; content: string; removed: number[]; added: FileList | null } | null>(null);
   const canWrite = lead.write_enabled;
+  const { data: allProjects } = useLookupProjects();
+  const { data: companies } = useLookupCompanies();
+  // 연결 후보 — 이미 연결된 것은 빼고, 이 영업접수의 기존 업체 프로젝트를 앞에. 이름(초성)·번호·업체명으로 검색
+  const projectItems = useMemo((): SearchItem[] => {
+    const leadCompany = Number(lead.company_id) || 0;
+    const linked = new Set(lead.projects.map((p) => p.seq));
+    const companyName = new Map((companies?.items ?? []).map((c) => [c.id, c.name]));
+    const items = (allProjects?.items ?? []).filter((p) => !linked.has(p.id)).map((p) => {
+      const cid = p.company_id ?? 0;
+      const own = !!leadCompany && cid === leadCompany;
+      return { value: String(p.id), label: p.name, sub: `#${p.id}${companyName.get(cid) ? ` · ${companyName.get(cid)}` : ""}`,
+        group: leadCompany ? (own ? "기존 업체 프로젝트" : "다른 프로젝트") : undefined, rank: own ? 1 : 0 };
+    });
+    return items.sort((a, b) => b.rank - a.rank);
+  }, [allProjects, companies, lead.company_id, lead.projects]);
 
   const call = async (url: string, body: Record<string, unknown> | FormData = {}, ok = "처리했습니다.") => {
     try {
@@ -199,11 +216,58 @@ function LeadView({ lead }: { lead: Lead }) {
               {activities.map((a) => (
                 <div key={a.seq} className="rounded-xl bg-muted/40 px-3 py-2">
                   <p className="text-xs text-muted-foreground"><Badge variant="outline">{a.type_label}</Badge> {a.by || "-"} · {fmtDateTime(a.created_at)}
-                    {canWrite && a.by_id === me?.id && !["auto", "status_change", "notification"].includes(a.type) && (
-                      <button className="ml-2 text-red-600" onClick={() => window.confirm("활동을 삭제할까요?") && call(`/sales/activities/${a.seq}/delete`, {}, "삭제했습니다.")}>삭제</button>
+                    {/* 본인 기록(관리자는 전체)·사용자 활동 유형만 — 백엔드 _own_activity 와 같은 기준 */}
+                    {canWrite && (a.by_id === me?.id || me?.is_admin) && a.type in lead.choices.activity && edit?.seq !== a.seq && (
+                      <>
+                        <button className="ml-2 text-blue-600" onClick={() => setEdit({ seq: a.seq, type: a.type, content: a.content ?? "", removed: [], added: null })}>수정</button>
+                        <button className="ml-2 text-red-600" onClick={() => window.confirm("활동을 삭제할까요?") && call(`/sales/activities/${a.seq}/delete`, {}, "삭제했습니다.")}>삭제</button>
+                      </>
                     )}
                   </p>
-                  <p className="whitespace-pre-wrap">{a.content}</p>
+                  {edit?.seq === a.seq ? (
+                    <div className="mt-2 space-y-2">
+                      <select className={selectCls("w-36")} value={edit.type} onChange={(e) => setEdit({ ...edit, type: e.target.value })}>
+                        {opts(lead.choices.activity).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                      <Textarea className="min-h-20 rounded-xl bg-background" value={edit.content} onChange={(e) => setEdit({ ...edit, content: e.target.value })} />
+                      {a.attachments.length > 0 && (
+                        <ul className="space-y-1 text-xs">
+                          {a.attachments.map((f) => {
+                            const gone = edit.removed.includes(f.id);
+                            return (
+                              <li key={f.id} className="flex items-center gap-2">
+                                <Paperclip className="h-3 w-3 shrink-0" />
+                                <span className={gone ? "text-muted-foreground line-through" : ""}>{f.filename}</span>
+                                <button type="button" className={gone ? "text-blue-600" : "text-red-600"}
+                                  onClick={() => setEdit({ ...edit, removed: gone ? edit.removed.filter((x) => x !== f.id) : [...edit.removed, f.id] })}>
+                                  {gone ? "되돌리기" : <X className="h-3 w-3" aria-label="첨부 삭제" />}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                      <Input type="file" multiple className="rounded-xl bg-background" onChange={(e) => setEdit({ ...edit, added: e.target.files })} />
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" className="rounded-xl" onClick={() => setEdit(null)}>취소</Button>
+                        <Button size="sm" className="rounded-xl" disabled={!edit.content.trim() || mutate.isPending} onClick={async () => {
+                          try {
+                            await mutate.mutateAsync({ method: "patch", url: `/sales/activities/${a.seq}`, body: { content: edit.content, activity_type: edit.type } });
+                            for (const id of edit.removed) await mutate.mutateAsync({ url: `/sales/activities/${a.seq}/attachments/${id}/delete` });
+                            if (edit.added?.length) {
+                              const form = new FormData();
+                              Array.from(edit.added).forEach((f) => form.append("attachments", f));
+                              await mutate.mutateAsync({ url: `/sales/activities/${a.seq}/attachments`, body: form });
+                            }
+                            toast("success", "수정했습니다.");
+                            setEdit(null);
+                          } catch (err) {
+                            toast("error", apiErrorDetail(err, "수정에 실패했습니다."));
+                          }
+                        }}>저장</Button>
+                      </div>
+                    </div>
+                  ) : <p className="whitespace-pre-wrap">{a.content}</p>}
                   {a.attachments.map((f) => <a key={f.id} href={staffFileUrl(`/sales/files/${f.id}`)} className="mr-2 inline-flex items-center gap-1 text-xs text-blue-600"><Paperclip className="h-3 w-3" /> {f.filename}</a>)}
                 </div>
               ))}
@@ -234,9 +298,10 @@ function LeadView({ lead }: { lead: Lead }) {
                     {!canWrite && lead.projects.length === 0 && "-"}
                   </div>
                   {canWrite && (
-                    <span className="mt-1 inline-flex gap-1">
-                      <Input className="h-7 w-28 rounded-lg text-xs" placeholder="프로젝트 번호" value={projectId} onChange={(e) => setProjectId(e.target.value)} />
-                      <Button size="sm" variant="outline" className="h-7 rounded-lg" disabled={!projectId} onClick={async () => { if (await call(`/sales/${lead.seq}/projects`, { project_id: Number(projectId) }, "연결했습니다.")) setProjectId(""); }}>연결</Button>
+                    <span className="mt-1 flex w-full max-w-md gap-1">
+                      <SearchSelect className="h-8 min-w-0 flex-1 rounded-lg text-xs" items={projectItems} value={projectId} placeholder="연결할 프로젝트 선택"
+                        searchPlaceholder="프로젝트명·번호·업체명 (초성 가능)" onChange={setProjectId} />
+                      <Button size="sm" variant="outline" className="h-8 rounded-lg" disabled={!projectId || mutate.isPending} onClick={async () => { if (await call(`/sales/${lead.seq}/projects`, { project_id: Number(projectId) }, "연결했습니다.")) setProjectId(""); }}>연결</Button>
                     </span>
                   )}
                 </Info>

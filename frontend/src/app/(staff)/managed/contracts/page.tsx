@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { FileSignature, Search } from "lucide-react";
+import Link from "next/link";
+import { FileSignature, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { CONTRACT_STATUS_COLORS } from "@/components/managed/contract-status";
 import { DataTable } from "@/components/managed/data-table";
 import { fmtDate, meta } from "@/components/managed/field";
+import { PageActions } from "@/components/managed/page-actions";
 import { Pager } from "@/components/managed/pager";
 import { ReadOnlyNotice } from "@/components/managed/read-only-notice";
 import { CMS_BASE } from "@/components/managed/staff-nav";
@@ -28,6 +30,13 @@ export default function StaffContractsPage() {
     <PageTransition>
       <div className="space-y-4">
         {data && !data.write_enabled && <ReadOnlyNotice cmsUrl={`${CMS_BASE}/managed/contract/`} />}
+        <PageActions>
+          {data?.write_enabled && (
+            <Button size="sm" className="rounded-xl" asChild title="견적 없이 직접 등록 — 견적 기반은 견적서 상세(승인)에서 작성">
+              <Link href="/managed/contracts/new"><Plus className="mr-1 h-4 w-4" /> 계약서 작성</Link>
+            </Button>
+          )}
+        </PageActions>
         <div className="flex flex-wrap gap-2">
           <button className={`rounded-full px-3 py-1 text-xs ${!params.status ? "bg-slate-900 text-white" : "bg-muted"}`} onClick={() => setParams({ ...params, page: 1, status: undefined })}>전체</button>
           {data?.stats.map((s) => (

@@ -22,7 +22,7 @@ import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 type Dict = Record<string, unknown>;
 type Plan = { plan_id: string; name_ko: string; kind: string; list_price_supply: number | null; applies_to: string[] };
 const BASE: FieldSpec[] = [
-  { key: "company_id", label: "업체 *", type: "select" }, { key: "plan_id", label: "요금제 *", type: "select" },
+  { key: "company_id", label: "업체 *", type: "select", search: true }, { key: "plan_id", label: "요금제 *", type: "select" },
   { key: "status", label: "상태", type: "select", options: [["consulting", "상담"], ["quoted", "견적"], ["active", "진행"], ["completed", "완료"], ["terminated", "해지"]] },
   { key: "headcount", label: "투입 인원", type: "number" },
   { key: "start_date", label: "시작일", type: "date" }, { key: "end_date", label: "종료일", type: "date" },

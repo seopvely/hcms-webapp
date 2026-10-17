@@ -1,6 +1,7 @@
 "use client";
 import { LoadFailed } from "@/components/managed/load-failed";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchSelect, toCompanyItems } from "@/components/managed/search-select";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ function Editor({ id, data, init }: { id: string; data: Dict | null; init: Dict 
   const { toast } = useToast();
   const { data: me } = useStaffMe();
   const { data: companies } = useLookupCompanies();
+  const companyItems = useMemo(() => toCompanyItems(companies?.items), [companies]);
   const { data: staff } = useStaffList();
   const write = useStaffWrite(["todos"]);
   const canWrite = data ? Boolean(data.write_enabled) : !!me?.write_areas.includes("todos");
@@ -124,14 +126,12 @@ function Editor({ id, data, init }: { id: string; data: Dict | null; init: Dict 
           </Field>
           {input("start_date", "시작일", "date")}{input("due_date", "마감일", "date")}{input("tags_text", "태그(쉼표 구분)")}
           <Field label="업체">
-            <select className={selectClass} disabled={!canWrite} value={v.company_id} onChange={(e) => setV((x) => ({ ...x, company_id: e.target.value, project_id: "" }))}>
-              <option value="">없음</option>{companies?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <SearchSelect items={companyItems} value={v.company_id} emptyOption="없음" disabled={!canWrite} searchPlaceholder="업체명·사업자번호 (초성 가능)"
+              onChange={(id) => setV((x) => ({ ...x, company_id: id, project_id: "" }))} />
           </Field>
           <Field label="프로젝트">
-            <select className={selectClass} disabled={!canWrite || !v.company_id} value={v.project_id} onChange={(e) => set("project_id", e.target.value)}>
-              <option value="">없음</option>{projects?.map((p) => <option key={p.seq} value={p.seq}>{p.title}</option>)}
-            </select>
+            <SearchSelect items={(projects ?? []).map((p) => ({ value: String(p.seq), label: p.title }))} value={v.project_id} emptyOption="없음" disabled={!canWrite || !v.company_id} searchPlaceholder="프로젝트명 (초성 가능)"
+              onChange={(id) => set("project_id", id)} />
           </Field>
           {input("folder_name", "폴더명(기록용)")}
         </div>

@@ -2,12 +2,15 @@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, selectClass } from "@/components/managed/field";
+import { SearchSelect, toPairItems } from "@/components/managed/search-select";
 
 export type FieldSpec = {
   key: string;
   label: string;
   type?: "text" | "number" | "date" | "datetime-local" | "textarea" | "select";
   options?: [string, string][];
+  /** select 를 초성 검색 상자로(업체·프로젝트처럼 항목이 많은 목록) */
+  search?: boolean;
   wide?: boolean;
 };
 
@@ -26,6 +29,9 @@ export function FormGrid({
         <Field key={f.key} label={f.label} className={f.wide || f.type === "textarea" ? "sm:col-span-2 lg:col-span-4" : ""}>
           {f.type === "textarea" ? (
             <Textarea className="min-h-24 rounded-xl" disabled={disabled} value={values[f.key] ?? ""} onChange={(e) => onChange(f.key, e.target.value)} />
+          ) : f.type === "select" && f.search ? (
+            <SearchSelect items={toPairItems(f.options)} value={values[f.key] ?? ""} emptyOption="선택 안 함" disabled={disabled}
+              onChange={(v) => onChange(f.key, v)} />
           ) : f.type === "select" ? (
             <select className={selectClass} disabled={disabled} value={values[f.key] ?? ""} onChange={(e) => onChange(f.key, e.target.value)}>
               <option value="">선택 안 함</option>

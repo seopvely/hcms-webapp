@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Power, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,34 @@ import { AppAlertDialog } from "@/components/common/app-alert-dialog";
 import { DetailSkeleton } from "@/components/common/loading-skeleton";
 import { useToast } from "@/components/common/app-toast";
 import { PageTransition } from "@/components/layout/page-transition";
-import { Field, apiErrorDetail, fmtDate, fmtDateTime, selectClass } from "@/components/managed/field";
+import { SearchSelect } from "@/components/managed/search-select";
+import { Field, apiErrorDetail, fmtDate, fmtDateTime, selectClass, selectCls } from "@/components/managed/field";
 import { BillingShell, useBillingOptions, useBillingWritable } from "@/components/managed/billing-ui";
 import { PageActions } from "@/components/managed/page-actions";
+import { AiProgress, useAiJob } from "@/components/managed/ai-assist";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useStaffGet, useStaffWrite } from "@/lib/staff-ops";
 
 type Dict = Record<string, unknown>;
+type Rate = { rate: number; date: string; source: string; source_url: string };
+const FX_NOTE = "[환율] ";
+
+/** 설명의 환율 기록 줄([환율] …)을 현재 값으로 바꾼다 — 없으면 끝에 붙이고, 금액이 비면 지운다. */
+function withoutFxNote(desc: string): string[] {
+  const lines = desc.split("\n").filter((l) => !l.startsWith(FX_NOTE));
+  while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+  return lines;
+}
+
+function withFxNote(desc: string, usd: string, krw: string, r: Rate): string {
+  const lines = withoutFxNote(desc);
+  if (krw) {
+    const won = (n: number) => n.toLocaleString("ko-KR");
+    const meta = [r.date && `${r.date} 기준`, r.source].filter(Boolean).join(" · ");
+    lines.push(`${FX_NOTE}USD ${won(Number(usd.replace(/,/g, "")))} × ${won(r.rate)}원 = ${won(Number(krw))}원${meta ? ` (${meta})` : ""}`);
+  }
+  return lines.join("\n");
+}
 const HISTORY_STATUS: Record<string, string> = { pending: "대기중", sent: "발송완료", failed: "발송실패", confirmed: "결제확인" };
 
 export default function AlarmDetailPage() {
@@ -56,10 +77,42 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
   const [allAgents, setAllAgents] = useState<boolean>(data ? Boolean(data.send_to_all_agents) : true);
   const [recipients, setRecipients] = useState<number[]>((data?.recipient_ids as number[] | undefined) ?? []);
   const set = (k: string, val: string) => setV((s) => ({ ...s, [k]: val }));
+  // 달러 입력 — 조회 당시 환율(claude 웹검색)로 원화 환산해 amount 에 채운다(저장은 원화만)
+  const [currency, setCurrency] = useState<"KRW" | "USD">("KRW");
+  const [usd, setUsd] = useState("");
+  const usdRef = useRef(""); // 조회 중에 고친 달러 금액도 결과에 반영되게
+  const [rate, setRate] = useState<Rate | null>(null);
+  const fx = useAiJob<Rate>();
+  const toKrw = (amount: string, r: Rate | null) => {
+    const n = Number(amount.replace(/,/g, ""));
+    return r && amount.trim() !== "" && Number.isFinite(n) ? String(Math.round(n * r.rate)) : "";
+  };
+  const applyRate = (usdVal: string, r: Rate) => {
+    const krw = toKrw(usdVal, r);
+    setV((s) => ({ ...s, amount: krw, description: withFxNote(s.description, usdVal, krw, r) }));
+  };
+  const changeUsd = (val: string) => {
+    setUsd(val);
+    usdRef.current = val;
+    if (rate) applyRate(val, rate);
+  };
+  const lookupRate = () => fx.start("/ai/exchange-rate", { currency: "USD" }, (r) => { setRate(r); applyRate(usdRef.current, r); });
+  const changeCurrency = (c: "KRW" | "USD") => {
+    setCurrency(c);
+    if (c === "KRW") {
+      setRate(null);
+      fx.reset();
+      setV((s) => ({ ...s, description: withoutFxNote(s.description).join("\n") }));
+    }
+  };
   const sales = v.payment_type === "sales";
   const { data: projects } = useStaffGet<{ seq: number; title: string }[]>(["billing", "projects", v.company_id], sales && v.company_id ? "/billing/options/projects" : null, { company_id: v.company_id });
 
   const save = async () => {
+    if (currency === "USD" && usd.trim() !== "" && !rate) {
+      toast("error", "달러 금액은 환율을 조회해 원화로 환산한 뒤 저장하세요.");
+      return;
+    }
     const n = (k: string) => (v[k].trim() === "" ? null : Number(v[k]));
     const body: Dict = {
       title: v.title, description: v.description, payment_type: v.payment_type, payment_sub_type: v.payment_sub_type || null, project_id: sales ? n("project_id") : null,
@@ -121,13 +174,26 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
           {sales && select("payment_sub_type", "결제유형(매출)", Object.entries(o?.sub_types ?? {}), "지정 안 함")}
           {sales && (
             <Field label="업체">
-              <select className={selectClass} disabled={!canWrite} value={v.company_id} onChange={(e) => setV((s) => ({ ...s, company_id: e.target.value, project_id: "" }))}>
-                <option value="">선택</option>{o?.companies.map((c) => <option key={c.seq} value={c.seq}>{c.name}</option>)}
-              </select>
+              <SearchSelect items={(o?.companies ?? []).map((c) => ({ value: String(c.seq), label: c.name }))} value={v.company_id} emptyOption="선택" disabled={!canWrite} searchPlaceholder="업체명·사업자번호 (초성 가능)"
+                onChange={(id) => setV((s) => ({ ...s, company_id: id, project_id: "" }))} />
             </Field>
           )}
-          {sales && select("project_id", "프로젝트", (projects ?? []).map((p) => [String(p.seq), p.title]))}
-          {input("amount", "금액(부가세 포함)")}
+          {sales && (
+            <Field label="프로젝트">
+              <SearchSelect items={(projects ?? []).map((p) => ({ value: String(p.seq), label: p.title }))} value={v.project_id ?? ""} emptyOption="선택" disabled={!canWrite} searchPlaceholder="프로젝트명 (초성 가능)"
+                onChange={(id) => set("project_id", id)} />
+            </Field>
+          )}
+          <Field label="금액(부가세 포함)">
+            <div className="flex gap-1">
+              <select className={selectCls("w-20 shrink-0")} disabled={!canWrite} value={currency} onChange={(e) => changeCurrency(e.target.value as "KRW" | "USD")} aria-label="통화">
+                <option value="KRW">원</option><option value="USD">달러</option>
+              </select>
+              {currency === "KRW"
+                ? <Input className="min-w-0 flex-1 rounded-xl" placeholder="원" disabled={!canWrite} value={v.amount} onChange={(e) => set("amount", e.target.value)} />
+                : <Input className="min-w-0 flex-1 rounded-xl" disabled={!canWrite} inputMode="decimal" placeholder="USD" value={usd} onChange={(e) => changeUsd(e.target.value)} />}
+            </div>
+          </Field>
           {select("cycle_type", sales ? "결제주기(비우면 매월)" : "결제주기 *", Object.entries(o?.cycles ?? {}))}
           {v.cycle_type === "custom" && input("cycle_months", "주기(개월)", "number")}
           {v.cycle_type === "yearly" && input("payment_month", "결제월", "number")}
@@ -136,6 +202,23 @@ function Editor({ id, data }: { id: string; data: Dict | null }) {
           {input("alarm_time", "알림 시각", "time")}
           {input("start_date", "시작일 *", "date")}
           {input("end_date", "종료일", "date")}
+          {currency === "USD" && (
+            <div className="space-y-1 rounded-xl border border-dashed p-3 text-sm sm:col-span-2 lg:col-span-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" className="rounded-xl" disabled={!canWrite || fx.running} onClick={lookupRate}>{rate ? "환율 다시 조회" : "환율 조회·원화 환산"}</Button>
+                {rate && (
+                  <span>
+                    1 USD = <b>{rate.rate.toLocaleString("ko-KR")}원</b>
+                    <span className="text-xs text-muted-foreground"> ({[rate.date, rate.source].filter(Boolean).join(" · ")}{rate.source_url && <> · <a className="underline" href={rate.source_url} target="_blank" rel="noreferrer">출처</a></>})</span>
+                    {v.amount && <> → 저장 금액 <b>{Number(v.amount).toLocaleString("ko-KR")}원</b></>}
+                  </span>
+                )}
+              </div>
+              <AiProgress running={fx.running} elapsed={fx.job?.elapsed ?? 0} model={fx.job?.model} label="AI 가 현재 환율을 조회하는 중…" hint="웹검색 · 보통 15~40초" />
+              {fx.error && <p className="text-xs text-red-600">{fx.error}</p>}
+              {!rate && !fx.running && <p className="text-xs text-muted-foreground">달러 금액을 넣고 환율을 조회하면 원화로 환산해 저장하고, 적용 환율은 설명에 기록합니다(환산은 단순 환율 × 금액, 부가세 별도 가산 없음).</p>}
+            </div>
+          )}
           <Field label="설명" className="sm:col-span-2 lg:col-span-4"><Textarea className="rounded-xl" disabled={!canWrite} value={v.description} onChange={(e) => set("description", e.target.value)} /></Field>
         </div>
         <div className="space-y-2">

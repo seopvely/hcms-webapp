@@ -11,6 +11,7 @@ import { CMS_BASE } from "@/components/managed/staff-nav";
 const RP_LABELS: Record<string, string> = {
   createsite: "CreateSite 콘솔",
   wealthreach: "WealthReach 관리자",
+  searching: "Searching",
 };
 
 type ApiError = { response?: { status?: number; data?: { detail?: string } } };

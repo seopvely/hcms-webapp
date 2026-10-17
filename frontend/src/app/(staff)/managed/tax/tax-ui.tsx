@@ -10,7 +10,8 @@ import { useStaffGet } from "@/lib/staff-ops";
 
 export type TaxOptions = {
   categories: string[]; deduction: Record<string, string>; payment_methods: Record<string, string>; issue_status: Record<string, string>;
-  payment_status: Record<string, string>; suppliers: { name: string; business_number: string }[]; vendors: { name: string; business_number: string }[];
+  payment_status: Record<string, string>; suppliers: { id: number; name: string; business_number: string; use_count: number }[];
+  vendors: { name: string; business_number: string }[];
   clients: { seq: number; name: string; business_number: string }[];
 };
 export const useTaxOptions = () => useStaffGet<TaxOptions>(["tax", "options"], "/tax/options");

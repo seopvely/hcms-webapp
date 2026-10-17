@@ -44,6 +44,7 @@ PAYMENT_METHODS = {"transfer": "계좌이체", "card": "카드", "biz_card": "�
 ISSUE_STATUS = {"issued": "발행완료", "pending": "미발행", "cancelled": "취소", "revised": "수정발행"}
 PAY_STATUS = {"unpaid": "미입금", "partial": "부분입금", "paid": "입금완료"}
 PURCHASE_TYPES = ("purchase", "outsourcing")
+SUPPLIER_LIST_MAX = 300  # 매입 폼 "공급자 선택" 후보 수(cms 는 최근 50곳)
 
 
 def _iso(v):
@@ -86,10 +87,84 @@ def _sales_row(i: SalesTaxInvoice, atts: dict | None = None) -> dict:
 def options(db: Session = Depends(get_db)):
     return {"categories": bl.EXPENSE_CATEGORIES, "deduction": DEDUCTION, "payment_methods": PAYMENT_METHODS, "issue_status": ISSUE_STATUS,
             "payment_status": PAY_STATUS,
-            "suppliers": [{"name": s.name, "business_number": s.business_number}
-                          for s in db.query(PurchaseSupplier).order_by(PurchaseSupplier.use_count.desc(), PurchaseSupplier.updated_at.desc()).limit(50)],
+            # 자주 쓰는 공급자 — 설정·외부 > 매입 공급자에서 관리, 매입 저장 때도 자동으로 쌓인다(cms 와 같음)
+            "suppliers": [{"id": s.id, "name": s.name, "business_number": s.business_number, "use_count": s.use_count}
+                          for s in db.query(PurchaseSupplier).order_by(PurchaseSupplier.use_count.desc(), PurchaseSupplier.updated_at.desc()).limit(SUPPLIER_LIST_MAX)],
             "vendors": [{"name": v.name, "business_number": getattr(v, "business_number", "") or ""} for v in db.query(OutsourcingVendor).order_by(OutsourcingVendor.name)],
             "clients": [{"seq": c.seq, "name": c.name, "business_number": getattr(c, "business_number", "") or ""} for c in db.query(Company).order_by(Company.name)]}
+
+
+# ── 매입 공급자(자주 쓰는 공급자) 관리 — 설정·외부 > 매입 공급자 ──
+# 목록은 매입 폼의 "공급자 선택" 후보일 뿐이고, 계산서에는 상호·사업자번호가 글자로 저장되므로 고치거나 지워도 기존 계산서는 그대로다.
+
+class SupplierBody(BaseModel):
+    name: str
+    business_number: str = ""
+
+
+def _supplier_row(s: PurchaseSupplier) -> dict:
+    return {"id": s.id, "name": s.name, "business_number": s.business_number, "use_count": s.use_count,
+            "created_at": _iso(s.created_at), "updated_at": _iso(s.updated_at)}
+
+
+def _supplier_values(body: SupplierBody) -> tuple[str, str]:
+    name, no = body.name.strip(), body.business_number.strip()
+    if not name:
+        raise HTTPException(400, "공급자 상호를 입력해주세요.")
+    if len(name) > 100 or len(no) > 20:
+        raise HTTPException(400, "상호는 100자, 사업자등록번호는 20자까지입니다.")
+    return name, no
+
+
+def _supplier_dup(db: Session, name: str, no: str, exclude: int | None = None) -> None:
+    q = db.query(PurchaseSupplier.id).filter(PurchaseSupplier.name == name, PurchaseSupplier.business_number == no)
+    if exclude:
+        q = q.filter(PurchaseSupplier.id != exclude)
+    if q.first():
+        raise HTTPException(409, "같은 상호·사업자등록번호의 공급자가 이미 있습니다.")
+
+
+@router.get("/suppliers")
+def list_suppliers(q: str = "", db: Session = Depends(get_db)):
+    query = db.query(PurchaseSupplier)
+    if q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(or_(PurchaseSupplier.name.like(like), PurchaseSupplier.business_number.like(like)))
+    rows = query.order_by(PurchaseSupplier.use_count.desc(), PurchaseSupplier.updated_at.desc()).all()
+    return {"items": [_supplier_row(s) for s in rows], "write_enabled": write_enabled("tax")}
+
+
+@router.post("/suppliers", dependencies=[WRITE])
+def create_supplier(body: SupplierBody, db: Session = Depends(get_db)):
+    name, no = _supplier_values(body)
+    _supplier_dup(db, name, no)
+    now = datetime.now()
+    s = PurchaseSupplier(name=name, business_number=no, use_count=0, created_at=now, updated_at=now)
+    db.add(s)
+    db.commit()
+    return _supplier_row(s)
+
+
+@router.post("/suppliers/{sid}/update", dependencies=[WRITE])
+def update_supplier(sid: int, body: SupplierBody, db: Session = Depends(get_db)):
+    s = db.query(PurchaseSupplier).filter(PurchaseSupplier.id == sid).first()
+    if not s:
+        raise HTTPException(404, "공급자를 찾을 수 없습니다.")
+    name, no = _supplier_values(body)
+    _supplier_dup(db, name, no, exclude=sid)
+    s.name, s.business_number, s.updated_at = name, no, datetime.now()
+    db.commit()
+    return _supplier_row(s)
+
+
+@router.post("/suppliers/{sid}/delete", dependencies=[WRITE])
+def delete_supplier(sid: int, db: Session = Depends(get_db)):
+    s = db.query(PurchaseSupplier).filter(PurchaseSupplier.id == sid).first()
+    if not s:
+        raise HTTPException(404, "공급자를 찾을 수 없습니다.")
+    db.delete(s)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/dashboard")
