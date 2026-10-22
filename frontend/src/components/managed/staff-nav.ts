@@ -106,6 +106,9 @@ export const STAFF_NAV: StaffNavGroup[] = [
       { label: "이관 상태·배치", href: "/managed/settings/jobs", adminOnly: true },
       { label: "CreateSite 콘솔", href: "/managed/sso/createsite", newTab: true },
       { label: "WealthReach 관리자", href: "/managed/sso/wealthreach", newTab: true },
+      // searching·crawling 은 2단계 인증을 통과한 로그인에서만 발급된다 — incident-hub JOB-2026-10-22-055
+      { label: "Searching", href: "/managed/sso/searching", newTab: true },
+      { label: "Crawling 콘솔", href: "/managed/sso/crawling", newTab: true },
     ],
   },
 ];

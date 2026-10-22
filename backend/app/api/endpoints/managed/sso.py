@@ -1,4 +1,4 @@
-"""직원 SSO 티켓 발급 (createsite, wealthreach, searching).
+"""직원 SSO 티켓 발급 (createsite, wealthreach, searching, crawling).
 
 형식은 cms(api/views.py sso_createsite / sso_wealthreach)와 같다 — 수신측을 고치지 않기 위해
 iss="cms.hankyeul.com", sub=str(직원 id), aud, HS256, 120초, jti 를 그대로 유지한다.
@@ -43,6 +43,14 @@ RELYING_PARTIES = {
         # 영업 리드 수집·메일 발송 도구 — 2단계 인증을 통과한 세션에만(사용자 결정 2026-10-12, 수신측은 kks@ 만 허용). incident-hub JOB-2026-10-12-007
         "require_mfa": True,
         "label": "searching",
+    },
+    "crawling": {
+        "aud": "crawling.hankyeul.com",
+        "secret_file": lambda: settings.CRAWLING_SSO_SECRET_FILE,
+        "callback": lambda: settings.CRAWLING_SSO_CALLBACK_URL,
+        # 시장정보 수집 콘솔 — 2단계 인증을 통과한 세션에만(수신측은 같은 이메일의 콘솔 계정만 허용). incident-hub JOB-2026-10-22-054
+        "require_mfa": True,
+        "label": "crawling",
     },
 }
 

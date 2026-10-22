@@ -12,6 +12,7 @@ const RP_LABELS: Record<string, string> = {
   createsite: "CreateSite 콘솔",
   wealthreach: "WealthReach 관리자",
   searching: "Searching",
+  crawling: "Crawling 콘솔",
 };
 
 type ApiError = { response?: { status?: number; data?: { detail?: string } } };

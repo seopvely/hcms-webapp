@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # searching.hankyeul.com(영업 리드 수집) — 전용 키. kks@ 만·2단계 인증 필수(수신측에서도 검사). incident-hub JOB-2026-10-12-007
     SEARCHING_SSO_SECRET_FILE: str = "/home/hcms/.secrets/searching_sso_secret"
     SEARCHING_SSO_CALLBACK_URL: str = "https://searching.hankyeul.com/sso/callback"
+    # crawling.hankyeul.com(시장정보 수집 콘솔) — 전용 키, 2단계 인증 필수, 수신측은 같은 이메일의 콘솔 계정만. incident-hub JOB-2026-10-22-054
+    CRAWLING_SSO_SECRET_FILE: str = "/home/hcms/.secrets/crawling_sso_secret"
+    CRAWLING_SSO_CALLBACK_URL: str = "https://crawling.hankyeul.com/sso/callback"
     SSO_TICKET_TTL: int = 120
     # 계약서 을(한결랩) 정보 — cms EstimateContract 모델 기본값과 같은 값(설정값으로 이동)
     CONTRACT_PARTY_B_NAME: str = "한결랩"
