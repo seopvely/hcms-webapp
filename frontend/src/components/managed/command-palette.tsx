@@ -1,12 +1,14 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CornerDownLeft, ExternalLink, History, Keyboard, LayoutGrid, Plus, Search, Zap } from "lucide-react";
+import { CornerDownLeft, ExternalLink, History, Keyboard, LayoutGrid, Loader2, NotebookPen, Plus, Search, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { STAFF_NAV } from "@/components/managed/staff-nav";
 import { chosung } from "@/lib/hangul";
 import { HOTKEY_HELP } from "@/components/managed/list-hotkeys";
+import { useStaffGet } from "@/lib/staff-ops";
+import type { MemoList } from "@/lib/staff-memos";
 
 /** 다른 곳(사이드바 버튼 등)에서 팔레트를 열 때 */
 export const OPEN_COMMAND_PALETTE = "hcms:open-command-palette";
@@ -16,7 +18,9 @@ interface Command {
   id: string;
   label: string;
   group: string;
-  kind: "menu" | "action";
+  kind: "menu" | "action" | "memo";
+  /** 오른쪽 보조 글(메모의 유형·프로젝트) */
+  hint?: string;
   keywords?: string;
   href?: string;
   external?: boolean; // 새 탭
@@ -38,6 +42,8 @@ const ACTIONS: { label: string; href: string; keywords?: string }[] = [
 ];
 
 const RECENT_KEY = "hcms_cmdk_recent";
+const MEMO_GROUP = "프로젝트 메모";
+const MEMO_LIMIT = 8;
 
 /** 점수: 0 = 불일치. 앞부분 일치·연속 일치를 우선한다. */
 function score(cmd: Command, q: string): number {
@@ -80,6 +86,14 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
   const [recent, setRecent] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  // 프로젝트 메모는 처음 목록엔 없고, 검색어를 치면(입력이 멈춘 뒤) 서버에서 찾아 메뉴 결과 아래에 붙인다. 초성만 친 경우는 메모 검색 안 함
+  const [memoQ, setMemoQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setMemoQ(/^[ㄱ-ㅎ\s]*$/.test(q) ? "" : q.trim()), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  const memoSearch = useStaffGet<MemoList>(["project-memos", "palette"], open && memoQ ? "/project-memos" : null, { q: memoQ, per_page: MEMO_LIMIT });
+  const memoLoading = !!q.trim() && (memoSearch.isFetching || memoQ !== q.trim()) && !/^[ㄱ-ㅎ\s]*$/.test(q);
 
   const commands = useMemo<Command[]>(() => {
     const menus: Command[] = STAFF_NAV.flatMap((g) =>
@@ -99,8 +113,17 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
       const rec = recent.map((id) => byId.get(id)).filter(Boolean).map((c) => ({ ...c!, group: "최근 사용" }));
       return [...rec, ...commands.filter((c) => !recent.includes(c.id))];
     }
-    return commands.map((c) => ({ c, s: score(c, q) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s).map((x) => x.c);
-  }, [q, commands, recent]);
+    const menuHits = commands.map((c) => ({ c, s: score(c, q) })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s).map((x) => x.c);
+    // 이전 검색어의 결과(keepPreviousData)는 붙이지 않는다
+    const memoHits: Command[] = memoQ && memoQ === q.trim() && !memoSearch.isPlaceholderData
+      ? (memoSearch.data?.items ?? []).map((m) => ({
+          id: `memo:${m.seq}`, label: m.title, group: MEMO_GROUP, kind: "memo" as const,
+          hint: [m.type_label, m.projects.map((p) => p.title).filter(Boolean).join(", ")].filter(Boolean).join(" · "),
+          href: `/managed/project-memos?q=${encodeURIComponent(memoQ)}&memo=${m.seq}`,
+        }))
+      : [];
+    return [...menuHits, ...memoHits];
+  }, [q, commands, recent, memoQ, memoSearch.data, memoSearch.isPlaceholderData]);
 
   const show = useCallback(() => {
     setQ("");
@@ -132,7 +155,7 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
 
   const execute = (cmd: Command | undefined, newTab = false) => {
     if (!cmd) return;
-    pushRecent(cmd.id);
+    if (cmd.kind !== "memo") pushRecent(cmd.id); // 메모는 최근 사용에 남기지 않는다(처음 목록엔 메모가 없게)
     setOpen(false);
     if (cmd.run) return cmd.run();
     if (!cmd.href) return;
@@ -165,16 +188,16 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
             value={q}
             onChange={(e) => { setQ(e.target.value); setActive(0); }}
             onKeyDown={onInputKey}
-            placeholder="메뉴 이름 검색 (초성 가능: ㅇㅈㅂㅅ)"
+            placeholder="메뉴·프로젝트 메모 검색 (메뉴는 초성 가능: ㅇㅈㅂㅅ)"
             className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">ESC</kbd>
         </div>
         <div ref={listRef} className="max-h-[60vh] overflow-y-auto p-2">
-          {results.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">&ldquo;{q}&rdquo; 에 맞는 메뉴가 없습니다.</p>}
+          {results.length === 0 && !memoLoading && <p className="py-10 text-center text-sm text-muted-foreground">&ldquo;{q}&rdquo; 에 맞는 메뉴·메모가 없습니다.</p>}
           {results.map((c, i) => {
             const header = i === 0 || results[i - 1].group !== c.group ? c.group : null;
-            const Icon = c.id === "action:shortcuts" ? Keyboard : c.group === "최근 사용" ? History : c.kind === "action" ? (c.run ? Zap : Plus) : LayoutGrid;
+            const Icon = c.kind === "memo" ? NotebookPen : c.id === "action:shortcuts" ? Keyboard : c.group === "최근 사용" ? History : c.kind === "action" ? (c.run ? Zap : Plus) : LayoutGrid;
             return (
               <div key={`${c.group}-${c.id}`}>
                 {header && <p className="px-2 pb-1 pt-2 text-[11px] font-semibold text-muted-foreground">{header}</p>}
@@ -186,13 +209,17 @@ export function CommandPalette({ isAdmin, onLogout }: { isAdmin: boolean; onLogo
                 >
                   <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 truncate">{c.label}</span>
-                  {q.trim() && c.group !== "바로 실행" && <span className="text-xs text-muted-foreground">{c.group}</span>}
+                  {c.hint && <span className="max-w-[45%] shrink-0 truncate text-xs text-muted-foreground">{c.hint}</span>}
+                  {q.trim() && c.group !== "바로 실행" && c.kind !== "memo" && <span className="text-xs text-muted-foreground">{c.group}</span>}
                   {c.external && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />}
                   {i === active && <CornerDownLeft className="h-3.5 w-3.5 text-muted-foreground" />}
                 </button>
               </div>
             );
           })}
+          {memoLoading && (
+            <p className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> 프로젝트 메모 찾는 중…</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 border-t px-4 py-2 text-[11px] text-muted-foreground">
           <span><kbd className="font-sans">↑↓</kbd> 이동</span>

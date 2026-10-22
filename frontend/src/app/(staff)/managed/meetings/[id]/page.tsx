@@ -45,6 +45,12 @@ function threeHoursBefore(date: string, time: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+/** 휴대폰·태블릿(iPadOS 는 Mac 으로 보이므로 터치 지점 수로 구분) */
+function isMobileDevice(): boolean {
+  const ua = navigator.userAgent;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+
 export default function MeetingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === "new";
@@ -181,7 +187,18 @@ function Editor({ id, data, copy }: { id: string; data: Dict | null; copy?: Dict
           <>
             {Boolean(data.map_url) && <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={data.map_url as string} target="_blank" rel="noopener noreferrer"><MapPin className="mr-1 h-4 w-4" /> 네이버지도</a></Button>}
             <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={staffFileUrl(`/meetings/${id}/ics`)}><CalendarPlus className="mr-1 h-4 w-4" /> ICS</a></Button>
-            <Button size="sm" variant="outline" className="rounded-xl" asChild><a href={data.google_calendar_url as string} target="_blank" rel="noopener noreferrer">구글 캘린더</a></Button>
+            <Button size="sm" variant="outline" className="rounded-xl" asChild>
+              {/* PC 는 파일(.html)을 내려받아 실행, 휴대폰은 받은 파일을 다시 열기 번거로워 추가 화면 링크를 바로 연다 */}
+              <a href={staffFileUrl(`/meetings/${id}/google-calendar`)} title="구글 캘린더 일정 추가 화면을 엽니다(PC 는 파일로 내려받아 실행)"
+                onClick={(e) => {
+                  if (isMobileDevice()) {
+                    e.preventDefault();
+                    window.open(data.google_calendar_url as string, "_blank", "noopener,noreferrer");
+                  }
+                }}>
+                <CalendarPlus className="mr-1 h-4 w-4" /> 구글 캘린더
+              </a>
+            </Button>
           </>
         )}
         {data && me?.write_areas.includes("meetings") && (

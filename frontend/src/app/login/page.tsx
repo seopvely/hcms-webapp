@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
+import axios from "axios";
 import api from "@/lib/axios";
 import { safeStaffNext } from "@/lib/staff-api";
 import { requestAndRegisterPushToken } from "@/hooks/use-push-notifications";
@@ -31,6 +32,30 @@ function LoginContent() {
   // 2단계 인증 실패·만료로 돌아온 경우 사유를 보여준다
   const [error, setError] = useState(() => searchParams.get("reason") || "");
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
+  // 이미 로그인된 상태인지 확인하는 동안은 폼 대신 스피너를 보여준다
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // 이미 로그인한 채로 /login 에 오면 직원은 /managed, 고객은 /dashboard 로 보낸다.
+  // 직원 세션은 httpOnly 쿠키라 서버에 물어본다(staffApi 는 401 이면 /login 으로 보내므로 쓰지 않는다).
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/managed/me`, { withCredentials: true })
+      .then(() => {
+        if (!cancelled) router.replace(safeStaffNext(searchParams.get("next")));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (localStorage.getItem("access_token")) {
+          router.replace("/dashboard");
+        } else {
+          setCheckingSession(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router, searchParams]);
 
   useEffect(() => {
     const userAgent = navigator.userAgent;
@@ -93,6 +118,14 @@ function LoginContent() {
       );
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">

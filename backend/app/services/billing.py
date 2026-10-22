@@ -628,6 +628,96 @@ def recent_sales_average(db: Session, today: date, n_months: int = 3):
     return avg, first - relativedelta(months=n_months), first - timedelta(days=1), monthly
 
 
+# ── 월별 손익·자금흐름 ───────────────────────────────────────────────────
+
+def _invoiced_outsourcing_ids(db: Session) -> set:
+    """매입계산서가 이미 잡힌 외주건 — 외주 지급을 따로 더하면 중복이라 뺀다."""
+    return {o for (o,) in db.query(PurchaseTaxInvoice.source_outsourcing_id).filter(
+        PurchaseTaxInvoice.is_deleted == False, PurchaseTaxInvoice.source_outsourcing_id.isnot(None))}  # noqa: E712
+
+
+def _cash_flows_between(db: Session, start: date, end: date) -> dict[date, dict]:
+    """일자별 현금 유입·유출(부가세 포함). 유입은 입금확인 납부내역, 유출은 매입계산서 발행일·외주 지급일."""
+    flows: dict[date, dict] = {}
+
+    def add(d, key, amount):
+        if d and amount and start <= d <= end:
+            flows.setdefault(d, {"in": 0, "out_purchase": 0, "out_outsourcing": 0})[key] += int(amount)
+
+    for h in revenue_histories(db):
+        for f in ("deposit", "progress", "balance"):
+            add(_d(getattr(h, f"{f}_date")), "in", getattr(h, f"{f}_amount"))
+    for inv in db.query(PurchaseTaxInvoice).filter(PurchaseTaxInvoice.is_deleted == False, PurchaseTaxInvoice.issue_date >= start,  # noqa: E712
+                                                   PurchaseTaxInvoice.issue_date <= end):
+        add(inv.issue_date, "out_purchase", (inv.supply_amount or 0) + (inv.tax_amount or 0))
+    invoiced = _invoiced_outsourcing_ids(db)
+    for p in db.query(OutsourcingPayment).filter(OutsourcingPayment.paid_date >= start, OutsourcingPayment.paid_date <= end):
+        if p.outsourcing_id not in invoiced:
+            add(_d(p.paid_date), "out_outsourcing", p.amount)
+    return flows
+
+
+# 매입 세금계산서가 빠짐없이 쌓이기 시작한 달. 그 전 달은 몇 건만 있어 손익 화면에서 「매입 데이터 없음」으로 흐리게 표시한다.
+PURCHASE_DATA_START = date(2026, 7, 1)
+
+
+def build_pl_cashflow(db: Session, year: int, today: date | None = None) -> dict:
+    """손익은 공급가(build_sales_plan 실적 + 외주 지급), 자금흐름은 부가세 포함. 잔액은 기준잔액(cash_balance_snapshot)부터 추정."""
+    from app.models.cash import CashBalanceSnapshot
+
+    today = today or date.today()
+    plan = build_sales_plan(db, year, today)
+    ys, ye = date(year, 1, 1), date(year, 12, 31)
+    snaps = db.query(CashBalanceSnapshot).filter(CashBalanceSnapshot.as_of_date <= ye).order_by(CashBalanceSnapshot.as_of_date).all()
+    before = [s for s in snaps if s.as_of_date <= ys]
+    used = ([before[-1]] if before else []) + [s for s in snaps if s.as_of_date > ys]
+    flow_start = min([ys] + [s.as_of_date for s in used])
+    flows = _cash_flows_between(db, flow_start, ye)
+
+    def net_between(a: date, b: date) -> int:
+        return sum(v["in"] - v["out_purchase"] - v["out_outsourcing"] for d, v in flows.items() if a <= d <= b)
+
+    data_start = PURCHASE_DATA_START
+    months, cumulative = [], 0
+    for r in plan["months"]:
+        m = r["month"]
+        ms, me = date(year, m, 1), date(year, m, cal.monthrange(year, m)[1])
+        cash = {"in": 0, "out_purchase": 0, "out_outsourcing": 0}
+        for d, v in flows.items():
+            if ms <= d <= me:
+                for k in cash:
+                    cash[k] += v[k]
+        cash["net"] = cash["in"] - cash["out_purchase"] - cash["out_outsourcing"]
+        cumulative += cash["net"]
+        cash["cumulative"] = cumulative
+        snap = next((s for s in reversed(used) if s.as_of_date <= me), None)
+        cash["balance_est"] = None if r["is_future"] or not snap else int(snap.amount) + net_between(snap.as_of_date, me)
+        cash["balance_from"] = snap.as_of_date if snap and cash["balance_est"] is not None else None
+
+        outsourcing_paid = to_supply(cash["out_outsourcing"])
+        cost = r["purchase_actual"] + outsourcing_paid
+        pl = {"sales_actual": r["sales_actual"], "purchase_actual": r["purchase_actual"],
+              "purchase_actual_by_cat": {c: v for c, v in r["purchase_actual_by_cat"].items() if v},
+              "outsourcing_paid": outsourcing_paid, "cost": cost,
+              "tithe": _round_half_up(Decimal(max(r["sales_actual"] - r["tithe_purchase"], 0)) * TITHE_RATE)}
+        pl["profit"] = pl["sales_actual"] - cost - pl["tithe"]
+        expected = None if r["is_past"] else {"sales": r["sales_expected"], "purchase": r["purchase_expected"], "profit": r["profit"]}
+        months.append({"month": m, "is_past": r["is_past"], "is_current": r["is_current"], "is_future": r["is_future"],
+                       "purchase_missing": ms < data_start, "pl": pl, "expected": expected, "cash": cash})
+
+    pl_keys = ("sales_actual", "purchase_actual", "outsourcing_paid", "cost", "tithe", "profit")
+    cash_keys = ("in", "out_purchase", "out_outsourcing", "net")
+    totals = {"pl": {k: sum(x["pl"][k] for x in months) for k in pl_keys},
+              "pl_by_cat": {c: sum(x["pl"]["purchase_actual_by_cat"].get(c, 0) for x in months) for c in EXPENSE_CATEGORIES},
+              "cash": {k: sum(x["cash"][k] for x in months) for k in cash_keys}}
+    totals["pl_by_cat"] = {c: v for c, v in totals["pl_by_cat"].items() if v}
+    latest = next((x["cash"] for x in reversed(months) if x["cash"]["balance_est"] is not None), None)
+    return {"year": year, "today": today, "months": months, "totals": totals, "categories": EXPENSE_CATEGORIES,
+            "purchase_data_start": data_start, "latest_balance": latest and {"amount": latest["balance_est"], "from": latest["balance_from"]},
+            "snapshots": [{"id": s.id, "as_of_date": s.as_of_date, "amount": s.amount, "memo": s.memo or ""} for s in used],
+            "year_options": list(range(today.year - 3, today.year + 2))}
+
+
 def recent_purchase_category_average(db: Session, today: date, n_months: int = 3):
     """최근 n개 완료월 매입 세금계산서 공급가 분류별 월평균."""
     end = today.replace(day=1) - timedelta(days=1)

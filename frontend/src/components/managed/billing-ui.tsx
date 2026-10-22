@@ -41,11 +41,11 @@ export function useBillingWritable() {
 
 const TABS = [
   ["/managed/billing/payments", "납부리스트"], ["/managed/billing/history", "납부내역"], ["/managed/billing/alarms", "결제일알람"],
-  ["/managed/billing/revenue", "월별수익"], ["/managed/billing/sales-plan", "매출·매입계획"],
+  ["/managed/billing/revenue", "월별수익"], ["/managed/billing/sales-plan", "매출·매입계획"], ["/managed/billing/pl-cashflow", "손익·자금흐름"],
 ] as const;
 
-// 재무 화면 공통 틀: 관리자 확인(D12) + 탭 + 읽기 전용 안내
-export function BillingShell({ cmsPath, children }: { cmsPath: string; children: React.ReactNode }) {
+// 재무 화면 공통 틀: 관리자 확인(D12) + 탭 + 읽기 전용 안내(cms 에 같은 화면이 없으면 cmsPath 생략)
+export function BillingShell({ cmsPath, children }: { cmsPath?: string; children: React.ReactNode }) {
   const { data: me, isLoading } = useStaffMe();
   const pathname = usePathname();
   if (isLoading) return null;
@@ -65,7 +65,7 @@ export function BillingShell({ cmsPath, children }: { cmsPath: string; children:
           <Link key={href} href={href} className={cn("shrink-0 rounded-full px-3 py-1 text-xs", pathname.startsWith(href) ? "bg-slate-900 text-white" : "bg-muted")}>{label}</Link>
         ))}
       </div>
-      {!me.write_areas.includes("billing") && <ReadOnlyNotice cmsUrl={`${CMS_BASE}${cmsPath}`} />}
+      {cmsPath && !me.write_areas.includes("billing") && <ReadOnlyNotice cmsUrl={`${CMS_BASE}${cmsPath}`} />}
       {children}
     </div>
   );

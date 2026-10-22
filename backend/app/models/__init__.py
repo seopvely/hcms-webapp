@@ -7,6 +7,7 @@ from app.models.customer_invite import CustomerInvite
 from app.models.fde import FdeEngagement, FdeEngagementAddon, ServicePlan
 from app.models.jobs import JobClaim, JobRun, NotificationEvent
 from app.models.f2b import F2bAiReview, F2bBan, F2bBanEvidence
+from app.models.cash import CashBalanceSnapshot
 from app.models.project_memo import ProjectMemo, ProjectMemoAttachment, ProjectMemoProject
 from app.models.reference import ReferenceSite, ReferenceSiteCategory, WebhookConfig, WebhookEventLog
 from app.models.customer import (
@@ -40,6 +41,7 @@ from app.models.customer import (
 __all__ = [
     "F2bBan", "F2bBanEvidence", "F2bAiReview",
     "ProjectMemo", "ProjectMemoProject", "ProjectMemoAttachment",
+    "CashBalanceSnapshot",
     "ReferenceSite", "ReferenceSiteCategory", "WebhookConfig", "WebhookEventLog",
     "Company",
     "Manager",

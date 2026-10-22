@@ -5,6 +5,7 @@ cms 와 다른 점:
   Nominatim 보완, services/place_geo). 저장 시 좌표를 자동 보완하는 백그라운드 스레드는 옮기지 않는다. 좌표가 없으면 네이버 지도는 주소 검색 URL 로 연다.
 - 알람 발송·만료 처리는 cms cron 이 계속 한다(P6). 메일·활동이력 링크는 STAFF_BASE_URL.
 """
+import html
 import math
 import os
 from datetime import date, datetime, time, timedelta
@@ -214,14 +215,38 @@ def get_meeting(seq: int, db: Session = Depends(get_db)):
                           for x in db.query(MeetingAttachment).filter(MeetingAttachment.meeting_id == seq).order_by(MeetingAttachment.id)]
     creator = db.query(CustomAuthUser).filter(CustomAuthUser.id == m.created_by_id).first() if m.created_by_id else None
     out["created_by"] = (creator.name or creator.username) if creator else ""
+    out["google_calendar_url"] = _google_calendar_url(m)
+    out["write_enabled"] = write_enabled("meetings")
+    return out
+
+
+def _google_calendar_url(m: MeetingAppointment) -> str:
+    """구글 캘린더 일정 추가 화면 주소(Asia/Seoul, 기본 60분)."""
     f = _cal_fields(m)
     s = _start_dt(m)
-    out["google_calendar_url"] = "https://calendar.google.com/calendar/render?" + urlencode(
+    return "https://calendar.google.com/calendar/render?" + urlencode(
         {k: v for k, v in {"action": "TEMPLATE", "text": m.title, "ctz": "Asia/Seoul",
                            "dates": f"{s:%Y%m%dT%H%M%S}/{s + timedelta(minutes=60):%Y%m%dT%H%M%S}",
                            "location": f["location"], "details": f["description"]}.items() if v})
-    out["write_enabled"] = write_enabled("meetings")
-    return out
+
+
+@router.get("/{seq}/google-calendar")
+def google_calendar_file(seq: int, db: Session = Depends(get_db)):
+    """구글 캘린더 일정 추가 파일(.html) — ICS 처럼 내려받아 실행하면 기본 브라우저에서 구글 캘린더 추가 화면이 열린다(OS 무관)."""
+    m = _get(db, seq)
+    url = html.escape(_google_calendar_url(m), quote=True)
+    title = html.escape(m.title or f"미팅 #{m.seq}")
+    body = f"""<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="0; url={url}"><title>{title} — 구글 캘린더에 추가</title></head>
+<body style="font-family:sans-serif;padding:24px">
+<p>구글 캘린더 일정 추가 화면으로 이동합니다…</p>
+<p><a href="{url}">이동하지 않으면 여기를 누르세요: {title}</a></p>
+</body></html>
+""".encode()
+    return Response(body, media_type="text/html; charset=utf-8", headers={
+        "Content-Disposition": f"attachment; filename=\"meeting_{m.seq}_google_calendar.html\"",
+        "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/{seq}/ics")

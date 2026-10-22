@@ -1,4 +1,4 @@
-"""재무 (/api/managed/billing) — 납부리스트·납부내역·결제일알람·월별수익·매출매입계획. 관리자 전용(D12).
+"""재무 (/api/managed/billing) — 납부리스트·납부내역·결제일알람·월별수익·매출매입계획·손익자금흐름. 관리자 전용(D12).
 
 cms 와 다른 점(의도적):
 - 납부내역 수정이 결제일(Payment.payment_date)을 빈 값으로 덮어쓰지 않는다(값을 보냈을 때만 반영).
@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.api.endpoints.managed.common import apply_sort, page_response, require_write
 from app.core.deps import require_staff_admin
 from app.db.session import get_db
+from app.models.cash import CashBalanceSnapshot
 from app.models.company import Company
 from app.models.customer import (
     CustomAuthUser,
@@ -849,6 +850,58 @@ def sales_plan(year: int | None = None, db: Session = Depends(get_db)):
     budgets = [{"month": b.month, "kind": b.kind, "category": b.category, "amount": b.amount, "memo": b.memo}
                for b in db.query(PlanBudget).filter(PlanBudget.year == plan["year"])]
     return dict(plan, budgets=budgets)
+
+
+@router.get("/pl-cashflow")
+def pl_cashflow(year: int | None = None, db: Session = Depends(get_db)):
+    return bl.build_pl_cashflow(db, year or date.today().year)
+
+
+def _snapshot_row(s: CashBalanceSnapshot) -> dict:
+    return {"id": s.id, "as_of_date": s.as_of_date, "amount": s.amount, "memo": s.memo or "", "updated_at": s.updated_at}
+
+
+@router.get("/cash-snapshots")
+def cash_snapshots(db: Session = Depends(get_db)):
+    return {"items": [_snapshot_row(s) for s in db.query(CashBalanceSnapshot).order_by(CashBalanceSnapshot.as_of_date.desc())]}
+
+
+class SnapshotBody(BaseModel):
+    as_of_date: date
+    amount: int | str
+    memo: str = ""
+
+
+@router.post("/cash-snapshots", dependencies=[WRITE])
+def save_cash_snapshot(body: SnapshotBody, request: Request, staff: CustomAuthUser = Depends(require_staff_admin),
+                       db: Session = Depends(get_db)):
+    """같은 날짜가 있으면 덮어쓴다. 금액은 음수(마이너스 통장)도 허용."""
+    raw = str(body.amount).replace(",", "").replace("원", "").strip()
+    if not re.fullmatch(r"-?\d+", raw):
+        raise HTTPException(400, "금액을 숫자로 입력하세요.")
+    amount = int(raw)
+    s = db.query(CashBalanceSnapshot).filter(CashBalanceSnapshot.as_of_date == body.as_of_date).first()
+    if s:
+        s.amount, s.memo, s.updated_by_id = amount, body.memo.strip()[:200], staff.id
+    else:
+        s = CashBalanceSnapshot(as_of_date=body.as_of_date, amount=amount, memo=body.memo.strip()[:200],
+                                created_by_id=staff.id, updated_by_id=staff.id)
+        db.add(s)
+    staff_auth.audit(db, request, "cash_snapshot_save", staff.id, str(body.as_of_date), str(amount))
+    db.commit()
+    return _snapshot_row(s)
+
+
+@router.post("/cash-snapshots/{snapshot_id}/delete", dependencies=[WRITE])
+def delete_cash_snapshot(snapshot_id: int, request: Request, staff: CustomAuthUser = Depends(require_staff_admin),
+                         db: Session = Depends(get_db)):
+    s = db.get(CashBalanceSnapshot, snapshot_id)
+    if not s:
+        raise HTTPException(404, "기준잔액을 찾을 수 없습니다.")
+    staff_auth.audit(db, request, "cash_snapshot_delete", staff.id, str(s.as_of_date), str(s.amount))
+    db.delete(s)
+    db.commit()
+    return {"ok": True}
 
 
 class BudgetBody(BaseModel):

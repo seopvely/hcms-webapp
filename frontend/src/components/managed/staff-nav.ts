@@ -68,6 +68,7 @@ export const STAFF_NAV: StaffNavGroup[] = [
       { label: "결제일알람", href: "/managed/billing/alarms", adminOnly: true },
       { label: "월별수익", href: "/managed/billing/revenue", adminOnly: true },
       { label: "매출·매입계획", href: "/managed/billing/sales-plan", adminOnly: true },
+      { label: "손익·자금흐름", href: "/managed/billing/pl-cashflow", adminOnly: true },
     ],
   },
   {

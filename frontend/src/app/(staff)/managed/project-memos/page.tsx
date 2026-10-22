@@ -14,6 +14,7 @@ import { PageActions } from "@/components/managed/page-actions";
 import { Pager } from "@/components/managed/pager";
 import { MemoCard, MemoDialog, MemoTypeChips } from "@/components/managed/project-memo-ui";
 import { useNavigationStore } from "@/store/navigation-store";
+import { cn } from "@/lib/utils";
 import { useLookupCompanies } from "@/lib/staff-maintenance";
 import { type ProjectMemo, useMemoList, useMemoProjects } from "@/lib/staff-memos";
 
@@ -22,9 +23,15 @@ import { type ProjectMemo, useMemoList, useMemoProjects } from "@/lib/staff-memo
 export default function ProjectMemosPage() {
   return (
     <Suspense fallback={<TableSkeleton />}>
-      <MemoListPage />
+      <KeyedMemoListPage />
     </Suspense>
   );
+}
+
+// 같은 화면에서 ⌘K 로 다른 메모를 고르면 주소만 바뀌므로, 주소가 바뀌면 다시 그린다
+function KeyedMemoListPage() {
+  const search = useSearchParams();
+  return <MemoListPage key={search.toString()} />;
 }
 
 function MemoListPage() {
@@ -35,8 +42,10 @@ function MemoListPage() {
   const [scope, setScope] = useState(search.get("project_id") ?? ""); // "" 전체 · "unlinked" · 프로젝트 seq
   const [memoType, setMemoType] = useState("");
   const [hideDone, setHideDone] = useState(false);
-  const [q, setQ] = useState("");
-  const [query, setQuery] = useState("");
+  // ⌘K 메모 검색에서 열 때: ?q=검색어&memo=메모번호 — 그 검색 결과를 보여 주고 해당 메모를 강조한다
+  const [q, setQ] = useState(search.get("q") ?? "");
+  const [query, setQuery] = useState(search.get("q") ?? "");
+  const focusMemo = Number(search.get("memo")) || null;
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<ProjectMemo | "new" | null>(null);
   useEffect(() => {
@@ -54,6 +63,10 @@ function MemoListPage() {
   const { data, isLoading } = useMemoList(params);
   const reset = (fn: () => void) => { fn(); setPage(1); };
   const typeTotal = data?.types.reduce((n, t) => n + (t.count ?? 0), 0) ?? 0;
+  const hasFocus = !!focusMemo && !!data?.items.some((m) => m.seq === focusMemo);
+  useEffect(() => {
+    if (hasFocus) document.getElementById(`memo-${focusMemo}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [hasFocus, focusMemo]);
   const companyName = companyId ? companies?.items.find((c) => String(c.id) === companyId)?.name : null;
 
   return (
@@ -90,7 +103,10 @@ function MemoListPage() {
             <>
               <div className="grid gap-2 xl:grid-cols-2">
                 {data.items.map((m) => (
-                  <MemoCard key={m.seq} memo={m} className="border bg-card px-4 py-3 text-sm" onEdit={data.write_enabled ? () => setEditing(m) : undefined} />
+                  <div key={m.seq} id={`memo-${m.seq}`} className="min-w-0 scroll-mt-24">
+                    <MemoCard memo={m} className={cn("border bg-card px-4 py-3 text-sm", m.seq === focusMemo && "ring-2 ring-indigo-400")}
+                      onEdit={data.write_enabled ? () => setEditing(m) : undefined} />
+                  </div>
                 ))}
               </div>
               <Pager page={data.page} totalPages={data.total_pages} total={data.total} onChange={setPage} />
