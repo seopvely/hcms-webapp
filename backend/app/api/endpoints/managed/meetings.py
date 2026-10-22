@@ -27,6 +27,7 @@ from app.models.worktools import MeetingAlarm, MeetingAppointment, MeetingAttach
 from app.services import staff_auth
 from app.services.email import send_email_sync
 from app.utils.media import MEDIA_ROOT, delete_media, file_download_response, save_upload
+from app.utils.links import open_link
 
 router = APIRouter(prefix="/meetings", tags=["managed-meetings"])
 WRITE = require_write("meetings")
@@ -531,7 +532,7 @@ def test_send(seq: int, db: Session = Depends(get_db)):
     if not emails:
         raise HTTPException(400, "발송할 수신자가 없습니다.")
     f = _cal_fields(m)
-    link = f"{settings.STAFF_BASE_URL}/managed/meeting/{m.seq}/"
+    link = open_link(f"/managed/meeting/{m.seq}/", settings.STAFF_BASE_URL)
     rows = [("제목", m.title), ("약속일시", _when(m)), ("유형", TYPES.get(m.meeting_type, "")), ("장소", f["location"] or "-"), ("메모", m.memo or "-")]
     html = "<p>PACMS 미팅약속 알람(테스트)입니다.</p><table>" + "".join(f"<tr><th align=left>{k}</th><td>{escape(v)}</td></tr>" for k, v in rows) + "</table>"
     if m.meeting_type == "offline":

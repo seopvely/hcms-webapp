@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import QueryProvider from "@/lib/query-provider";
 
@@ -37,6 +38,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>{children}</QueryProvider>
+        {/* Mac 브라우저에서 "데스크탑 앱에서 열기" 배너(앱 안·Mac 아닌 기기·/open·/desktop/download 에서는 스스로 꺼진다) */}
+        <Script src="/desktop-banner.js" strategy="afterInteractive" />
       </body>
     </html>
   );

@@ -25,6 +25,7 @@ from app.models.free_maint_alert_log import FreeMaintAlertLog
 from app.models.manager import Manager
 from app.models.push_token import PushToken
 from app.services.email import notify_free_maint_alert
+from app.services import inbox
 from app.services.push import send_push_notification
 from app.utils.free_maint import as_date, is_contract_active
 
@@ -130,7 +131,9 @@ def run(today: date, dry_run: bool = False) -> int:
                 if dry_run:
                     continue
 
-                push_sent = send_push_notification(title, body, tokens, {"type": f"free_maint_{kind}", "target_id": str(project.seq), "route": route}) if tokens else 0
+                push_data = {"type": f"free_maint_{kind}", "target_id": str(project.seq), "route": route}
+                inbox.add_for_customers(db, [m.seq for m in managers], title, body, push_data)  # 아래 커밋에 함께
+                push_sent = send_push_notification(title, body, tokens, push_data) if tokens else 0
                 days_left = (as_date(project.free_maint_end_date) - today).days if kind in ("d30", "d7") else None
                 try:
                     notify_free_maint_alert(

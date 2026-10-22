@@ -28,6 +28,8 @@ from app.api.endpoints.public_contracts import router as public_contracts_router
 from app.api.endpoints.managed import router as managed_router
 from app.api.endpoints.internal import router as internal_router
 from app.api.endpoints.internal_f2b import router as internal_f2b_router
+from app.api.endpoints.notifications import router as notifications_router
+from app.api.endpoints.desktop_releases import router as desktop_releases_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -61,6 +63,8 @@ api_router.include_router(tasks_router)
 api_router.include_router(estimates_router)
 api_router.include_router(point_usage_router)
 api_router.include_router(push_router)
+api_router.include_router(notifications_router)
+api_router.include_router(desktop_releases_router)
 api_router.include_router(inquiries_router)
 api_router.include_router(webhook_router)
 api_router.include_router(project_board_router)

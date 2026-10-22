@@ -19,6 +19,7 @@ from app.models.worktools import AlarmAttachment, AlarmEventDate, AlarmHistory, 
 from app.services import billing as bl
 from app.services.notify import emit
 from app.utils.media import resolve_media_path
+from app.utils.links import open_link
 
 
 def _agent_emails(db) -> list[str]:
@@ -143,7 +144,7 @@ def run_alarms(ctx: JobContext) -> None:
         db.flush()
         if not db.query(AlarmEventDate.id).filter(AlarmEventDate.alarm_id == a.seq, or_(AlarmEventDate.notified == False, AlarmEventDate.event_date > now)).first():  # noqa: E712
             a.valid_status = "invalid"
-        emit(db, "alarm.sent", f"[CMS 알람] {a.title} · {a.content[:120]}", "alarm_history", h.seq, recipients=len(emails))
+        emit(db, "alarm.sent", f"[CMS 알람] {a.title} · {a.content[:120]}", "alarm_history", h.seq, route=f"/managed/alarms/{a.seq}", recipients=len(emails))
         ctx.log(f"✓ 알람 발송: {a.title} ({len(due)}건)")
     ctx.log(f"알람 발송 {sent}건")
 
@@ -245,7 +246,7 @@ def run_meetings(ctx: JobContext) -> None:
         m = db.query(MeetingAppointment).filter(MeetingAppointment.seq == al.meeting_id).first()
         if al.alarm_datetime < now - timedelta(hours=24):
             al.status, al.notified = "expired", True
-            emit(db, "meeting.alarm", f"[미팅약속-expired] {m.title} {_when(m)}", "meeting_alarm", al.seq)
+            emit(db, "meeting.alarm", f"[미팅약속-expired] {m.title} {_when(m)}", "meeting_alarm", al.seq, route=f"/managed/meetings/{m.seq}")
             continue
         emails = [u.email for u in _recipients(db, m.seq) if u.email]
         if not emails and m.created_by_id:
@@ -257,7 +258,7 @@ def run_meetings(ctx: JobContext) -> None:
         if not ctx.claim("meetings", f"alarm:{al.seq}"):
             continue
         f = _cal_fields(m)
-        link = f"{settings.STAFF_BASE_URL}/managed/meeting/{m.seq}/"
+        link = open_link(f"/managed/meeting/{m.seq}/", settings.STAFF_BASE_URL)
         rows_html = "".join(f"<tr><th align=left>{k}</th><td>{escape(v)}</td></tr>" for k, v in
                             [("제목", m.title), ("약속일시", _when(m)), ("장소", f["location"] or "-"), ("메모", m.memo or "-"), ("알람일시", f"{al.alarm_datetime:%Y-%m-%d %H:%M}")])
         html = f"<p>PACMS 미팅약속 알람입니다.</p><table>{rows_html}</table>"
@@ -271,7 +272,7 @@ def run_meetings(ctx: JobContext) -> None:
             ctx.mark("meetings", f"alarm:{al.seq}", "failed")
             continue
         al.notified, al.notified_at, al.status, al.error_message = True, datetime.now(), "sent", ""
-        emit(db, "meeting.alarm", f"[미팅약속] {m.title} {_when(m)} {(m.end_place or m.video_meeting_url or '')[:60]}", "meeting_alarm", al.seq)
+        emit(db, "meeting.alarm", f"[미팅약속] {m.title} {_when(m)} {(m.end_place or m.video_meeting_url or '')[:60]}", "meeting_alarm", al.seq, route=f"/managed/meetings/{m.seq}")
         sent += 1
     ctx.log(f"미팅 무효화 {expired}건, 알람 발송 {sent}건")
 
@@ -321,7 +322,7 @@ def run_todo_digest(ctx: JobContext) -> None:
         for title, items in sections:
             items.sort(key=lambda t: (PRIORITY_ORDER.get(t.priority, 1), t.due_date or date.max))
             html.append(f"<h4>{title} ({len(items)})</h4><ul>" + "".join(
-                f'<li><a href="{settings.STAFF_BASE_URL}/managed/todo/{t.seq}/">{escape(t.title)}</a>'
+                f'<li><a href="{open_link(f"/managed/todo/{t.seq}/", settings.STAFF_BASE_URL)}">{escape(t.title)}</a>'
                 f'{" · 마감 " + t.due_date.isoformat() if t.due_date else ""}</li>' for t in items) + "</ul>")
         for title, items in (("7일 내 계약 시작", starting.get(u.id, [])), ("7일 내 계약 종료", ending.get(u.id, [])), ("진행중 프로젝트", active)):
             html.append(f"<h4>{title} ({len(items)})</h4><ul>" + "".join(f"<li>{escape(p.title or '')}</li>" for p in items) + "</ul>")

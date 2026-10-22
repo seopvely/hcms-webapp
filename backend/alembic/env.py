@@ -39,6 +39,7 @@ HCMS_OWNED_TABLES = {
     "project_memo_project",
     "project_memo_attachment",
     "cash_balance_snapshot",
+    "desktop_notification",
 }
 
 

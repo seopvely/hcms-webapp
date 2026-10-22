@@ -32,6 +32,7 @@ from app.models.customer import (
     SalesLead,
     TithePurchaseCheck,
 )
+from app.utils.links import open_link
 
 VAT_RATE = Decimal("1.1")
 TITHE_RATE = Decimal("0.1")
@@ -861,7 +862,7 @@ def notify_purchase_budget(db: Session, year: int, month: int) -> list[dict]:
         lines = [f"{year}년 {month}월 매입 목표 대비 집행률이 기준에 도달했습니다.", ""]
         lines += [f"- [{BUDGET_LEVEL_LABELS[x['level']]}] {x['label']}: {x['rate']}% (목표 {x['target']:,}원 / 실적 {x['actual']:,}원)" for x in new]
         lines += ["", "※ 경고 = 목표의 80% 이상, 초과 = 100% 이상. 금액은 공급가(부가세 제외) 기준입니다.",
-                  f"매출·매입계획에서 확인: {settings.STAFF_BASE_URL}/managed/sales-plan/?year={year}&month={month}", "", "PACMS 시스템",
+                  f"매출·매입계획에서 확인: {open_link(f'/managed/sales-plan/?year={year}&month={month}', settings.STAFF_BASE_URL)}", "", "PACMS 시스템",
                   date.today().strftime("%Y-%m-%d")]
         from html import escape
         try:

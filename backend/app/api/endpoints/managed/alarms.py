@@ -16,6 +16,7 @@ from app.models.customer import CustomAuthUser
 from app.models.worktools import AlarmAttachment, AlarmEventDate, AlarmHistory, AlarmSetting
 from app.services import staff_auth
 from app.utils.media import delete_media, file_download_response, resolve_media_path, save_upload
+from app.utils.links import open_link
 
 router = APIRouter(prefix="/alarms", tags=["managed-alarms"])
 WRITE = require_write("alarms")
@@ -341,7 +342,7 @@ def test_send(seq: int, request: Request, staff: CustomAuthUser = Depends(get_cu
     nxt = db.query(AlarmEventDate).filter(AlarmEventDate.alarm_id == seq, AlarmEventDate.notified == False).order_by(AlarmEventDate.event_date).first()  # noqa: E712
     body = (f"안녕하세요,\n\n이것은 PACMS 알람 테스트 발송입니다.\n\n제목: {a.title}\n이벤트 일시: {nxt.event_date:%Y-%m-%d %H:%M}\n" if nxt else
             f"안녕하세요,\n\n이것은 PACMS 알람 테스트 발송입니다.\n\n제목: {a.title}\n")
-    body += f"알람 시점: {_when_label(a)}\n\n내용:\n{a.content}\n\n알람 상세: {settings.STAFF_BASE_URL}/managed/alarm/{seq}/\n"
+    body += f"알람 시점: {_when_label(a)}\n\n내용:\n{a.content}\n\n알람 상세: {open_link(f'/managed/alarm/{seq}/', settings.STAFF_BASE_URL)}\n"
     msg = MIMEMultipart()
     msg["From"], msg["To"], msg["Subject"] = f"{FROM_NAME} <{FROM_EMAIL}>", ", ".join(emails), f"[PACMS 테스트 알람] {a.title}"
     msg.attach(MIMEText(body, "plain", "utf-8"))

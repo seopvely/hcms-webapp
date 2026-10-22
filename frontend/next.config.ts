@@ -128,10 +128,11 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // dev 전용: 운영은 nginx 가 /api 를 백엔드로 직접 보낸다.
-  // 백엔드 라우터가 /api prefix 를 가지므로 경로를 그대로 넘긴다.
+  // /open: 메일 링크의 "앱에서 열기" 중계 페이지(public/open.html — 데스크탑 앱 저장소에서 받은 파일, 로그인 없이 연다). 운영에서도 쓴다.
+  // /api: dev 전용 — 운영은 nginx 가 /api 를 백엔드로 직접 보낸다. 백엔드 라우터가 /api prefix 를 가지므로 경로를 그대로 넘긴다.
   async rewrites() {
     return [
+      { source: '/open', destination: '/open.html' },
       {
         source: '/api/:path*',
         destination: 'http://127.0.0.1:9011/api/:path*',

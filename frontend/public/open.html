@@ -1,0 +1,228 @@
+<!doctype html>
+<!--
+  "앱에서 열기" 중계 페이지 — hcms 웹에 https://hcms.hankyeul.com/open 으로 배포한다.
+  메일·메신저·알림 링크는 https://hcms.hankyeul.com/open?to=<경로 또는 연동 사이트 주소> 형태로 보낸다.
+
+  동작
+   - HCMS 데스크탑 앱 안에서 열리면 → 대상 화면으로 바로 이동 (앱도 이 주소를 직접 가로챈다)
+   - Mac 브라우저 → hankyeul:// 딥링크로 데스크탑 앱을 연다. 열리지 않으면 웹으로 계속 / 앱 설치 안내
+   - Mac 이 아닌 기기 → 웹으로 바로 이동
+  대상은 hcms·연동 사이트로만 한정한다 (앱의 src/main/routing.ts resolveOpenBridge 와 같은 규칙).
+-->
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HCMS 데스크탑 앱에서 열기</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f6fa;
+        --card: #ffffff;
+        --fg: #172033;
+        --muted: #5d6679;
+        --line: #e0e4ee;
+        --accent: #13499e;
+        --accent-fg: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #10141d;
+          --card: #161b26;
+          --fg: #e6e9f0;
+          --muted: #9aa3b5;
+          --line: #2a3142;
+          --accent: #6f9ee8;
+          --accent-fg: #0d1626;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+        background: var(--bg);
+        color: var(--fg);
+        font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        padding: 32px 28px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--card);
+        text-align: center;
+      }
+      .mark { width: 52px; height: 52px; }
+      .mark path { fill: var(--accent); }
+      .mark .outline { fill: none; stroke: var(--accent); stroke-width: 1.2; }
+      h1 { margin: 16px 0 6px; font-size: 19px; line-height: 1.4; }
+      p { margin: 0; color: var(--muted); }
+      .target { margin-top: 10px; font: 12px ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+      .actions { display: grid; gap: 8px; margin-top: 22px; }
+      .btn {
+        display: block;
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: transparent;
+        color: var(--fg);
+        font: inherit;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      .btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-fg); }
+      .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      label.remember { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+      .spinner { width: 18px; height: 18px; margin: 18px auto 0; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <svg class="mark" viewBox="20.4 -0.4 38 38" aria-hidden="true">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M57.9967 12.4509C57.9967 19.3273 52.4223 24.9018 45.5458 24.9018V13.945C45.5458 13.1198 44.8769 12.4509 44.0517 12.4509L33.0949 12.4509V1.49411C33.0949 0.668934 33.7639 0 34.589 0H45.5458C52.4223 0 57.9967 5.57445 57.9967 12.4509Z" />
+        <path class="outline" d="M22.1382 12.9509H32.5952V23.4079C32.5954 24.5091 33.4881 25.402 34.5894 25.402H45.0454V35.8581C45.0454 36.4071 44.6003 36.8522 44.0513 36.8522H22.1382C21.5892 36.8522 21.144 36.4071 21.144 35.8581V13.945C21.144 13.396 21.5892 12.9509 22.1382 12.9509Z" />
+      </svg>
+
+      <section id="state-opening">
+        <h1>HCMS 데스크탑 앱을 여는 중</h1>
+        <p>브라우저가 열기 확인을 물으면 허용해 주세요.</p>
+        <div class="spinner" aria-hidden="true"></div>
+      </section>
+
+      <section id="state-opened" hidden>
+        <h1>데스크탑 앱에서 열었습니다</h1>
+        <p>이 탭은 닫아도 됩니다.</p>
+        <div class="actions">
+          <a class="btn" data-action="web" href="#">브라우저에서 계속</a>
+        </div>
+      </section>
+
+      <section id="state-fallback" hidden>
+        <h1>데스크탑 앱이 열리지 않았나요?</h1>
+        <p>앱이 설치되어 있지 않으면 브라우저에서 계속하거나 앱을 설치하세요.</p>
+        <div class="actions">
+          <a class="btn primary" data-action="web" href="#">브라우저에서 계속</a>
+          <a class="btn" id="install" href="#">데스크탑 앱 설치</a>
+          <button class="btn" type="button" id="retry">앱에서 다시 열기</button>
+        </div>
+        <label class="remember"><input type="checkbox" id="remember" /> 이 브라우저에서는 다음부터 바로 웹으로 열기</label>
+      </section>
+
+      <p class="target" id="target"></p>
+    </main>
+
+    <script>
+      ;(function () {
+        // ── 설정 ─────────────────────────────────────────────
+        var APP_ORIGIN = 'https://hcms.hankyeul.com'
+        var DOWNLOAD_URL = 'https://hcms.hankyeul.com/desktop/download'
+        // 호스트 → 딥링크 이름 (hankyeul://<이름>/<경로>)
+        var SITES = {
+          'hcms.hankyeul.com': 'hcms',
+          'createsite.hankyeul.com': 'createsite',
+          'wealthreach.hankyeul.com': 'wealthreach',
+          'searching.hankyeul.com': 'searching'
+        }
+        var PREF_KEY = 'hcms-open-in-browser'
+        var WAIT_MS = 2500
+
+        // ── 대상 주소 확인 (hcms 경로 또는 연동 사이트 https 주소만) ──
+        function resolveTarget(to) {
+          var home = new URL('/', APP_ORIGIN)
+          if (!to) return home
+          try {
+            if (to.charAt(0) === '/' && to.charAt(1) !== '/' && to.charAt(1) !== '\\') {
+              var path = new URL(to, APP_ORIGIN)
+              return path.hostname === 'hcms.hankyeul.com' ? path : home
+            }
+            var url = new URL(to)
+            return url.protocol === 'https:' && SITES[url.hostname] ? url : home
+          } catch (e) {
+            return home
+          }
+        }
+
+        function deepLinkFor(url) {
+          return 'hankyeul://' + SITES[url.hostname] + url.pathname + url.search + url.hash
+        }
+
+        function readPref() {
+          try { return localStorage.getItem(PREF_KEY) === '1' } catch (e) { return false }
+        }
+        function savePref() {
+          try { localStorage.setItem(PREF_KEY, '1') } catch (e) {}
+        }
+
+        var target = resolveTarget(new URLSearchParams(location.search).get('to'))
+        var ua = navigator.userAgent
+        var inDesktopApp = /HCMSDesktop\//.test(ua)
+        // iPad 는 Mac 처럼 보이므로 터치 지원으로 걸러낸다
+        var isMac = /Macintosh|Mac OS X/.test(ua) && !(navigator.maxTouchPoints > 1)
+
+        function goWeb() { location.replace(target.href) }
+
+        if (inDesktopApp || !isMac || readPref()) {
+          goWeb()
+          return
+        }
+
+        document.getElementById('target').textContent = target.href
+        document.getElementById('install').href = DOWNLOAD_URL
+
+        function show(id) {
+          ;['state-opening', 'state-opened', 'state-fallback'].forEach(function (name) {
+            document.getElementById(name).hidden = name !== id
+          })
+        }
+
+        // 앱이 열리면 브라우저 창이 포커스를 잃거나 가려진다.
+        // 기다리는 동안에만 판단한다 — 안내가 뜬 뒤 다른 창으로 옮겨 간 것을 "열림" 으로 보지 않도록
+        var opened = false
+        var waiting = false
+        var timer
+        function markOpened() {
+          if (!waiting || opened) return
+          opened = true
+          waiting = false
+          clearTimeout(timer)
+          show('state-opened')
+        }
+        window.addEventListener('blur', markOpened)
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) markOpened()
+        })
+
+        function tryOpen() {
+          opened = false
+          waiting = true
+          show('state-opening')
+          location.href = deepLinkFor(target)
+          timer = setTimeout(function () {
+            waiting = false
+            if (!opened) show('state-fallback')
+          }, WAIT_MS)
+        }
+
+        Array.prototype.forEach.call(document.querySelectorAll('[data-action="web"]'), function (link) {
+          link.href = target.href
+          link.addEventListener('click', function (event) {
+            event.preventDefault()
+            if (document.getElementById('remember').checked) savePref()
+            goWeb()
+          })
+        })
+        document.getElementById('retry').addEventListener('click', tryOpen)
+
+        tryOpen()
+      })()
+    </script>
+  </body>
+</html>

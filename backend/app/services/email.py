@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.customer import CustomAuthUser
+from app.utils.links import open_link
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def notify_maintenance_created(db, maintenance_id, company_name, project_title, 
     send_email_async(emails, f"[HCMS] 새 유지보수 요청: {title}", _build_html(
         "새로운 유지보수 요청이 등록되었습니다",
         [("업체명", company_name), ("프로젝트", project_title), ("제목", title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/managelist_detail/{maintenance_id}", "의뢰 확인하기",
+        open_link(f"/managed/managelist_detail/{maintenance_id}", PACMS_BASE_URL), "의뢰 확인하기",
     ))
 
 
@@ -106,7 +107,7 @@ def notify_task_created(db, task_id, company_name, title, task_type_label, write
     send_email_async(emails, f"[HCMS] 새 건별의뢰: {title}", _build_html(
         "새로운 건별의뢰가 등록되었습니다",
         [("업체명", company_name), ("유형", task_type_label), ("제목", title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/inditask_detail/{task_id}", "의뢰 확인하기",
+        open_link(f"/managed/inditask_detail/{task_id}", PACMS_BASE_URL), "의뢰 확인하기",
     ))
 
 
@@ -117,7 +118,7 @@ def notify_inquiry_created(db, inquiry_id, company_name, title, inquiry_type_lab
     send_email_async(emails, f"[HCMS] 새 문의: {title}", _build_html(
         "새로운 문의가 등록되었습니다",
         [("업체명", company_name), ("유형", inquiry_type_label), ("제목", title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/inquiry_detail/{inquiry_id}", "문의 확인하기",
+        open_link(f"/managed/inquiry_detail/{inquiry_id}", PACMS_BASE_URL), "문의 확인하기",
     ))
 
 
@@ -128,7 +129,7 @@ def notify_maintenance_comment_created(db, maintenance_id, company_name, project
     send_email_async(emails, f"[HCMS] 유지보수 댓글: {maintenance_title}", _build_html(
         "유지보수 요청에 새로운 댓글이 등록되었습니다",
         [("업체명", company_name), ("프로젝트", project_title), ("요청 제목", maintenance_title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/managelist_detail/{maintenance_id}", "댓글 확인하기",
+        open_link(f"/managed/managelist_detail/{maintenance_id}", PACMS_BASE_URL), "댓글 확인하기",
     ))
 
 
@@ -139,7 +140,7 @@ def notify_inquiry_answer_created(db, inquiry_id, company_name, inquiry_title, i
     send_email_async(emails, f"[HCMS] 문의 답변: {inquiry_title}", _build_html(
         "문의에 새로운 고객 답변이 등록되었습니다",
         [("업체명", company_name), ("유형", inquiry_type_label), ("문의 제목", inquiry_title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/inquiry_detail/{inquiry_id}", "답변 확인하기",
+        open_link(f"/managed/inquiry_detail/{inquiry_id}", PACMS_BASE_URL), "답변 확인하기",
     ))
 
 
@@ -150,7 +151,7 @@ def notify_project_board_created(db, board_id, company_name, project_title, titl
     send_email_async(emails, f"[HCMS] 새 프로젝트 게시글: {title}", _build_html(
         "새로운 프로젝트구축진행 게시글이 등록되었습니다",
         [("업체명", company_name), ("프로젝트", project_title), ("제목", title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/project-board/{board_id}/", "게시글 확인하기",
+        open_link(f"/managed/project-board/{board_id}/", PACMS_BASE_URL), "게시글 확인하기",
     ))
 
 
@@ -161,7 +162,7 @@ def notify_project_board_reply_created(db, parent_board_id, company_name, projec
     send_email_async(emails, f"[HCMS] 프로젝트 게시글 답글: {title}", _build_html(
         "프로젝트구축진행 게시글에 새로운 답글이 등록되었습니다",
         [("업체명", company_name), ("프로젝트", project_title), ("답글 제목", title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/project-board/{parent_board_id}/", "답글 확인하기",
+        open_link(f"/managed/project-board/{parent_board_id}/", PACMS_BASE_URL), "답글 확인하기",
     ))
 
 
@@ -172,7 +173,7 @@ def notify_project_board_comment_created(db, board_id, company_name, project_tit
     send_email_async(emails, f"[HCMS] 프로젝트 게시글 댓글: {board_title}", _build_html(
         "프로젝트구축진행 게시글에 새로운 댓글이 등록되었습니다",
         [("업체명", company_name), ("프로젝트", project_title), ("게시글 제목", board_title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/project-board/{board_id}/", "댓글 확인하기",
+        open_link(f"/managed/project-board/{board_id}/", PACMS_BASE_URL), "댓글 확인하기",
     ))
 
 
@@ -183,7 +184,7 @@ def notify_dev_request_created(db, dev_request_id, company_name, title, writer_n
     send_email_async(emails, f"[HCMS] 새 개발 요청: {title}", _build_html(
         "새로운 개발 요청이 등록되었습니다",
         [("업체명", company_name), ("플랜", plan_type), ("제목", title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/managelist_detail/{dev_request_id}", "요청 확인하기",
+        open_link(f"/managed/managelist_detail/{dev_request_id}", PACMS_BASE_URL), "요청 확인하기",
     ))
 
 
@@ -194,7 +195,7 @@ def notify_dev_request_comment_created(db, dev_request_id, company_name, request
     send_email_async(emails, f"[HCMS] 개발 요청 댓글: {request_title}", _build_html(
         "개발 요청에 새로운 댓글이 등록되었습니다",
         [("업체명", company_name), ("요청 제목", request_title), ("작성자", writer_name)],
-        f"{PACMS_BASE_URL}/managed/managelist_detail/{dev_request_id}", "댓글 확인하기",
+        open_link(f"/managed/managelist_detail/{dev_request_id}", PACMS_BASE_URL), "댓글 확인하기",
     ))
 
 
@@ -219,7 +220,7 @@ def notify_free_maint_alert(db, kind, project_id, company_name, project_title, s
     ]
     if days_left is not None:
         items.append(("남은 기간", f"D-{days_left}"))
-    html = _build_html(title, items, f"{PACMS_BASE_URL}/managed/project_update/{project_id}", "프로젝트 확인하기")
+    html = _build_html(title, items, open_link(f"/managed/project_update/{project_id}", PACMS_BASE_URL), "프로젝트 확인하기")
     _send_email(emails, f"[HCMS] {title} - {company_name} / {project_title}", html)
 
 
@@ -235,7 +236,7 @@ def notify_maint_renewal_response(db, renewal_id, company_name, project_title, d
     send_email_async(emails, f"[HCMS] 유지보수 전환 응답({response_label}): {company_name} / {project_title}", _build_html(
         "고객이 유지보수 계속 이용 안내에 응답했습니다",
         items,
-        f"{PACMS_BASE_URL}/managed/maint-renewal/{renewal_id}/", "전환 건 확인하기",
+        open_link(f"/managed/maint-renewal/{renewal_id}/", PACMS_BASE_URL), "전환 건 확인하기",
     ))
 
 
@@ -251,7 +252,7 @@ def notify_customer_maintenance_reply(to_email, customer_name, maintenance_id, t
     send_email_async([to_email], f"[유지보수 {status_display}] {title}", _build_html(
         f"{esc(customer_name or '고객')}님, 유지보수 요청에 처리 내역이 등록되었습니다",
         items,
-        f"{settings.PUBLIC_BASE_URL}/maintenance/{maintenance_id}", "처리 내역 확인하기",
+        open_link(f"/maintenance/{maintenance_id}"), "처리 내역 확인하기",
     ))
 
 
@@ -263,7 +264,7 @@ def notify_customer_inquiry_answer(to_emails, company_name, inquiry_id, inquiry_
     send_email_async(list(to_emails), f"[HCMS] 문의사항 답변 등록 - {inquiry_title}", _build_html(
         "등록하신 문의사항에 답변이 등록되었습니다",
         [("문의 제목", esc(inquiry_title or "")), ("회사", esc(company_name or "")), ("답변자", esc(writer_name or ""))],
-        f"{settings.PUBLIC_BASE_URL}/inquiries/{inquiry_id}", "답변 확인하기",
+        open_link(f"/inquiries/{inquiry_id}"), "답변 확인하기",
     ))
 
 
@@ -312,7 +313,7 @@ def notify_manager_estimate_action(to_email, estimate_id, title, number, action,
         items.append(("내용", esc(reason)[:1000]))
     send_email_async([to_email], f"[견적서 {label}] {title} - {number}", _build_html(
         f"고객이 견적서를 {label}했습니다", items,
-        f"{settings.STAFF_BASE_URL}/managed/estimate/{estimate_id}/", "견적서 확인하기",
+        open_link(f"/managed/estimate/{estimate_id}/", settings.STAFF_BASE_URL), "견적서 확인하기",
     ))
 
 
@@ -334,7 +335,7 @@ def notify_manager_contract_signed(to_email, contract_id, title, number, signer)
     send_email_async([to_email], f"[계약서 서명] {title} - {number}", _build_html(
         "고객이 계약서에 서명했습니다 — 을 서명을 진행해 주세요",
         [("계약명", esc(title or "")), ("계약번호", esc(number or "")), ("서명자", esc(signer or ""))],
-        f"{settings.STAFF_BASE_URL}/managed/contract/{contract_id}/", "계약서 확인하기",
+        open_link(f"/managed/contract/{contract_id}/", settings.STAFF_BASE_URL), "계약서 확인하기",
     ))
 
 
@@ -349,5 +350,5 @@ def notify_staff_contract_event(to_emails, contract_id, title, number, label, ac
         items.append(("내용", esc(detail)[:1000]))
     send_email_async(to_emails, f"[계약서 {label}] {title} - {number}", _build_html(
         f"계약서가 {label} 처리되었습니다", items,
-        f"{settings.STAFF_BASE_URL}/managed/contract/{contract_id}/", "계약서 확인하기",
+        open_link(f"/managed/contract/{contract_id}/", settings.STAFF_BASE_URL), "계약서 확인하기",
     ))

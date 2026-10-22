@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     CRAWLING_SSO_SECRET_FILE: str = "/home/hcms/.secrets/crawling_sso_secret"
     CRAWLING_SSO_CALLBACK_URL: str = "https://crawling.hankyeul.com/sso/callback"
     SSO_TICKET_TTL: int = 120
+    # HCMS 데스크탑 앱(macOS) 설치 파일·자동 업데이트 파일 폴더 — /desktop/download 페이지와 /api/public/desktop/files/<이름> 이 여기서 읽는다
+    DESKTOP_RELEASE_DIR: str = "/home/hcms/desktop-releases"
     # 계약서 을(한결랩) 정보 — cms EstimateContract 모델 기본값과 같은 값(설정값으로 이동)
     CONTRACT_PARTY_B_NAME: str = "한결랩"
     CONTRACT_PARTY_B_CEO: str = "김경섭"

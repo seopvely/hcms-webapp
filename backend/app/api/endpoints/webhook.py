@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models.manager import Manager
 from app.models.push_token import PushToken
+from app.services import inbox
 from app.services.push import send_push_notification
 
 logger = logging.getLogger(__name__)
@@ -142,13 +143,6 @@ def receive_pacms_webhook(
         return {"status": "ok", "push_sent": 0, "reason": "No active managers"}
 
     manager_seqs = [m.seq for m in managers]
-    push_tokens = db.query(PushToken).filter(PushToken.manager_seq.in_(manager_seqs), PushToken.is_active == True).all()
-
-    if not push_tokens:
-        return {"status": "ok", "push_sent": 0, "reason": "No active push tokens"}
-
-    token_strings = [pt.token for pt in push_tokens]
-
     title = config["title"]
     body = config["body_template"].format(title=data.title or "")
 
@@ -174,6 +168,13 @@ def receive_pacms_webhook(
         "target_id": str(target_id) if target_id else "",
         "route": route,
     }
+
+    inbox.save_for_customers(db, manager_seqs, title, body, push_data)  # 데스크탑 알림함(토큰이 없어도)
+
+    push_tokens = db.query(PushToken).filter(PushToken.manager_seq.in_(manager_seqs), PushToken.is_active == True).all()
+    if not push_tokens:
+        return {"status": "ok", "push_sent": 0, "reason": "No active push tokens"}
+    token_strings = [pt.token for pt in push_tokens]
 
     success_count = send_push_notification(title, body, token_strings, push_data)
 

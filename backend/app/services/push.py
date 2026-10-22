@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.push_token import PushToken
 from app.core.firebase import send_push
+from app.services import inbox
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,8 @@ def send_push_notification(title: str, body: str, tokens: list[str], data: dict 
 
 
 def send_push_to_user(db: Session, manager_seq: int, title: str, body: str, data: dict | None = None) -> int:
-    """특정 유저에게 푸시 발송."""
+    """특정 유저에게 푸시 발송. 데스크탑 알림함에도 남긴다(토큰이 없어도)."""
+    inbox.save_for_customers(db, [manager_seq], title, body, data)
     push_tokens = get_active_tokens(db, manager_seq)
     if not push_tokens:
         return 0
@@ -82,16 +84,11 @@ def send_push_to_all(db: Session, title: str, body: str, data: dict | None = Non
 
 
 def send_push_to_company(db: Session, company_id: int | None, title: str, body: str, data: dict | None = None) -> int:
-    """회사의 로그인 허용 고객 담당자 전원에게 푸시 (cms 웹훅 수신 처리와 같은 대상 규칙)."""
-    if not company_id:
-        return 0
-    from app.models.manager import Manager
-
-    manager_seqs = [
-        m.seq for m in db.query(Manager.seq).filter(Manager.company_id == company_id, Manager.login_permit_tf == "1")
-    ]
+    """회사의 로그인 허용 고객 담당자 전원에게 푸시 (cms 웹훅 수신 처리와 같은 대상 규칙). 데스크탑 알림함에도 남긴다."""
+    manager_seqs = inbox.company_manager_seqs(db, company_id)
     if not manager_seqs:
         return 0
+    inbox.save_for_customers(db, manager_seqs, title, body, data)  # 데스크탑 알림함(토큰이 없어도)
     tokens = [
         t.token for t in db.query(PushToken).filter(PushToken.manager_seq.in_(manager_seqs), PushToken.is_active == True)  # noqa: E712
     ]

@@ -8,7 +8,7 @@
   maint_renewal_utils.ensure_renewals 기준으로 이식 — 켜기 전에 cms 메일 문구와 대조할 것.
 - domain_expiry: 신규(cms 는 미발송 구조) — 활성 도메인/호스팅 만료 30·7일 전 직원 메일.
 - fde_notice_check: 상주 계약 최소기간 종료 30일 전·종료 통보 미수신 알림.
-- session_cleanup: 만료된 직원 세션 삭제.
+- session_cleanup: 만료된 직원 세션 삭제 + 보관 기간 지난 데스크탑 알림 삭제.
 """
 from datetime import date, datetime, time, timedelta
 from html import escape
@@ -34,6 +34,7 @@ from app.models.customer import (
 from app.services import billing as bl
 from app.services.subscriptions import RENEWAL_OPEN, to_date
 from app.utils.free_maint import is_in_free_maint
+from app.utils.links import open_link
 
 MANAGER_FIELDS = ("manager_select_contract_seq_id", "manager_select_planning_seq_id", "manager_select_frontend_seq_id",
                   "manager_select_backend_seq_id", "manager_select_design_seq_id", "manager_select_maintenance_seq_id")
@@ -161,7 +162,7 @@ def run_estimate_expiry(ctx: JobContext) -> None:
                 f"<li>견적번호: {escape(e.estimate_number or '')}</li><li>제목: {escape(e.estimate_title or '')}</li>"
                 f"<li>업체명: {escape(company.name if company else '-')}</li><li>유효기간: {to_date(e.validity_period):%Y년 %m월 %d일}</li>"
                 f"<li>총 견적금액: {amounts(e)['total']:,}원</li></ul><p>고객에게 연락하여 승인 여부를 확인하시기 바랍니다.</p>"
-                f'<p><a href="{settings.STAFF_BASE_URL}/managed/estimate/{e.seq}/">견적서 확인하기</a></p>')
+                f'<p><a href="{open_link(f"/managed/estimate/{e.seq}/", settings.STAFF_BASE_URL)}">견적서 확인하기</a></p>')
         try:
             ctx.send([manager.email], subject, html)
             sent += 1
@@ -185,7 +186,7 @@ def run_contract_expiry(ctx: JobContext) -> None:
         company = db.query(Company).filter(Company.seq == p.company_id).first()
         text_ = (f"업체명: {company.name if company else '-'}\n프로젝트명: {p.title}\n계약일: {to_date(p.contract_date) or '-'}\n계약종료일: {end}\n"
                  f"계약기간: {p.contract_period_range or '-'}\n연장 회차: {p.extension_count or 0}회차\n월 포인트: {p.point or 0}P\n\n"
-                 f"프로젝트: {settings.STAFF_BASE_URL}/managed/project_update/{p.seq}\n\n본 메일은 PACMS 시스템에서 자동 발송되었습니다.")
+                 f"프로젝트: {open_link(f'/managed/project_update/{p.seq}', settings.STAFF_BASE_URL)}\n\n본 메일은 PACMS 시스템에서 자동 발송되었습니다.")
         try:
             ctx.send(emails, f"[계약만료 알림] {company.name if company else ''} - {p.title} ({end} 만료)", pre(text_))
             sent += 1
@@ -241,7 +242,7 @@ def run_maint_renewal_scan(ctx: JobContext) -> None:
         company = db.query(Company).filter(Company.seq == p.company_id).first()
         text_ = (f"계약 만료가 다가온 프로젝트의 유지보수 전환 의향을 확인해 주세요.\n\n업체: {company.name if company else ''}\n프로젝트: {p.title}\n"
                  f"계약종료일: {to_date(p.contract_termination_date) or '-'}\n무상 유지보수 종료일: {to_date(p.free_maint_end_date) or '-'}\n전환 기준일: {due}\n"
-                 f"{'현재 무상 유지보수 기간입니다.' if is_in_free_maint(p, today) else ''}\n\n유지보수 전환: {settings.STAFF_BASE_URL}/managed/maint-renewal/{r.seq}/")
+                 f"{'현재 무상 유지보수 기간입니다.' if is_in_free_maint(p, today) else ''}\n\n유지보수 전환: {open_link(f'/managed/maint-renewal/{r.seq}/', settings.STAFF_BASE_URL)}")
         try:
             ctx.send(emails, f"[유지보수 전환] {company.name if company else ''} {p.title} 의향 확인 요청 (기준일 {due})", pre(text_))
             r.notified_at = datetime.now()
@@ -274,7 +275,7 @@ def run_domain_expiry(ctx: JobContext) -> None:
             if not emails or not ctx.claim("domain_expiry", f"{d.seq}:{kind}:{end}:{stage}"):
                 continue
             try:
-                ctx.send(emails, f"[{kind} 만료 {stage}] {label} ({end})", pre(f"{kind} 만료일: {end} (남은 {left}일)\n\n{settings.STAFF_BASE_URL}/managed/domain_update/{d.seq}/"))
+                ctx.send(emails, f"[{kind} 만료 {stage}] {label} ({end})", pre(f"{kind} 만료일: {end} (남은 {left}일)\n\n{open_link(f'/managed/domain_update/{d.seq}/', settings.STAFF_BASE_URL)}"))
                 sent += 1
             except Exception as ex:  # noqa: BLE001
                 ctx.mark("domain_expiry", f"{d.seq}:{kind}:{end}:{stage}", "failed")
@@ -296,7 +297,7 @@ def run_fde_notice_check(ctx: JobContext) -> None:
         company = db.query(Company).filter(Company.seq == e.company_id).first()
         try:
             ctx.send(emails, f"[FDE] {company.name if company else ''} 상주 계약 종료 예정 {target} — 연장/종료 확인",
-                     pre(f"상주 계약 #{e.id} 의 (최소)종료일이 {target} 입니다. 종료 통보가 기록되지 않았습니다.\n\n{settings.STAFF_BASE_URL}/managed/fde/{e.id}"))
+                     pre(f"상주 계약 #{e.id} 의 (최소)종료일이 {target} 입니다. 종료 통보가 기록되지 않았습니다.\n\n{open_link(f'/managed/fde/{e.id}', settings.STAFF_BASE_URL)}"))
             n += 1
         except Exception as ex:  # noqa: BLE001
             ctx.mark("fde_notice_check", f"{e.id}:{target}", "failed")
@@ -311,6 +312,13 @@ def run_session_cleanup(ctx: JobContext) -> None:
     if not ctx.dry_run:
         q.delete(synchronize_session=False)
     ctx.log(f"만료 직원 세션 삭제 {n}건")
+    from app.models.desktop_notification import DesktopNotification
+    from app.services.inbox import RETENTION_DAYS, purge_old
+    if ctx.dry_run:
+        n = ctx.db.query(DesktopNotification).filter(DesktopNotification.created_at < ctx.now - timedelta(days=RETENTION_DAYS)).count()
+    else:
+        n = purge_old(ctx.db, ctx.now)
+    ctx.log(f"데스크탑 알림 {RETENTION_DAYS}일 지난 것 삭제 {n}건")
 
 
 def run_free_maint_alerts(ctx: JobContext) -> None:
