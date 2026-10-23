@@ -13,7 +13,8 @@
     'hcms.hankyeul.com': 'hcms',
     'createsite.hankyeul.com': 'createsite',
     'wealthreach.hankyeul.com': 'wealthreach',
-    'searching.hankyeul.com': 'searching'
+    'searching.hankyeul.com': 'searching',
+    'crawling.hankyeul.com': 'crawling'
   }
   // 이 경로에서는 띄우지 않는다 (중계 페이지, 설치 페이지)
   var SKIP_PATHS = ['/open', '/desktop/download']
